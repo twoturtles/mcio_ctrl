@@ -135,6 +135,8 @@ class MCioGUI:
             self.controller.cmd_queue.put(cmd)
         # Skip action REPEAT.
 
+    # XXX When the cursor gets to the edge of the screen you turn any farther because the
+    # cursor position doesn't change. Minecraft handles this, but doesn't show the cursor.
     def cursor_position_callback(self, window, xpos, ypos):
         """Handle mouse movement"""
         #print(f'Mouse {xpos} {ypos}')
@@ -154,10 +156,11 @@ class MCioGUI:
         """Handle window resize"""
         print(f'RESIZE {width} {height}')
         gl.glViewport(0, 0, width, height)
+        # Force a redraw
+        glfw.post_empty_event()
         
     def render(self, state: StatePacket):
         """Render graphics"""
-        #print(state.seq, state.message, len(state.frame_png))
         SCALE = 2
         
         gl.glClear(gl.GL_COLOR_BUFFER_BIT)
@@ -167,19 +170,25 @@ class MCioGUI:
             img = Image.open(io.BytesIO(state.frame_png))
             img_width, img_height = img.size
             
+            # Scale the target dimensions
+            target_width = img_width // SCALE
+            target_height = img_height // SCALE
+            
             # On first frame or if size changed, resize window
-            # XXX Maybe we should scale the image here before passing it to opengl?
             current_width, current_height = glfw.get_window_size(self.window)
-            if current_width != img_width // SCALE or current_height != img_height // SCALE:
-                print(f'RESIZE2 {img_width // 2} {img_height // 2}')
-                glfw.set_window_size(self.window, img_width // SCALE, img_height // SCALE)
-                gl.glViewport(0, 0, img_width // SCALE, img_height // SCALE)
+            if current_width != target_width or current_height != target_height:
+                print(f'RESIZE2 {target_width} {target_height}')
+                glfw.set_window_size(self.window, target_width, target_height)
+                gl.glViewport(0, 0, target_width, target_height)
                 # Tell GLFW to poll events immediately
                 glfw.poll_events()
             
             # Convert image to numpy array and flip vertically to pass to OpenGL
             img_data = np.array(img)
             img_data = np.flipud(img_data)
+            
+            # Scale the image data to fit the desired size
+            img_data = cv2.resize(img_data, (target_width, target_height))
             
             # Create and bind texture
             texture = gl.glGenTextures(1)
@@ -189,10 +198,10 @@ class MCioGUI:
             gl.glTexParameteri(gl.GL_TEXTURE_2D, gl.GL_TEXTURE_MIN_FILTER, gl.GL_LINEAR)
             gl.glTexParameteri(gl.GL_TEXTURE_2D, gl.GL_TEXTURE_MAG_FILTER, gl.GL_LINEAR)
             
-            # Upload image onto texture
+            # Upload the scaled image to texture
             gl.glTexImage2D(
                 gl.GL_TEXTURE_2D, 0, gl.GL_RGB, 
-                img_width, img_height, 0, 
+                target_width, target_height, 0,
                 gl.GL_RGB, gl.GL_UNSIGNED_BYTE, 
                 img_data
             )
@@ -204,18 +213,18 @@ class MCioGUI:
             # The quad goes from -1 to 1 in both x and y (OpenGL normalized coordinates)
             gl.glBegin(gl.GL_QUADS)
             # For each vertex, set texture coordinate (0-1) and vertex position (-1 to 1)
-            gl.glTexCoord2f(0, 0); gl.glVertex2f(-1, -1)  # Bottom left
-            gl.glTexCoord2f(1, 0); gl.glVertex2f(1, -1)   # Bottom right
-            gl.glTexCoord2f(1, 1); gl.glVertex2f(1, 1)    # Top right
-            gl.glTexCoord2f(0, 1); gl.glVertex2f(-1, 1)   # Top left
+            gl.glTexCoord2f(0, 0); gl.glVertex2f(-1, -1)
+            gl.glTexCoord2f(1, 0); gl.glVertex2f(1, -1)
+            gl.glTexCoord2f(1, 1); gl.glVertex2f(1, 1)
+            gl.glTexCoord2f(0, 1); gl.glVertex2f(-1, 1)
             gl.glEnd()
-    
+            
             # Clean up
             gl.glDisable(gl.GL_TEXTURE_2D)
             gl.glDeleteTextures([texture])
         
         glfw.swap_buffers(self.window)
-            
+        
     def run(self):
         """Main application loop"""
         while not glfw.window_should_close(self.window):
