@@ -108,10 +108,8 @@ class ControllerThreads:
         self.cmd_queue.put(None)
         self.cmd_thread.join()
 
-# Top-level class. Handles screen and keyboard/mouse. Uses ControllerThreads to
-# communicate with Minecraft
 class MCioGUI:
-    def __init__(self, width=640, height=640):
+    def __init__(self, width=800, height=600):
         # Initialize GLFW
         if not glfw.init():
             raise Exception("GLFW initialization failed")
@@ -199,7 +197,7 @@ class MCioGUI:
                 # Tell GLFW to poll events immediately
                 glfw.poll_events()
             
-            # Convert image to numpy array and flip vertically
+            # Convert image to numpy array and flip vertically to pass to OpenGL
             img_data = np.array(img)
             img_data = np.flipud(img_data)
             
@@ -210,7 +208,7 @@ class MCioGUI:
             texture = gl.glGenTextures(1)
             gl.glBindTexture(gl.GL_TEXTURE_2D, texture)
             
-            # Set texture parameters
+            # Set texture parameters for scaling down/up
             gl.glTexParameteri(gl.GL_TEXTURE_2D, gl.GL_TEXTURE_MIN_FILTER, gl.GL_LINEAR)
             gl.glTexParameteri(gl.GL_TEXTURE_2D, gl.GL_TEXTURE_MAG_FILTER, gl.GL_LINEAR)
             
@@ -222,23 +220,17 @@ class MCioGUI:
                 img_data
             )
             
-            # Reset projection matrix
-            gl.glMatrixMode(gl.GL_PROJECTION)
-            gl.glLoadIdentity()
-            
-            # Reset modelview matrix
-            gl.glMatrixMode(gl.GL_MODELVIEW)
-            gl.glLoadIdentity()
-            
             # Enable texture mapping
             gl.glEnable(gl.GL_TEXTURE_2D)
             
-            # Draw textured quad that fills the entire window using normalized device coordinates
+            # Draw a quad (rectangle made of two triangles) that fills the screen
+            # The quad goes from -1 to 1 in both x and y (OpenGL normalized coordinates)
             gl.glBegin(gl.GL_QUADS)
-            gl.glTexCoord2f(0, 0); gl.glVertex2f(-1, -1)  # Bottom left
-            gl.glTexCoord2f(1, 0); gl.glVertex2f(1, -1)   # Bottom right
-            gl.glTexCoord2f(1, 1); gl.glVertex2f(1, 1)    # Top right
-            gl.glTexCoord2f(0, 1); gl.glVertex2f(-1, 1)   # Top left
+            # For each vertex, set texture coordinate (0-1) and vertex position (-1 to 1)
+            gl.glTexCoord2f(0, 0); gl.glVertex2f(-1, -1)
+            gl.glTexCoord2f(1, 0); gl.glVertex2f(1, -1)
+            gl.glTexCoord2f(1, 1); gl.glVertex2f(1, 1)
+            gl.glTexCoord2f(0, 1); gl.glVertex2f(-1, 1)
             gl.glEnd()
             
             # Clean up
@@ -246,7 +238,7 @@ class MCioGUI:
             gl.glDeleteTextures([texture])
         
         glfw.swap_buffers(self.window)
-
+        
     def run(self):
         """Main application loop"""
         while not glfw.window_should_close(self.window):
