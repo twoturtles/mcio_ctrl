@@ -68,32 +68,46 @@ class ControllerThreads:
         self.state_socket.setsockopt_string(zmq.SUBSCRIBE, "")
 
         # Start ZMQ threads
-        self.cmd_thread = threading.Thread(target=self.cmd_thread_fn)
-        self.cmd_thread.daemon = True
-        self.cmd_thread.start()
-
-        self.state_thread = threading.Thread(target=self.state_thread_fn)
+        self.state_thread = threading.Thread(target=self.state_thread_fn, name="StateThread")
         self.state_thread.daemon = True
         self.state_thread.start()
 
+        self.cmd_thread = threading.Thread(target=self.cmd_thread_fn, name="CommandThread")
+        self.cmd_thread.daemon = True
+        self.cmd_thread.start()
+
     def cmd_thread_fn(self):
+        print("CommandThread start")
         while self.running.is_set():
             cmd = self.cmd_queue.get()
+            if cmd is None:
+                break   # Command None to signal exit
             self.cmd_socket.send(cmd.pack())
             self.cmd_queue.task_done()
+        print("Command-Thread shut down")
 
     def state_thread_fn(self):
+        print("StateThread start")
         while self.running.is_set():
-            pbytes = self.state_socket.recv()
+            try:
+                pbytes = self.state_socket.recv()
+            except zmq.error.ContextTerminated:
+                break   # Exiting
             state = StatePacket.unpack(pbytes)
             self.state_queue.put(state)
+        print("StateThread shut down")
 
     def shutdown(self):
         self.running.clear()
-        self.cmd_thread.join()
         self.cmd_socket.close()
+        self.state_socket.close()
         self.zmq_context.term()
-        
+
+        self.state_thread.join()
+        # Send empty command to unblock CommandThread
+        self.cmd_queue.put(None)
+        self.cmd_thread.join()
+
 class MCioGUI:
     def __init__(self, width=800, height=600):
         # Initialize GLFW
@@ -239,12 +253,15 @@ class MCioGUI:
                 self.render(state)
             
         # Cleanup
+        print("Exiting...")
         self.cleanup()
         
     def cleanup(self):
         """Clean up resources"""
         self.controller.shutdown()
+        print('HERE1')
         glfw.terminate()
+        print("HERE2")
 
 if __name__ == "__main__":
     app = MCioGUI()
