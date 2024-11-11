@@ -38,7 +38,6 @@ def recv_loop():
     while True:
         pbytes = state_socket.recv()
         state = StatePacket.unpack(pbytes)
-        #print(state.seq, state.width, state.height, state.bytes_per_pixel, len(state.frame), state.message)
 
         end = time.time()
         pkt_count += 1
