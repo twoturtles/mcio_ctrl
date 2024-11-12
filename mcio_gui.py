@@ -115,6 +115,7 @@ class MCioGUI:
             raise Exception("GLFW initialization failed")
             
         # Create window
+        glfw.window_hint(glfw.COCOA_RETINA_FRAMEBUFFER, glfw.FALSE)
         self.window = glfw.create_window(width, height, "MCio GUI", None, None)
         if not self.window:
             glfw.terminate()
@@ -259,9 +260,7 @@ class MCioGUI:
     def cleanup(self):
         """Clean up resources"""
         self.controller.shutdown()
-        print('HERE1')
         glfw.terminate()
-        print("HERE2")
 
 if __name__ == "__main__":
     app = MCioGUI()
