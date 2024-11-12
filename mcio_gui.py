@@ -194,9 +194,6 @@ class MCioGUI:
             if current_width != target_width or current_height != target_height:
                 print(f'RESIZE2 {target_width} {target_height}')
                 glfw.set_window_size(self.window, target_width, target_height)
-                gl.glViewport(0, 0, target_width, target_height)
-                # Tell GLFW to poll events immediately
-                glfw.poll_events()
             
             # Convert image to numpy array and flip vertically to pass to OpenGL
             img_data = np.array(img)
