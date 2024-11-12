@@ -114,8 +114,9 @@ class MCioGUI:
         if not glfw.init():
             raise Exception("GLFW initialization failed")
             
-        # Create window
+        # This fixes only filling the bottom-left 1/4 of the window on mac.
         glfw.window_hint(glfw.COCOA_RETINA_FRAMEBUFFER, glfw.FALSE)
+        # Create window
         self.window = glfw.create_window(width, height, "MCio GUI", None, None)
         if not self.window:
             glfw.terminate()
@@ -184,6 +185,7 @@ class MCioGUI:
             # Convert PNG bytes to image
             img = Image.open(io.BytesIO(state.frame_png))
             img_width, img_height = img.size
+            print(f'img {img.size}')
             
             # Scale the target dimensions
             target_width = img_width // SCALE
