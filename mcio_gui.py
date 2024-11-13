@@ -22,7 +22,20 @@ class StatePacket:
 
     @classmethod
     def unpack(cls, data: bytes) -> 'StatePacket':
-        return cls(**cbor2.loads(data))
+        try:
+            decoded_dict = cbor2.loads(data)
+        except Exception as e:
+            print(f"CBOR2 load error: {type(e).__name__}: {e}")
+            return None
+
+        try:
+            rv = cls(**decoded_dict)
+        except Exception as e:
+            # This means the received packet doesn't match StatePacket
+            print(f"StatePacket decode error: {type(e).__name__}: {e}")
+            return None
+
+        return rv
 
 
 @dataclass
@@ -41,10 +54,6 @@ class CmdPacket:
     def pack(self) -> bytes:
         return cbor2.dumps(asdict(self))
     
-    @classmethod
-    def unpack(cls, data: bytes) -> 'CmdPacket':
-        return cls(**cbor2.loads(data))
-
 # Threads to handle zmq i/o.
 class ControllerThreads:
     def __init__(self, host='localhost'):
