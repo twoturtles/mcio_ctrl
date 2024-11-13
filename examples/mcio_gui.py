@@ -122,7 +122,6 @@ class MCioGUI:
 
     def resize_callback(self, window, width, height):
         """Handle window resize"""
-        print(f'RESIZE {width} {height}')
         gl.glViewport(0, 0, width, height)
         # Force a redraw
         glfw.post_empty_event()
@@ -145,7 +144,6 @@ class MCioGUI:
             # On first frame or if size changed, resize window
             current_width, current_height = glfw.get_window_size(self.window)
             if current_width != target_width or current_height != target_height:
-                print(f'RESIZE2 {target_width} {target_height}')
                 glfw.set_window_size(self.window, target_width, target_height)
             
             # Convert image to numpy array and flip vertically to pass to OpenGL
@@ -201,6 +199,7 @@ class MCioGUI:
             except queue.Empty:
                 pass
             else:
+                #print(state)
                 self.render(state)
             
         # Cleanup

@@ -1,6 +1,7 @@
 # Code for communicating with the MCio mod
 from dataclasses import dataclass, asdict, field
 from typing import Set, List
+import pprint
 
 import cbor2
 import zmq
@@ -11,13 +12,15 @@ DEFAULT_STATE_PORT = 5557
 DEFAULT_ACTION_ADDR = f"tcp://{DEFAULT_HOST}:{DEFAULT_ACTION_PORT}"
 DEFAULT_STATE_ADDR = f"tcp://{DEFAULT_HOST}:{DEFAULT_STATE_PORT}"
 
+MCIO_PROTOCOL_VERSION = 0
+
 # State packets received from MCio
 @dataclass
 class StatePacket:
-    seq: int = 0
-    frame_png: bytes = b""
+    version: int = MCIO_PROTOCOL_VERSION
+    sequence: int = 0
+    frame_png: bytes = field(repr=False, default=b"")   # Exclude the frame from string output.
     health: float = 0.0
-    message: str = ""
     inventory_main: List = field(default_factory=list)
     inventory_armor: List = field(default_factory=list)
     inventory_offhand: List = field(default_factory=list)
@@ -35,6 +38,10 @@ class StatePacket:
         except Exception as e:
             # This means the received packet doesn't match StatePacket
             print(f"StatePacket decode error: {type(e).__name__}: {e}")
+            if 'frame_png' in decoded_dict:
+                decoded_dict['frame_png'] = f"Frame len: {len(decoded_dict['frame_png'])}"
+            print("Raw packet:")
+            pprint.pprint(decoded_dict)
             return None
 
         return rv
@@ -43,7 +50,8 @@ class StatePacket:
 # Action packets sent by the agent to MCio
 @dataclass
 class ActionPacket:
-    seq: int = 0           # sequence number
+    version: int = MCIO_PROTOCOL_VERSION
+    sequence: int = 0           # sequence number
     keys_pressed: Set[int] = field(default_factory=set)
     keys_released: Set[int] = field(default_factory=set)
     mouse_buttons_pressed: Set[int] = field(default_factory=set)
@@ -52,7 +60,6 @@ class ActionPacket:
     mouse_pos_x: int = 0
     mouse_pos_y: int = 0
     key_reset: bool = False
-    message: str = ""
 
     def pack(self) -> bytes:
         return cbor2.dumps(asdict(self))
