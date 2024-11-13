@@ -1,59 +1,16 @@
 import threading
-import time
 import io
 import queue
-from dataclasses import dataclass, asdict, field
-from typing import Set
 
 import glfw
 import OpenGL.GL as gl
-import cbor2
-import zmq
 
 import numpy as np
 from PIL import Image
 import cv2
 
-@dataclass
-class StatePacket:
-    seq: int = 0
-    frame_png: bytes = b""
-    message: str = ""
+import mcio_remote as mcio
 
-    @classmethod
-    def unpack(cls, data: bytes) -> 'StatePacket':
-        try:
-            decoded_dict = cbor2.loads(data)
-        except Exception as e:
-            print(f"CBOR2 load error: {type(e).__name__}: {e}")
-            return None
-
-        try:
-            rv = cls(**decoded_dict)
-        except Exception as e:
-            # This means the received packet doesn't match StatePacket
-            print(f"StatePacket decode error: {type(e).__name__}: {e}")
-            return None
-
-        return rv
-
-
-@dataclass
-class CmdPacket:
-    seq: int = 0           # sequence number
-    keys_pressed: Set[int] = field(default_factory=set)
-    keys_released: Set[int] = field(default_factory=set)
-    mouse_buttons_pressed: Set[int] = field(default_factory=set)
-    mouse_buttons_released: Set[int] = field(default_factory=set)
-    mouse_pos_update: bool = False
-    mouse_pos_x: int = 0
-    mouse_pos_y: int = 0
-    key_reset: bool = False
-    message: str = ""
-
-    def pack(self) -> bytes:
-        return cbor2.dumps(asdict(self))
-    
 # Threads to handle zmq i/o.
 class ControllerThreads:
     def __init__(self, host='localhost'):
@@ -61,61 +18,47 @@ class ControllerThreads:
         self.running = threading.Event()
         self.running.set()
 
-        self.cmd_queue = queue.Queue()
+        self.action_queue = queue.Queue()
         self.state_queue = queue.Queue()
 
-        # Initialize ZMQ context
-        self.zmq_context = zmq.Context()
+        self.mcio_conn = mcio.Connection()
 
-        # Socket to send commands
-        self.cmd_socket = self.zmq_context.socket(zmq.PUB)
-        self.cmd_socket.bind(f"tcp://{host}:5556")
-        
-        # Socket to receive state updates
-        self.state_socket = self.zmq_context.socket(zmq.SUB)
-        self.state_socket.connect(f"tcp://{host}:5557")
-        self.state_socket.setsockopt_string(zmq.SUBSCRIBE, "")
-
-        # Start ZMQ threads
+        # Start threads
         self.state_thread = threading.Thread(target=self.state_thread_fn, name="StateThread")
         self.state_thread.daemon = True
         self.state_thread.start()
 
-        self.cmd_thread = threading.Thread(target=self.cmd_thread_fn, name="CommandThread")
-        self.cmd_thread.daemon = True
-        self.cmd_thread.start()
+        self.action_thread = threading.Thread(target=self.action_thread_fn, name="ActionThread")
+        self.action_thread.daemon = True
+        self.action_thread.start()
 
-    def cmd_thread_fn(self):
-        print("CommandThread start")
+    def action_thread_fn(self):
+        print("ActionThread start")
         while self.running.is_set():
-            cmd = self.cmd_queue.get()
-            if cmd is None:
-                break   # Command None to signal exit
-            self.cmd_socket.send(cmd.pack())
-            self.cmd_queue.task_done()
-        print("Command-Thread shut down")
+            action = self.action_queue.get()
+            if action is None:
+                break   # Action None to signal exit
+            self.mcio_conn.send_action(action)
+            self.action_queue.task_done()
+        print("Action-Thread shut down")
 
     def state_thread_fn(self):
         print("StateThread start")
         while self.running.is_set():
-            try:
-                pbytes = self.state_socket.recv()
-            except zmq.error.ContextTerminated:
-                break   # Exiting
-            state = StatePacket.unpack(pbytes)
+            state = self.mcio_conn.recv_state()
+            if state is None:
+                continue    # Exiting or packet decode error
             self.state_queue.put(state)
         print("StateThread shut down")
 
     def shutdown(self):
         self.running.clear()
-        self.cmd_socket.close()
-        self.state_socket.close()
-        self.zmq_context.term()
+        self.mcio_conn.close()
 
         self.state_thread.join()
-        # Send empty command to unblock CommandThread
-        self.cmd_queue.put(None)
-        self.cmd_thread.join()
+        # Send empty action to unblock ActionThread
+        self.action_queue.put(None)
+        self.action_thread.join()
 
 class MCioGUI:
     def __init__(self, width=800, height=600):
@@ -153,11 +96,11 @@ class MCioGUI:
             return
 
         if action == glfw.PRESS:
-            cmd = CmdPacket(keys_pressed={key})
-            self.controller.cmd_queue.put(cmd)
+            action = mcio.network.ActionPacket(keys_pressed={key})
+            self.controller.action_queue.put(action)
         elif action == glfw.RELEASE:
-            cmd = CmdPacket(keys_released={key})
-            self.controller.cmd_queue.put(cmd)
+            action = mcio.network.ActionPacket(keys_released={key})
+            self.controller.action_queue.put(action)
         # Skip action REPEAT.
 
     # XXX When the cursor gets to the edge of the screen you turn any farther because the
@@ -165,17 +108,17 @@ class MCioGUI:
     def cursor_position_callback(self, window, xpos, ypos):
         """Handle mouse movement"""
         #print(f'Mouse {xpos} {ypos}')
-        cmd = CmdPacket(mouse_pos_update=True, mouse_pos_x=xpos, mouse_pos_y=ypos)
-        self.controller.cmd_queue.put(cmd)
+        action = mcio.network.ActionPacket(mouse_pos_update=True, mouse_pos_x=xpos, mouse_pos_y=ypos)
+        self.controller.action_queue.put(action)
         
     def mouse_button_callback(self, window, button, action, mods):
         """Handle mouse button events"""
         if action == glfw.PRESS:
-            cmd = CmdPacket(mouse_buttons_pressed={button})
-            self.controller.cmd_queue.put(cmd)
+            action = mcio.network.ActionPacket(mouse_buttons_pressed={button})
+            self.controller.action_queue.put(action)
         elif action == glfw.RELEASE:
-            cmd = CmdPacket(mouse_buttons_released={button})
-            self.controller.cmd_queue.put(cmd)
+            action = mcio.network.ActionPacket(mouse_buttons_released={button})
+            self.controller.action_queue.put(action)
 
     def resize_callback(self, window, width, height):
         """Handle window resize"""
@@ -184,7 +127,7 @@ class MCioGUI:
         # Force a redraw
         glfw.post_empty_event()
         
-    def render(self, state: StatePacket):
+    def render(self, state: mcio.network.StatePacket):
         """Render graphics"""
         SCALE = 2
         
@@ -194,7 +137,6 @@ class MCioGUI:
             # Convert PNG bytes to image
             img = Image.open(io.BytesIO(state.frame_png))
             img_width, img_height = img.size
-            print(f'img {img.size}')
             
             # Scale the target dimensions
             target_width = img_width // SCALE
