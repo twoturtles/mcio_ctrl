@@ -62,7 +62,7 @@ class ControllerThreads:
         self.action_thread.join()
 
 class MCioGUI:
-    def __init__(self, scale=1.0, width=800, height=600):
+    def __init__(self, scale=1.0, width=800, height=600, name="MCio GUI"):
         # Initialize GLFW
         if not glfw.init():
             raise Exception("GLFW initialization failed")
@@ -70,7 +70,7 @@ class MCioGUI:
         # This fixes only filling the bottom-left 1/4 of the window on mac.
         glfw.window_hint(glfw.COCOA_RETINA_FRAMEBUFFER, glfw.FALSE)
         # Create window
-        self.window = glfw.create_window(width, height, "MCio GUI", None, None)
+        self.window = glfw.create_window(width, height, name, None, None)
         if not self.window:
             glfw.terminate()
             raise Exception("Window creation failed")
