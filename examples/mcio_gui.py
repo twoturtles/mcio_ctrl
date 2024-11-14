@@ -1,6 +1,7 @@
 import threading
 import io
 import queue
+import argparse
 
 import glfw
 import OpenGL.GL as gl
@@ -61,7 +62,7 @@ class ControllerThreads:
         self.action_thread.join()
 
 class MCioGUI:
-    def __init__(self, width=800, height=600):
+    def __init__(self, scale=1.0, width=800, height=600):
         # Initialize GLFW
         if not glfw.init():
             raise Exception("GLFW initialization failed")
@@ -87,6 +88,7 @@ class MCioGUI:
         # Initialize
         self.frame_width = 0
         self.frame_height = 0
+        self.scale = scale
 
         self.controller = ControllerThreads()
         
@@ -132,10 +134,7 @@ class MCioGUI:
         
     def render(self, state: mcio.network.StatePacket):
         """Render graphics"""
-        SCALE = 1
-        
         gl.glClear(gl.GL_COLOR_BUFFER_BIT)
-        
         if state.frame_png:
             # Convert PNG bytes to image
             frame = Image.open(io.BytesIO(state.frame_png))
@@ -151,7 +150,7 @@ class MCioGUI:
             if height != self.frame_height or width != self.frame_width:
                 self.frame_width = width
                 self.frame_height = height
-                glfw.set_window_size(self.window, int(width * SCALE), int(height * SCALE))
+                glfw.set_window_size(self.window, int(width * self.scale), int(height * self.scale))
             
             # Create and bind texture
             texture = gl.glGenTextures(1)
@@ -210,6 +209,13 @@ class MCioGUI:
         self.controller.shutdown()
         glfw.terminate()
 
+def parse_args():
+   parser = argparse.ArgumentParser()
+   parser.add_argument('--scale', type=float, default=1.0,
+                      help='Window scale factor')
+   return parser.parse_args()
+
 if __name__ == "__main__":
-    app = MCioGUI()
+    args = parse_args()
+    app = MCioGUI(args.scale)
     app.run()
