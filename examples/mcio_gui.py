@@ -77,8 +77,6 @@ class MCioGUI:
         # Set up OpenGL context
         glfw.make_context_current(self.window)
         gl.glClearColor(0.0, 0.0, 0.0, 1.0)
-        # Needed when rgb image dimensions are not multiple of 4? Fixes some cases of distortion when scaling down.
-        gl.glPixelStorei(gl.GL_UNPACK_ALIGNMENT, 1)
 
         # Set callbacks
         glfw.set_key_callback(self.window, self.key_callback)
@@ -141,8 +139,10 @@ class MCioGUI:
         if state.frame_png:
             # Convert PNG bytes to image
             frame = Image.open(io.BytesIO(state.frame_png))
-            # Convert image to numpy array and flip vertically to pass to OpenGL
+            # Prepare frame for opengl
             frame = np.flipud(np.array(frame))
+            frame = np.ascontiguousarray(frame)
+
             # shape = (height, width, channels)
             height = frame.shape[0]
             width = frame.shape[1]
