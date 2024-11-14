@@ -138,6 +138,7 @@ class MCioGUI:
         if state.frame_png:
             # Convert PNG bytes to image
             frame = Image.open(io.BytesIO(state.frame_png))
+            print(f"{state} frame.size={frame.size}")
             # Prepare frame for opengl
             frame = np.flipud(np.array(frame))
             frame = np.ascontiguousarray(frame)
@@ -197,7 +198,6 @@ class MCioGUI:
             except queue.Empty:
                 pass
             else:
-                #print(state)
                 self.render(state)
             
         # Cleanup

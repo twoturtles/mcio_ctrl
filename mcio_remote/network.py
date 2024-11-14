@@ -1,6 +1,6 @@
 # Code for communicating with the MCio mod
 from dataclasses import dataclass, asdict, field
-from typing import Set, List
+from typing import Set, List, Tuple
 import pprint
 
 import cbor2
@@ -21,6 +21,7 @@ class StatePacket:
     sequence: int = 0
     frame_png: bytes = field(repr=False, default=b"")   # Exclude the frame from string output.
     health: float = 0.0
+    mousePos: Tuple[int, int] = field(default=(0, 0))
     inventory_main: List = field(default_factory=list)
     inventory_armor: List = field(default_factory=list)
     inventory_offhand: List = field(default_factory=list)
