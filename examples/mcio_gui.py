@@ -86,6 +86,10 @@ class MCioGUI:
         glfw.set_mouse_button_callback(self.window, self.mouse_button_callback)
         glfw.set_window_size_callback(self.window, self.resize_callback)
 
+        # Initialize
+        self.frame_width = 0
+        self.frame_height = 0
+
         self.controller = ControllerThreads()
         
     def key_callback(self, window, key, scancode, action, mods):
@@ -136,33 +140,18 @@ class MCioGUI:
         
         if state.frame_png:
             # Convert PNG bytes to image
-            img = Image.open(io.BytesIO(state.frame_png))
-            img_width, img_height = img.size
-            print(f'Frame width: {img_width}, Frame height {img_height}')
-            img.save('initial.png', format='PNG')
-            
-            # Scale the target dimensions
-            target_width = int(img_width * SCALE)
-            target_height = int(img_height * SCALE)
-            
-            # On first frame or if size changed, resize window
-            current_width, current_height = glfw.get_window_size(self.window)
-            if current_width != target_width or current_height != target_height:
-                print("HERE")
-                glfw.set_window_size(self.window, target_width, target_height)
-            
+            frame = Image.open(io.BytesIO(state.frame_png))
             # Convert image to numpy array and flip vertically to pass to OpenGL
-            img_data = np.array(img)
-            print(f'numpy img shape {img_data.shape}')
-            img_data = np.flipud(img_data)
-            
-            # Scale the image data to fit the desired size
-            print(f'Before Resize {img_data.shape}')
-            Image.fromarray(img_data).save('before.png', format='PNG')
-            img_data = cv2.resize(img_data, (target_width, target_height))
-            img_data = np.ascontiguousarray(img_data)
-            print(f'Resize {img_data.shape}')
-            Image.fromarray(img_data).save('after.png', format='PNG')
+            frame = np.flipud(np.array(frame))
+            # shape = (height, width, channels)
+            height = frame.shape[0]
+            width = frame.shape[1]
+
+            # On first frame or if size changed, resize window
+            if height != self.frame_height or width != self.frame_width:
+                self.frame_width = width
+                self.frame_height = height
+                glfw.set_window_size(self.window, int(width * SCALE), int(height * SCALE))
             
             # Create and bind texture
             texture = gl.glGenTextures(1)
@@ -175,9 +164,8 @@ class MCioGUI:
             # Upload the scaled image to texture
             gl.glTexImage2D(
                 gl.GL_TEXTURE_2D, 0, gl.GL_RGB, 
-                target_width, target_height, 0,
-                gl.GL_RGB, gl.GL_UNSIGNED_BYTE, 
-                img_data
+                width, height, 0,
+                gl.GL_RGB, gl.GL_UNSIGNED_BYTE, frame
             )
             
             # Enable texture mapping
