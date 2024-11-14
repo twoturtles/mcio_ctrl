@@ -1,10 +1,12 @@
 # Code for communicating with the MCio mod
 from dataclasses import dataclass, asdict, field
 from typing import Set, List, Tuple
+import io
 import pprint
 
 import cbor2
 import zmq
+from PIL import Image
 
 DEFAULT_HOST = "localhost"
 DEFAULT_ACTION_PORT = 5556
@@ -19,7 +21,7 @@ MCIO_PROTOCOL_VERSION = 0
 class StatePacket:
     version: int = MCIO_PROTOCOL_VERSION
     sequence: int = 0
-    frame_png: bytes = field(repr=False, default=b"")   # Exclude the frame from string output.
+    frame_png: bytes = field(repr=False, default=b"")   # Exclude the frame from repr output.
     health: float = 0.0
     mousePos: Tuple[int, int] = field(default=(0, 0))
     inventory_main: List = field(default_factory=list)
@@ -46,6 +48,11 @@ class StatePacket:
             return None
 
         return rv
+
+    def __str__(self):
+        # frame_png is excluded from repr. Add its size to str. Slow?
+        frame = Image.open(io.BytesIO(self.frame_png))
+        return f"{repr(self)} frame.size={frame.size}"
 
 
 # Action packets sent by the agent to MCio
