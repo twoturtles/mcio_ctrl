@@ -134,7 +134,7 @@ class MCioGUI:
         
     def render(self, state: mcio.network.StatePacket):
         """Render graphics"""
-        SCALE = .5
+        SCALE = 1
         
         gl.glClear(gl.GL_COLOR_BUFFER_BIT)
         
@@ -158,8 +158,8 @@ class MCioGUI:
             gl.glBindTexture(gl.GL_TEXTURE_2D, texture)
             
             # Set texture parameters for scaling down/up
-            gl.glTexParameteri(gl.GL_TEXTURE_2D, gl.GL_TEXTURE_MIN_FILTER, gl.GL_LINEAR)
-            gl.glTexParameteri(gl.GL_TEXTURE_2D, gl.GL_TEXTURE_MAG_FILTER, gl.GL_LINEAR)
+            gl.glTexParameteri(gl.GL_TEXTURE_2D, gl.GL_TEXTURE_MIN_FILTER, gl.GL_NEAREST)
+            gl.glTexParameteri(gl.GL_TEXTURE_2D, gl.GL_TEXTURE_MAG_FILTER, gl.GL_NEAREST)
             
             # Upload the scaled image to texture
             gl.glTexImage2D(
