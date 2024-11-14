@@ -114,7 +114,8 @@ class MCioGUI:
     def cursor_position_callback(self, window, xpos, ypos):
         """Handle mouse movement"""
         #print(f'Mouse {xpos} {ypos}')
-        action = mcio.network.ActionPacket(mouse_pos_update=True, mouse_pos_x=xpos, mouse_pos_y=ypos)
+        action = mcio.network.ActionPacket(mouse_pos_update=True,
+                        mouse_pos_x = xpos // self.scale, mouse_pos_y = ypos // self.scale)
         self.controller.action_queue.put(action)
         
     def mouse_button_callback(self, window, button, action, mods):
