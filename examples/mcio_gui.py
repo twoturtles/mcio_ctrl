@@ -77,7 +77,9 @@ class MCioGUI:
         # Set up OpenGL context
         glfw.make_context_current(self.window)
         gl.glClearColor(0.0, 0.0, 0.0, 1.0)
-        
+        # Needed when rgb image dimensions are not multiple of 4? Fixes some cases of distortion when scaling down.
+        gl.glPixelStorei(gl.GL_UNPACK_ALIGNMENT, 1)
+
         # Set callbacks
         glfw.set_key_callback(self.window, self.key_callback)
         glfw.set_cursor_pos_callback(self.window, self.cursor_position_callback)
@@ -128,7 +130,7 @@ class MCioGUI:
         
     def render(self, state: mcio.network.StatePacket):
         """Render graphics"""
-        SCALE = 2
+        SCALE = .5
         
         gl.glClear(gl.GL_COLOR_BUFFER_BIT)
         
@@ -136,22 +138,31 @@ class MCioGUI:
             # Convert PNG bytes to image
             img = Image.open(io.BytesIO(state.frame_png))
             img_width, img_height = img.size
+            print(f'Frame width: {img_width}, Frame height {img_height}')
+            img.save('initial.png', format='PNG')
             
             # Scale the target dimensions
-            target_width = img_width // SCALE
-            target_height = img_height // SCALE
+            target_width = int(img_width * SCALE)
+            target_height = int(img_height * SCALE)
             
             # On first frame or if size changed, resize window
             current_width, current_height = glfw.get_window_size(self.window)
             if current_width != target_width or current_height != target_height:
+                print("HERE")
                 glfw.set_window_size(self.window, target_width, target_height)
             
             # Convert image to numpy array and flip vertically to pass to OpenGL
             img_data = np.array(img)
+            print(f'numpy img shape {img_data.shape}')
             img_data = np.flipud(img_data)
             
             # Scale the image data to fit the desired size
+            print(f'Before Resize {img_data.shape}')
+            Image.fromarray(img_data).save('before.png', format='PNG')
             img_data = cv2.resize(img_data, (target_width, target_height))
+            img_data = np.ascontiguousarray(img_data)
+            print(f'Resize {img_data.shape}')
+            Image.fromarray(img_data).save('after.png', format='PNG')
             
             # Create and bind texture
             texture = gl.glGenTextures(1)
