@@ -2,6 +2,7 @@ import threading
 import io
 import queue
 import argparse
+import textwrap
 
 import glfw
 import OpenGL.GL as gl
@@ -221,10 +222,17 @@ class MCioGUI:
         glfw.terminate()
 
 def parse_args():
-   parser = argparse.ArgumentParser()
-   parser.add_argument('--scale', type=float, default=1.0,
-                      help='Window scale factor')
-   return parser.parse_args()
+    parser = argparse.ArgumentParser(
+        description=textwrap.dedent('''
+            Provides a human GUI to MCio
+            Q to quit
+            Backtick (`) to toggle mouse capture
+                                    '''),
+        formatter_class=argparse.RawDescriptionHelpFormatter
+    )
+    parser.add_argument('--scale', type=float, default=1.0,
+                        help='Window scale factor')
+    return parser.parse_args()
 
 if __name__ == "__main__":
     args = parse_args()
