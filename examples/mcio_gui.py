@@ -90,7 +90,6 @@ class MCioGUI:
         self.frame_width = 0
         self.frame_height = 0
         self.scale = scale
-        self.mouse_captured = False
 
         self.controller = ControllerThreads()
         
@@ -102,15 +101,6 @@ class MCioGUI:
         if key == glfw.KEY_Q and action == glfw.PRESS:
             glfw.set_window_should_close(self.window, True)
             return
-
-        # Toggle mouse capture with `
-        if key == glfw.KEY_GRAVE_ACCENT and action == glfw.PRESS:
-            if self.mouse_captured:
-                glfw.set_input_mode(window, glfw.CURSOR, glfw.CURSOR_NORMAL)
-                self.mouse_captured = False
-            else:
-                glfw.set_input_mode(window, glfw.CURSOR, glfw.CURSOR_DISABLED)
-                self.mouse_captured = True
 
         if action == glfw.PRESS:
             action = mcio.network.ActionPacket(keys_pressed={key})
@@ -148,6 +138,9 @@ class MCioGUI:
         """Render graphics"""
         gl.glClear(gl.GL_COLOR_BUFFER_BIT)
         if state.frame_png:
+            # Link cursor mode to Minecraft. May regret this.
+            glfw.set_input_mode(self.window, glfw.CURSOR, state.cursor_mode)
+
             # Convert PNG bytes to image
             frame = Image.open(io.BytesIO(state.frame_png))
             # Prepare frame for opengl
@@ -226,7 +219,6 @@ def parse_args():
         description=textwrap.dedent('''
             Provides a human GUI to MCio
             Q to quit
-            Backtick (`) to toggle mouse capture
                                     '''),
         formatter_class=argparse.RawDescriptionHelpFormatter
     )

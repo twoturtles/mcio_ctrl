@@ -5,6 +5,7 @@ import io
 import pprint
 
 import cbor2
+import glfw
 import zmq
 from PIL import Image
 
@@ -23,7 +24,8 @@ class StatePacket:
     sequence: int = 0
     frame_png: bytes = field(repr=False, default=b"")   # Exclude the frame from repr output.
     health: float = 0.0
-    mousePos: Tuple[int, int] = field(default=(0, 0))
+    cursor_mode: int = glfw.CURSOR_NORMAL,  # Either glfw.CURSOR_NORMAL (212993) or glfw.CURSOR_DISABLED (212995)
+    mouse_pos: Tuple[int, int] = field(default=(0, 0))
     inventory_main: List = field(default_factory=list)
     inventory_armor: List = field(default_factory=list)
     inventory_offhand: List = field(default_factory=list)
