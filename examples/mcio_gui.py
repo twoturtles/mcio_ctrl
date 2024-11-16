@@ -115,7 +115,7 @@ class MCioGUI:
         """Handle mouse movement"""
         if self.is_focused:
             # If we're scaling the window, also scale the position so things line up
-            scaled_pos = (xpos // self.scale, ypos // self.scale)
+            scaled_pos = (xpos / self.scale, ypos / self.scale)
             action = mcio.network.ActionPacket(mouse_pos=[scaled_pos])
             self.controller.action_queue.put(action)
         
