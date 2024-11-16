@@ -85,11 +85,13 @@ class MCioGUI:
         glfw.set_cursor_pos_callback(self.window, self.cursor_position_callback)
         glfw.set_mouse_button_callback(self.window, self.mouse_button_callback)
         glfw.set_window_size_callback(self.window, self.resize_callback)
+        glfw.set_window_focus_callback(self.window, self.focus_callback)
 
         # Initialize
         self.frame_width = 0
         self.frame_height = 0
         self.scale = scale
+        self.is_focused = glfw.get_window_attrib(self.window, glfw.FOCUSED)
 
         self.controller = ControllerThreads()
         
@@ -114,10 +116,10 @@ class MCioGUI:
     # cursor position doesn't change. Minecraft handles this, but doesn't show the cursor.
     def cursor_position_callback(self, window, xpos, ypos):
         """Handle mouse movement"""
-        #print(f'Mouse {xpos} {ypos}')
-        action = mcio.network.ActionPacket(mouse_pos_update=True,
-                        mouse_pos_x = xpos // self.scale, mouse_pos_y = ypos // self.scale)
-        self.controller.action_queue.put(action)
+        if self.is_focused:
+            action = mcio.network.ActionPacket(mouse_pos_update=True,
+                            mouse_pos_x = xpos // self.scale, mouse_pos_y = ypos // self.scale)
+            self.controller.action_queue.put(action)
         
     def mouse_button_callback(self, window, button, action, mods):
         """Handle mouse button events"""
@@ -133,7 +135,11 @@ class MCioGUI:
         gl.glViewport(0, 0, width, height)
         # Force a redraw
         glfw.post_empty_event()
-        
+
+    # Note: focused is 0 or 1
+    def focus_callback(self, window, focused):
+        self.is_focused = True if focused else False
+
     def render(self, state: mcio.network.StatePacket):
         """Render graphics"""
         gl.glClear(gl.GL_COLOR_BUFFER_BIT)
@@ -142,7 +148,7 @@ class MCioGUI:
             glfw.set_input_mode(self.window, glfw.CURSOR, state.cursor_mode)
 
             # Convert PNG bytes to image
-            frame = Image.open(io.BytesIO(state.frame_png))
+            frame = state.getFrameWithCursor()
             # Prepare frame for opengl
             frame = np.flipud(np.array(frame))
             frame = np.ascontiguousarray(frame)

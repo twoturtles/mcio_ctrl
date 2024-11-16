@@ -7,7 +7,7 @@ import pprint
 import cbor2
 import glfw
 import zmq
-from PIL import Image
+from PIL import Image, ImageDraw
 
 DEFAULT_HOST = "localhost"
 DEFAULT_ACTION_PORT = 5556
@@ -25,7 +25,12 @@ class StatePacket:
     frame_png: bytes = field(repr=False, default=b"")   # Exclude the frame from repr output.
     health: float = 0.0
     cursor_mode: int = glfw.CURSOR_NORMAL,  # Either glfw.CURSOR_NORMAL (212993) or glfw.CURSOR_DISABLED (212995)
-    mouse_pos: Tuple[int, int] = field(default=(0, 0))
+    cursor_pos: Tuple[int, int] = field(default=(0, 0))     # x, y
+        # float player_pitch,
+        # float player_yaw,
+    player_pos: Tuple[float, float, float] = field(default=(0., 0., 0.))
+    player_pitch: float = 0
+    player_yaw: float = 0
     inventory_main: List = field(default_factory=list)
     inventory_armor: List = field(default_factory=list)
     inventory_offhand: List = field(default_factory=list)
@@ -55,6 +60,18 @@ class StatePacket:
         # frame_png is excluded from repr. Add its size to str. Slow?
         frame = Image.open(io.BytesIO(self.frame_png))
         return f"{repr(self)} frame.size={frame.size}"
+
+    def getFrameWithCursor(self):
+        # Convert PNG bytes to image
+        frame = Image.open(io.BytesIO(self.frame_png))
+        if self.cursor_mode == glfw.CURSOR_NORMAL:
+            # Add simulated cursor.
+            draw = ImageDraw.Draw(frame)
+            x, y = self.cursor_pos[0], self.cursor_pos[1]
+            radius = 5
+            draw.ellipse([x-radius, y-radius, x+radius, y+radius], fill='red')
+        return frame
+
 
 
 # Action packets sent by the agent to MCio
