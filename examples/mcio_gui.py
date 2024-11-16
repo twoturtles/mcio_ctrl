@@ -64,6 +64,7 @@ class ControllerThreads:
 
 class MCioGUI:
     def __init__(self, scale=1.0, width=800, height=600, name="MCio GUI"):
+        ''' scale allows you to use a window larger or smaller than the minecraft window '''
         # Initialize GLFW
         if not glfw.init():
             raise Exception("GLFW initialization failed")
@@ -97,38 +98,31 @@ class MCioGUI:
         
     def key_callback(self, window, key, scancode, action, mods):
         """Handle keyboard input"""
-        #print(f'Key={key} action={action}')
-        
         # Quit handling
         if key == glfw.KEY_Q and action == glfw.PRESS:
             glfw.set_window_should_close(self.window, True)
             return
+        if action == glfw.REPEAT:
+            # Skip action REPEAT.
+            return
 
-        if action == glfw.PRESS:
-            action = mcio.network.ActionPacket(keys_pressed={key})
-            self.controller.action_queue.put(action)
-        elif action == glfw.RELEASE:
-            action = mcio.network.ActionPacket(keys_released={key})
-            self.controller.action_queue.put(action)
-        # Skip action REPEAT.
+        action = mcio.network.ActionPacket(keys=[(key, action)])
+        self.controller.action_queue.put(action)
 
     # XXX When the cursor gets to the edge of the screen you turn any farther because the
     # cursor position doesn't change. Minecraft handles this, but doesn't show the cursor.
     def cursor_position_callback(self, window, xpos, ypos):
         """Handle mouse movement"""
         if self.is_focused:
-            action = mcio.network.ActionPacket(mouse_pos_update=True,
-                            mouse_pos_x = xpos // self.scale, mouse_pos_y = ypos // self.scale)
+            # If we're scaling the window, also scale the position so things line up
+            scaled_pos = (xpos // self.scale, ypos // self.scale)
+            action = mcio.network.ActionPacket(mouse_pos=[scaled_pos])
             self.controller.action_queue.put(action)
         
     def mouse_button_callback(self, window, button, action, mods):
         """Handle mouse button events"""
-        if action == glfw.PRESS:
-            action = mcio.network.ActionPacket(mouse_buttons_pressed={button})
-            self.controller.action_queue.put(action)
-        elif action == glfw.RELEASE:
-            action = mcio.network.ActionPacket(mouse_buttons_released={button})
-            self.controller.action_queue.put(action)
+        action = mcio.network.ActionPacket(mouse_buttons=[(button, action)])
+        self.controller.action_queue.put(action)
 
     def resize_callback(self, window, width, height):
         """Handle window resize"""
@@ -208,7 +202,7 @@ class MCioGUI:
             except queue.Empty:
                 pass
             else:
-                print(state)
+                #print(state)
                 self.render(state)
             
         # Cleanup

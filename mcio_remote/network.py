@@ -26,8 +26,6 @@ class StatePacket:
     health: float = 0.0
     cursor_mode: int = glfw.CURSOR_NORMAL,  # Either glfw.CURSOR_NORMAL (212993) or glfw.CURSOR_DISABLED (212995)
     cursor_pos: Tuple[int, int] = field(default=(0, 0))     # x, y
-        # float player_pitch,
-        # float player_yaw,
     player_pos: Tuple[float, float, float] = field(default=(0., 0., 0.))
     player_pitch: float = 0
     player_yaw: float = 0
@@ -77,19 +75,29 @@ class StatePacket:
 # Action packets sent by the agent to MCio
 @dataclass
 class ActionPacket:
+    # Control
     version: int = MCIO_PROTOCOL_VERSION
     sequence: int = 0           # sequence number
-    keys_pressed: Set[int] = field(default_factory=set)
-    keys_released: Set[int] = field(default_factory=set)
-    mouse_buttons_pressed: Set[int] = field(default_factory=set)
-    mouse_buttons_released: Set[int] = field(default_factory=set)
-    mouse_pos_update: bool = False
-    mouse_pos_x: int = 0
-    mouse_pos_y: int = 0
-    key_reset: bool = False
+    key_reset: bool = False     # TODO: clear all presses
+
+    # Action
+
+    # List of (key, action) pairs.
+    # E.g., (glfw.KEY_W, glfw.PRESS) or (glfw.KEY_LEFT_SHIFT, glfw.RELEASE)
+    # I don't think there's any reason to use glfw.REPEAT
+    keys: List[Tuple[int, int]] = field(default_factory=list)
+
+    # List of (button, action) pairs.
+    # E.g., (glfw.MOUSE_BUTTON_1, glfw.PRESS) or (glfw.MOUSE_BUTTON_1, glfw.RELEASE)
+    mouse_buttons: List[Tuple[int, int]] = field(default_factory=list)   # List of (button, action) pairs
+
+    # List of (x, y) pairs. Using a list for consistency
+    mouse_pos: List[Tuple[int, int]] = field(default_factory=list)
 
     def pack(self) -> bytes:
-        return cbor2.dumps(asdict(self))
+        pkt_dict = asdict(self)
+        print(pkt_dict)
+        return cbor2.dumps(pkt_dict)
     
 
 # Connections to MCio mod
