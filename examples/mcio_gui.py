@@ -1,5 +1,4 @@
 import threading
-import io
 import queue
 import argparse
 import textwrap
@@ -35,16 +34,18 @@ class ControllerThreads:
         self.action_thread.start()
 
     def action_thread_fn(self):
+        ''' Loops. Pulls packets from the action_queue and sends to minecraft. '''
         print("ActionThread start")
         while self.running.is_set():
             action = self.action_queue.get()
+            self.action_queue.task_done()
             if action is None:
                 break   # Action None to signal exit
             self.mcio_conn.send_action(action)
-            self.action_queue.task_done()
         print("Action-Thread shut down")
 
     def state_thread_fn(self):
+        ''' Loops. Receives state packets from minecraft and places on state_queue'''
         print("StateThread start")
         while self.running.is_set():
             state = self.mcio_conn.recv_state()
@@ -142,7 +143,7 @@ class MCioGUI:
             glfw.set_input_mode(self.window, glfw.CURSOR, state.cursor_mode)
 
             # Convert PNG bytes to image
-            frame = state.getFrameWithCursor()
+            frame = state.get_frame_with_cursor()
             # Prepare frame for opengl
             frame = np.flipud(np.array(frame))
             frame = np.ascontiguousarray(frame)
