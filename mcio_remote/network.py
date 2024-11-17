@@ -81,7 +81,7 @@ class StatePacket:
 class ActionPacket:
     ## Control ##
     version: int = MCIO_PROTOCOL_VERSION
-    sequence: int = 0           # sequence number
+    sequence: int = 0           # sequence number. This will be automatically set by send_action.
     key_reset: bool = False     # TODO: clear all presses
 
     ## Action ##
@@ -123,13 +123,20 @@ class _Connection:
         # it just drops the packet. Pause here to give it a chance to connect. This only
         # works if minecraft is already running. Need to make a more reliable way of
         # handling this. See https://zguide.zeromq.org/docs/chapter5/ "slow joiner syndrome"
-        time.sleep(1)
+        time.sleep(.5)
 
     def send_action(self, action:ActionPacket):
+        '''
+        Send action through zmq socket. Should not block. (Unless zmq buffer is full?)
+        '''
         self.action_socket.send(action.pack())
 
     def recv_state(self) -> StatePacket | None:
+        '''
+        Receives state from zmq socket. Blocks until a state packet is returned
+        '''
         try:
+            # RECV 1
             pbytes = self.state_socket.recv()
         except zmq.error.ContextTerminated:
             return None
@@ -137,7 +144,8 @@ class _Connection:
         # This may also return None if there was an unpack error.
         # XXX Maybe these errors should be separated. A context error can happen during shutdown.
         # We could continue after a parse error.
-        return StatePacket.unpack(pbytes)
+        state = StatePacket.unpack(pbytes)
+        return state
 
     # TODO add a simplified interface that encapsulates threads
 
@@ -146,9 +154,19 @@ class _Connection:
         self.state_socket.close()
         self.zmq_context.term()
 
-# Threads to handle zmq i/o.
 class Controller:
+    '''
+    Handles the connections to minecraft. Uses two threads
+    One pulls state packets from the _Connection recv socket and places them on the
+    _state_queue. And one pulls action packets from the _action_queue and sends
+    them through the _Connection send socket.
+    Use send_action() and recv_state() to safely send/recv packets.
+    '''
     def __init__(self, host='localhost'):
+        self.state_sequence = None
+        self.process_sequence = None  # state sequence last processed
+        self.action_sequence = 0
+
         # Flag to signal threads to stop.
         self._running = threading.Event()
         self._running.set()
@@ -156,20 +174,22 @@ class Controller:
         self._action_queue = queue.Queue()
         self._state_queue = _LatestItemQueue()
 
+        # This briefly sleeps for zmq initialization.
         self._mcio_conn = _Connection()
 
         # Start threads
-        self._state_thread = threading.Thread(target=self._state_thread_fn, name="StateThread")
-        self._state_thread.daemon = True
-        self._state_thread.start()
-
         self._action_thread = threading.Thread(target=self._action_thread_fn, name="ActionThread")
         self._action_thread.daemon = True
         self._action_thread.start()
 
+        self._state_thread = threading.Thread(target=self._state_thread_fn, name="StateThread")
+        self._state_thread.daemon = True
+        self._state_thread.start()
+
+        print("Controller init complete")
+
     def send_and_recv(self, action: ActionPacket) -> StatePacket:
         # XXX TODO Send action then keep receiving until we receive state after the action
-        ...
         self.send_action(action)
         state = self.recv_state()
         return state
@@ -179,14 +199,24 @@ class Controller:
         Send action to minecraft. Doesn't actually send. Places the packet on the queue
         to be sent by the action thread.
         '''
+        action.sequence = self.action_sequence
+        self.action_sequence += 1
         self._action_queue.put(action)
 
     def recv_state(self) -> StatePacket:
         '''
-        Returns the most recently received state. Blocks if nothing is available.
+        Returns the most recently received state pulling it from the processing queue.
+        Blocks if nothing is available.
         '''
+        # RECV 4
         state = self._state_queue.get()
         self._state_queue.task_done()
+
+        if self.process_sequence is None:
+            print(f'Processing first state packet: sequence={state.sequence}')
+        self._track_dropped("Process", state, self.process_sequence)
+        self.process_sequence = state.sequence
+
         return state
 
     def _action_thread_fn(self):
@@ -204,11 +234,38 @@ class Controller:
         ''' Loops. Receives state packets from minecraft and places on state_queue'''
         print("StateThread start")
         while self._running.is_set():
+            # RECV 2
             state = self._mcio_conn.recv_state()
             if state is None:
                 continue    # Exiting or packet decode error
-            self._state_queue.put(state)
+
+            # I don't think we'll ever drop here. This is a short loop to recv the packet
+            # and put it on the queue to be processed. Check to make sure.
+            if self.state_sequence is None:
+                print(f'Recv first state packet: sequence={state.sequence}')
+            self._track_dropped("Recv", state, self.state_sequence)
+            self.state_sequence = state.sequence
+
+            dropped = self._state_queue.put(state)
+            if dropped:
+                # This means the main (processing) thread isn't reading fast enough. 
+                # The first few are always dropped, presumably as we empty the initial zmq buffer
+                # that built up during pause for "slow joiner syndrome". Once that's done
+                # any future drops will be logged by the processing thread.
+                # print('Dropped state packet from processing queue')
+                pass
+
         print("StateThread shut down")
+
+    def _track_dropped(self, tag:str, state:StatePacket, last_sequence:int):
+        ''' Calculations to see if we've dropped any state packets '''
+        if last_sequence == None or state.sequence <= last_sequence:
+            # Start / Reset
+            pass
+        elif state.sequence > last_sequence + 1:
+            # Dropped
+            n_dropped = state.sequence - last_sequence - 1
+            print(f'State packets dropped: step={tag} n_dropped={n_dropped}')
 
     def shutdown(self):
         '''
@@ -232,16 +289,22 @@ class _LatestItemQueue(queue.Queue):
     def __init__(self):
         super().__init__(maxsize=1)
 
-    def put(self, item):
+    def put(self, item) -> bool:
+        ''' Return True if the previous packet had to be dropped '''
+        # RECV 3
+        dropped = False
         try:
             # Discard the current item if the queue isn't empty
-            self.get_nowait()
+            x = self.get_nowait()
+            dropped = True
         except queue.Empty:
             pass
+
         super().put(item)
+        return dropped
 
 class Gym:
-    ''' Stub in how gymn will work '''
+    ''' Stub in how gymn will work. Higher level interface than Controller '''
     def __init__(self, name=None, render_mode="human"):
         self.name = name
         self.render_mode = render_mode
@@ -258,17 +321,18 @@ class Gym:
         # return observation, info
 
     def render(self):
-        frame = self._last_state.get_frame_with_cursor()
-        arr = np.asarray(frame)
-        cv2_frame = cv2.cvtColor(arr, cv2.COLOR_RGB2BGR)
-        height, width, _ = cv2_frame.shape
-        if height != self._window_height or width != self._window_width:
-            # On first frame or if size changed, resize window
-            self._window_width = width
-            self._window_height = height
-            cv2.resizeWindow(self.name, width, height)
-        cv2.imshow(self.name, cv2_frame)
-        cv2.waitKey(1)
+        if self.render_mode == 'human':
+            frame = self._last_state.get_frame_with_cursor()
+            arr = np.asarray(frame)
+            cv2_frame = cv2.cvtColor(arr, cv2.COLOR_RGB2BGR)
+            height, width, _ = cv2_frame.shape
+            if height != self._window_height or width != self._window_width:
+                # On first frame or if size changed, resize window
+                self._window_width = width
+                self._window_height = height
+                cv2.resizeWindow(self.name, width, height)
+            cv2.imshow(self.name, cv2_frame)
+            cv2.waitKey(1)
             
     def step(self, action):
         state = self.ctrl.send_and_recv(action)

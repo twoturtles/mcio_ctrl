@@ -16,6 +16,7 @@ def test(scale):
     action = mcio.ActionPacket(keys=[(glfw.KEY_W, glfw.PRESS)],
                                mouse_buttons=[(glfw.MOUSE_BUTTON_1, glfw.PRESS)])
     observation = env.step(action)
+    #print(observation)
     steps = 0
     while True:
         # observation, reward, terminated, truncated, info = env.step(action)
@@ -25,6 +26,7 @@ def test(scale):
         elif cycle == 1:
             action = mcio.ActionPacket(keys=[(glfw.KEY_SPACE, glfw.RELEASE)])
         observation = env.step(action)
+        #print(observation)
         steps += 1
 
     env.close()
