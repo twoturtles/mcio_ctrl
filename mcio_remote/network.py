@@ -5,6 +5,7 @@ import io
 import pprint
 import threading
 import queue
+import time
 
 import numpy as np
 import cv2
@@ -117,6 +118,12 @@ class _Connection:
         self.state_socket = self.zmq_context.socket(zmq.SUB)
         self.state_socket.connect(state_addr)
         self.state_socket.setsockopt_string(zmq.SUBSCRIBE, "")
+
+        # XXX zmq has this weird behavior that if you send a packet before it's connected
+        # it just drops the packet. Pause here to give it a chance to connect. This only
+        # works if minecraft is already running. Need to make a more reliable way of
+        # handling this. See https://zguide.zeromq.org/docs/chapter5/ "slow joiner syndrome"
+        time.sleep(1)
 
     def send_action(self, action:ActionPacket):
         self.action_socket.send(action.pack())

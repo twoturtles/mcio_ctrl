@@ -1,3 +1,4 @@
+import time
 import argparse
 import textwrap
 
@@ -12,7 +13,8 @@ def test(scale):
     # observation, info = env.reset()
     env.reset()
 
-    action = mcio.ActionPacket(keys=[(glfw.KEY_W, glfw.PRESS)])
+    action = mcio.ActionPacket(keys=[(glfw.KEY_W, glfw.PRESS)],
+                               mouse_buttons=[(glfw.MOUSE_BUTTON_1, glfw.PRESS)])
     observation = env.step(action)
     steps = 0
     while True:
@@ -25,7 +27,7 @@ def test(scale):
         observation = env.step(action)
         steps += 1
 
-    # env.close()
+    env.close()
 
 def parse_args():
     parser = argparse.ArgumentParser(
@@ -40,5 +42,4 @@ def parse_args():
 
 if __name__ == "__main__":
     args = parse_args()
-    app = test(args.scale)
-    app.run()
+    test(args.scale)
