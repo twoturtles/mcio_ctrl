@@ -163,11 +163,13 @@ class Controller:
     _state_queue. And one pulls action packets from the _action_queue and sends
     them through the _Connection send socket.
     Use send_action() and recv_state() to safely send/recv packets.
+    To use match_sequences you must use send_and_recv()
     '''
-    def __init__(self, host='localhost'):
-        self.state_sequence = None
-        self.process_sequence = None  # state sequence last processed
-        self.action_sequence = 0
+    def __init__(self, host='localhost', match_sequences=True):
+        self.state_sequence_last_received = None
+        self.state_sequence_last_processed = None
+        self.action_sequence_last_queued = 0
+        self.match_sequences = True
 
         # Flag to signal threads to stop.
         self._running = threading.Event()
@@ -191,18 +193,41 @@ class Controller:
         print("Controller init complete")
 
     def send_and_recv(self, action: ActionPacket) -> StatePacket:
-        # XXX TODO Send action then keep receiving until we receive state after the action
+        # Enqueue action and update action_sequence_last_queued
         self.send_action(action)
-        state = self.recv_state()
+
+        if self.match_sequences:
+            # Send action then keep receiving until we receive state after the action
+            while True:
+                state = self.recv_state()
+                #print(state)
+                if self.action_sequence_last_queued <= state.last_action_sequence:
+                    # XXX If the agent restarts we'll mistakenly process any states that were # in flight
+                    # E.g., Use-State last_sent=1 server_last_processed=256
+                    '''
+                    print(f'Use-State '
+                          f'last_sent={self.action_sequence_last_queued} '
+                          f'server_last_processed={state.last_action_sequence}'
+                    )
+                    '''
+                    break
+                else:
+                    print(f'Skip-State '
+                          f'last_sent={self.action_sequence_last_queued} '
+                          f'server_last_processed={state.last_action_sequence}'
+                          )
+        else:
+            state = self.recv_state()
         return state
 
     def send_action(self, action: ActionPacket):
         '''
         Send action to minecraft. Doesn't actually send. Places the packet on the queue
         to be sent by the action thread.
+        Also updates action_sequence_last_queued
         '''
-        action.sequence = self.action_sequence
-        self.action_sequence += 1
+        self.action_sequence_last_queued += 1
+        action.sequence = self.action_sequence_last_queued
         self._action_queue.put(action)
 
     def recv_state(self) -> StatePacket:
@@ -214,10 +239,10 @@ class Controller:
         state = self._state_queue.get()
         self._state_queue.task_done()
 
-        if self.process_sequence is None:
+        if self.state_sequence_last_processed is None:
             print(f'Processing first state packet: sequence={state.sequence}')
-        self._track_dropped("Process", state, self.process_sequence)
-        self.process_sequence = state.sequence
+        self._track_dropped("Process", state, self.state_sequence_last_processed)
+        self.state_sequence_last_processed = state.sequence
 
         return state
 
@@ -243,10 +268,10 @@ class Controller:
 
             # I don't think we'll ever drop here. This is a short loop to recv the packet
             # and put it on the queue to be processed. Check to make sure.
-            if self.state_sequence is None:
+            if self.state_sequence_last_received is None:
                 print(f'Recv first state packet: sequence={state.sequence}')
-            self._track_dropped("Recv", state, self.state_sequence)
-            self.state_sequence = state.sequence
+            self._track_dropped("Recv", state, self.state_sequence_last_received)
+            self.state_sequence_last_received = state.sequence
 
             dropped = self._state_queue.put(state)
             if dropped:
@@ -307,10 +332,11 @@ class _LatestItemQueue(queue.Queue):
 
 class Gym:
     ''' Stub in how gymn will work. Higher level interface than Controller '''
-    def __init__(self, name=None, render_mode="human"):
+    def __init__(self, name=None, render_mode="human", match_sequences=True):
         self.name = name
         self.render_mode = render_mode
         self.ctrl = None
+        self.match_sequences = match_sequences
         self._last_action = None
         self._last_state = None
         self._window_width = None
@@ -319,7 +345,7 @@ class Gym:
     def reset(self):
         if self.render_mode == 'human':
             cv2.namedWindow(self.name, cv2.WINDOW_NORMAL)
-        self.ctrl = Controller()
+        self.ctrl = Controller(match_sequences=self.match_sequences)
         # return observation, info
 
     def render(self):
