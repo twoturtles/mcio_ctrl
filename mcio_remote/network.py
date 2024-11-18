@@ -225,6 +225,8 @@ class Controller:
 
                     break
                 else:
+                    # XXX If minecraft restarts the agent will get stuck here
+                    # E.g., [13:30:23] Skip-State last_sent=450 server_last_processed=0
                     LOG.info(f'Skip-State '
                           f'last_sent={self.action_sequence_last_queued} '
                           f'server_last_processed={state.last_action_sequence}'
