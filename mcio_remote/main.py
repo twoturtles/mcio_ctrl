@@ -1,3 +1,2 @@
 from . import network
-
-print(network)
+from mcio_remote import LOG

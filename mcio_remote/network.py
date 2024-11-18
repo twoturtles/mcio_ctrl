@@ -14,6 +14,8 @@ import glfw
 import zmq
 from PIL import Image, ImageDraw
 
+from mcio_remote import LOG
+
 DEFAULT_HOST = "localhost"
 DEFAULT_ACTION_PORT = 5556
 DEFAULT_STATE_PORT = 5557
@@ -44,18 +46,18 @@ class StatePacket:
         try:
             decoded_dict = cbor2.loads(data)
         except Exception as e:
-            print(f"CBOR load error: {type(e).__name__}: {e}")
+            LOG.error(f"CBOR load error: {type(e).__name__}: {e}")
             return None
 
         try:
             rv = cls(**decoded_dict)
         except Exception as e:
             # This means the received packet doesn't match StatePacket
-            print(f"StatePacket decode error: {type(e).__name__}: {e}")
+            LOG.error(f"StatePacket decode error: {type(e).__name__}: {e}")
             if 'frame_png' in decoded_dict:
                 decoded_dict['frame_png'] = f"Frame len: {len(decoded_dict['frame_png'])}"
-            print("Raw packet:")
-            pprint.pprint(decoded_dict)
+            LOG.error("Raw packet:")
+            LOG.error(pprint.pformat(decoded_dict))
             return None
 
         return rv
@@ -101,7 +103,7 @@ class ActionPacket:
 
     def pack(self) -> bytes:
         pkt_dict = asdict(self)
-        #print(pkt_dict)
+        LOG.debug(pkt_dict)
         return cbor2.dumps(pkt_dict)
     
 
@@ -146,7 +148,7 @@ class _Connection:
         # XXX Maybe these errors should be separated. A context error can happen during shutdown.
         # We could continue after a parse error.
         state = StatePacket.unpack(pbytes)
-        #print(state)
+        LOG.debug(state)
         return state
 
     # TODO add a simplified interface that encapsulates threads
@@ -190,7 +192,7 @@ class Controller:
         self._state_thread.daemon = True
         self._state_thread.start()
 
-        print("Controller init complete")
+        LOG.info("Controller init complete")
 
     def send_and_recv(self, action: ActionPacket) -> StatePacket:
         # Enqueue action and update action_sequence_last_queued
@@ -200,19 +202,22 @@ class Controller:
             # Send action then keep receiving until we receive state after the action
             while True:
                 state = self.recv_state()
-                #print(state)
-                if self.action_sequence_last_queued <= state.last_action_sequence:
+                LOG.debug(state)
+                if state.last_action_sequence >= self.action_sequence_last_queued:
+                    # Received an up-to-date state. Return it.
+
                     # XXX If the agent restarts we'll mistakenly process any states that were # in flight
                     # E.g., Use-State last_sent=1 server_last_processed=256
                     '''
-                    print(f'Use-State '
+                    LOG.debug(f'Use-State '
                           f'last_sent={self.action_sequence_last_queued} '
                           f'server_last_processed={state.last_action_sequence}'
                     )
                     '''
+
                     break
                 else:
-                    print(f'Skip-State '
+                    LOG.info(f'Skip-State '
                           f'last_sent={self.action_sequence_last_queued} '
                           f'server_last_processed={state.last_action_sequence}'
                           )
@@ -240,7 +245,7 @@ class Controller:
         self._state_queue.task_done()
 
         if self.state_sequence_last_processed is None:
-            print(f'Processing first state packet: sequence={state.sequence}')
+            LOG.info(f'Processing first state packet: sequence={state.sequence}')
         self._track_dropped("Process", state, self.state_sequence_last_processed)
         self.state_sequence_last_processed = state.sequence
 
@@ -248,18 +253,18 @@ class Controller:
 
     def _action_thread_fn(self):
         ''' Loops. Pulls packets from the action_queue and sends to minecraft. '''
-        print("ActionThread start")
+        LOG.info("ActionThread start")
         while self._running.is_set():
             action = self._action_queue.get()
             self._action_queue.task_done()
             if action is None:
                 break   # Action None to signal exit
             self._mcio_conn.send_action(action)
-        print("Action-Thread shut down")
+        LOG.info("Action-Thread shut down")
 
     def _state_thread_fn(self):
         ''' Loops. Receives state packets from minecraft and places on state_queue'''
-        print("StateThread start")
+        LOG.info("StateThread start")
         while self._running.is_set():
             # RECV 2
             state = self._mcio_conn.recv_state()
@@ -269,7 +274,7 @@ class Controller:
             # I don't think we'll ever drop here. This is a short loop to recv the packet
             # and put it on the queue to be processed. Check to make sure.
             if self.state_sequence_last_received is None:
-                print(f'Recv first state packet: sequence={state.sequence}')
+                LOG.info(f'Recv first state packet: sequence={state.sequence}')
             self._track_dropped("Recv", state, self.state_sequence_last_received)
             self.state_sequence_last_received = state.sequence
 
@@ -279,10 +284,10 @@ class Controller:
                 # The first few are always dropped, presumably as we empty the initial zmq buffer
                 # that built up during pause for "slow joiner syndrome". Once that's done
                 # any future drops will be logged by the processing thread.
-                # print('Dropped state packet from processing queue')
+                LOG.debug('Dropped state packet from processing queue')
                 pass
 
-        print("StateThread shut down")
+        LOG.info("StateThread shut down")
 
     def _track_dropped(self, tag:str, state:StatePacket, last_sequence:int):
         ''' Calculations to see if we've dropped any state packets '''
@@ -292,7 +297,7 @@ class Controller:
         elif state.sequence > last_sequence + 1:
             # Dropped
             n_dropped = state.sequence - last_sequence - 1
-            print(f'State packets dropped: step={tag} n_dropped={n_dropped}')
+            LOG.info(f'State packets dropped: step={tag} n_dropped={n_dropped}')
 
     def shutdown(self):
         '''
