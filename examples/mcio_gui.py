@@ -13,6 +13,7 @@ import OpenGL.GL as gl
 import numpy as np
 
 import mcio_remote as mcio
+from mcio_remote import LOG
 
 # Threads to handle zmq i/o.
 class ControllerThreads:
@@ -37,24 +38,24 @@ class ControllerThreads:
 
     def action_thread_fn(self):
         ''' Loops. Pulls packets from the action_queue and sends to minecraft. '''
-        print("ActionThread start")
+        LOG.info("ActionThread start")
         while self.running.is_set():
             action = self.action_queue.get()
             self.action_queue.task_done()
             if action is None:
                 break   # Action None to signal exit
             self.mcio_conn.send_action(action)
-        print("Action-Thread shut down")
+        LOG.info("Action-Thread shut down")
 
     def state_thread_fn(self):
         ''' Loops. Receives state packets from minecraft and places on state_queue'''
-        print("StateThread start")
+        LOG.info("StateThread start")
         while self.running.is_set():
             state = self.mcio_conn.recv_state()
             if state is None:
                 continue    # Exiting or packet decode error
             self.state_queue.put(state)
-        print("StateThread shut down")
+        LOG.info("StateThread shut down")
 
     def shutdown(self):
         self.running.clear()
@@ -204,11 +205,11 @@ class MCioGUI:
             except queue.Empty:
                 pass
             else:
-                #print(state)
+                LOG.debug(state)
                 self.render(state)
             
         # Cleanup
-        print("Exiting...")
+        LOG.info("Exiting...")
         self.cleanup()
         
     def cleanup(self):

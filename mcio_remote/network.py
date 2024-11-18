@@ -203,7 +203,11 @@ class Controller:
         LOG.info("Controller init complete")
 
     def send_and_recv(self, action: ActionPacket) -> StatePacket:
-        # Enqueue action and update action_sequence_last_queued
+        '''
+        Enqueue action and update action_sequence_last_queued
+        If self.match_sequences is True, don't return a state until the one after Minecraft
+        has completed the action.
+        '''
         self.send_action(action)
 
         if self.match_sequences:
@@ -225,7 +229,8 @@ class Controller:
 
                     break
                 else:
-                    # XXX If minecraft restarts the agent will get stuck here
+                    # XXX If minecraft restarts the agent will get stuck here. Need to send reset
+                    # to minecraft to start sequences over.
                     # E.g., [13:30:23] Skip-State last_sent=450 server_last_processed=0
                     LOG.info(f'Skip-State '
                           f'last_sent={self.action_sequence_last_queued} '
@@ -365,9 +370,6 @@ class TrackPerSecond:
             self.start = end
 
 
-class GymSync:
-    ...
-
 class GymAsync:
     ''' Stub in how gymn will work. Higher level interface than Controller '''
     def __init__(self, name=None, render_mode="human", match_sequences=True):
@@ -400,7 +402,23 @@ class GymAsync:
             cv2.imshow(self.name, cv2_frame)
             cv2.waitKey(1)
             
+    # XXX TODO
     def step(self, action):
+        # XXX Change recv to take action (or store) and do match_sequences handling
+        state = self.ctrl.send_and_recv(action)
+        self._last_action = action
+        self._last_state = state
+        self.render()
+        # return observation, reward, terminated, truncated, info
+        return state
+
+class GymSync(GymAsync):
+    ''' Synchronous version of stub gym interface '''
+    def __init__(self, *args, **kwargs):
+        super().__init__(match_sequences=True, *args, **kwargs)
+
+    def step(self, action):
+        # XXX Change recv to take action (or store) and do match_sequences handling
         state = self.ctrl.send_and_recv(action)
         self._last_action = action
         self._last_state = state

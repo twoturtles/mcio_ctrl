@@ -1,21 +1,23 @@
-import time
 import argparse
 import textwrap
 
 import glfw
 
 import mcio_remote as mcio
+from mcio_remote import LOG
 
 
 def test(scale):
     # env = gym.make("LunarLander-v3", render_mode="human")
-    env = mcio.Gym("Hello")
+    env = mcio.GymSync("Hello")
     # observation, info = env.reset()
     env.reset()
 
+    # Go forward and press attack button
     action = mcio.ActionPacket(keys=[(glfw.KEY_W, glfw.PRESS)],
                                mouse_buttons=[(glfw.MOUSE_BUTTON_1, glfw.PRESS)])
     observation = env.step(action)
+
     #print(observation)
     steps = 0
     while True:
