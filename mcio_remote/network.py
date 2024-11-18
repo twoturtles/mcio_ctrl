@@ -27,6 +27,7 @@ MCIO_PROTOCOL_VERSION = 0
 class StatePacket:
     version: int = MCIO_PROTOCOL_VERSION
     sequence: int = 0
+    last_action_sequence: int = 0   # This is the last action sequenced before this state was generated
     frame_png: bytes = field(repr=False, default=b"")   # Exclude the frame from repr output.
     health: float = 0.0
     cursor_mode: int = glfw.CURSOR_NORMAL,  # Either glfw.CURSOR_NORMAL (212993) or glfw.CURSOR_DISABLED (212995)
@@ -145,6 +146,7 @@ class _Connection:
         # XXX Maybe these errors should be separated. A context error can happen during shutdown.
         # We could continue after a parse error.
         state = StatePacket.unpack(pbytes)
+        #print(state)
         return state
 
     # TODO add a simplified interface that encapsulates threads
