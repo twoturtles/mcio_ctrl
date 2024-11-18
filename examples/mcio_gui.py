@@ -1,3 +1,7 @@
+#
+# Example allowing human control through MCio
+#
+
 import threading
 import queue
 import argparse
@@ -7,8 +11,6 @@ import glfw
 import OpenGL.GL as gl
 
 import numpy as np
-from PIL import Image
-import cv2
 
 import mcio_remote as mcio
 
@@ -95,7 +97,7 @@ class MCioGUI:
         self.scale = scale
         self.is_focused = glfw.get_window_attrib(self.window, glfw.FOCUSED)
 
-        self.controller = ControllerThreads()
+        self.controller = mcio.Controller(match_sequences=False)
         
     def key_callback(self, window, key, scancode, action, mods):
         """Handle keyboard input"""
@@ -108,7 +110,7 @@ class MCioGUI:
             return
 
         action = mcio.network.ActionPacket(keys=[(key, action)])
-        self.controller.action_queue.put(action)
+        self.controller.send_action(action)
 
     # XXX When the cursor gets to the edge of the screen you turn any farther because the
     # cursor position doesn't change. Minecraft handles this, but doesn't show the cursor.
@@ -118,12 +120,12 @@ class MCioGUI:
             # If we're scaling the window, also scale the position so things line up
             scaled_pos = (xpos / self.scale, ypos / self.scale)
             action = mcio.network.ActionPacket(mouse_pos=[scaled_pos])
-            self.controller.action_queue.put(action)
+            self.controller.send_action(action)
         
     def mouse_button_callback(self, window, button, action, mods):
         """Handle mouse button events"""
         action = mcio.network.ActionPacket(mouse_buttons=[(button, action)])
-        self.controller.action_queue.put(action)
+        self.controller.send_action(action)
 
     def resize_callback(self, window, width, height):
         """Handle window resize"""
@@ -198,8 +200,7 @@ class MCioGUI:
             # Poll for events
             glfw.poll_events()
             try:
-                state = self.controller.state_queue.get(block=False)
-                self.controller.state_queue.task_done()
+                state = self.controller.recv_state(block=False)
             except queue.Empty:
                 pass
             else:

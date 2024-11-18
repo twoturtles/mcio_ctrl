@@ -246,13 +246,13 @@ class Controller:
         self.queued_counter.count()
         self._action_queue.put(action)
 
-    def recv_state(self) -> StatePacket:
+    def recv_state(self, block=True, timeout=None) -> StatePacket:
         '''
         Returns the most recently received state pulling it from the processing queue.
-        Blocks if nothing is available.
+        block and timeout are like queue.Queue.get(). Can raise Empty exception.
         '''
         # RECV 4
-        state = self._state_queue.get()
+        state = self._state_queue.get(block=block, timeout=timeout)
         self._state_queue.task_done()
 
         if self.state_sequence_last_processed is None:
@@ -312,6 +312,7 @@ class Controller:
             LOG.info(f'State packets dropped: step={tag} n_dropped={n_dropped}')
 
     def shutdown(self):
+        # XXX
         '''
         self._running.clear()
         self._mcio_conn.close()
@@ -364,7 +365,10 @@ class TrackPerSecond:
             self.start = end
 
 
-class Gym:
+class GymSync:
+    ...
+
+class GymAsync:
     ''' Stub in how gymn will work. Higher level interface than Controller '''
     def __init__(self, name=None, render_mode="human", match_sequences=True):
         self.name = name
