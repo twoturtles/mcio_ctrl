@@ -122,6 +122,9 @@ class _Connection:
         self.state_socket.connect(state_addr)
         self.state_socket.setsockopt_string(zmq.SUBSCRIBE, "")
 
+        self.recv_counter = TrackPerSecond("RecvStatePPS")
+        self.send_counter = TrackPerSecond("SendActionPPS")
+
         # XXX zmq has this weird behavior that if you send a packet before it's connected
         # it just drops the packet. Pause here to give it a chance to connect. This only
         # works if minecraft is already running. Need to make a more reliable way of
@@ -132,6 +135,7 @@ class _Connection:
         '''
         Send action through zmq socket. Should not block. (Unless zmq buffer is full?)
         '''
+        self.send_counter.count()
         self.action_socket.send(action.pack())
 
     def recv_state(self) -> StatePacket | None:
@@ -148,6 +152,7 @@ class _Connection:
         # XXX Maybe these errors should be separated. A context error can happen during shutdown.
         # We could continue after a parse error.
         state = StatePacket.unpack(pbytes)
+        self.recv_counter.count()
         LOG.debug(state)
         return state
 
@@ -172,6 +177,9 @@ class Controller:
         self.state_sequence_last_processed = None
         self.action_sequence_last_queued = 0
         self.match_sequences = True
+
+        self.process_counter = TrackPerSecond('ProcessStatePPS')
+        self.queued_counter = TrackPerSecond('QueuedActionsPPS')
 
         # Flag to signal threads to stop.
         self._running = threading.Event()
@@ -233,6 +241,7 @@ class Controller:
         '''
         self.action_sequence_last_queued += 1
         action.sequence = self.action_sequence_last_queued
+        self.queued_counter.count()
         self._action_queue.put(action)
 
     def recv_state(self) -> StatePacket:
@@ -248,6 +257,7 @@ class Controller:
             LOG.info(f'Processing first state packet: sequence={state.sequence}')
         self._track_dropped("Process", state, self.state_sequence_last_processed)
         self.state_sequence_last_processed = state.sequence
+        self.process_counter.count()
 
         return state
 
@@ -334,6 +344,23 @@ class _LatestItemQueue(queue.Queue):
 
         super().put(item)
         return dropped
+
+class TrackPerSecond:
+    def __init__(self, name: str, log_time: float = 10.0):
+        self.name = name
+        self.log_time = log_time
+        self.start = time.time()
+        self.item_count = 0
+
+    def count(self):
+        end = time.time()
+        self.item_count += 1
+        if end - self.start >= self.log_time:
+            per_sec = self.item_count / (end - self.start)
+            LOG.info(f'{self.name}: {per_sec:.1f}')
+            self.item_count = 0
+            self.start = end
+
 
 class Gym:
     ''' Stub in how gymn will work. Higher level interface than Controller '''
