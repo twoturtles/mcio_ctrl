@@ -6,12 +6,14 @@ import time
 import cbor2
 import zmq
 
+STATE_PORT = 5001
+
 def recv_loop():
     zmq_context = zmq.Context()
 
     # Socket to receive state updates
     state_socket = zmq_context.socket(zmq.SUB)
-    state_socket.connect(f"tcp://localhost:5557")
+    state_socket.connect(f"tcp://localhost:{STATE_PORT}")
     state_socket.setsockopt_string(zmq.SUBSCRIBE, "")
 
     start = time.time()
@@ -21,7 +23,8 @@ def recv_loop():
 
         pkt = cbor2.loads(pbytes)
         # The frame is too big to print, so replace with its length.
-        pkt['frame_png'] = len(pkt['frame_png'])
+        if 'frame_png' in pkt:
+            pkt['frame_png'] = len(pkt['frame_png'])
         pprint.pprint(pkt)
 
         # Print a PPS rate every second.
