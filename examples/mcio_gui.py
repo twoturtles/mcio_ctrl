@@ -98,7 +98,7 @@ class MCioGUI:
         self.scale = scale
         self.is_focused = glfw.get_window_attrib(self.window, glfw.FOCUSED)
 
-        self.controller = mcio.Controller(match_sequences=False)
+        self.controller = mcio.Controller()
         
     def key_callback(self, window, key, scancode, action, mods):
         """Handle keyboard input"""

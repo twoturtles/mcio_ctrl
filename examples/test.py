@@ -7,9 +7,9 @@ import mcio_remote as mcio
 from mcio_remote import LOG
 
 
-def test(scale):
+def tutorial(scale):
     # env = gym.make("LunarLander-v3", render_mode="human")
-    env = mcio.GymSync("Hello")
+    env = mcio.GymLiteSync("Hello")
     # observation, info = env.reset()
     env.reset()
 
@@ -17,18 +17,18 @@ def test(scale):
     action = mcio.ActionPacket(keys=[(glfw.KEY_W, glfw.PRESS)],
                                mouse_buttons=[(glfw.MOUSE_BUTTON_1, glfw.PRESS)])
     observation = env.step(action)
+    LOG.debug(observation)
 
-    #print(observation)
     steps = 0
     while True:
-        # observation, reward, terminated, truncated, info = env.step(action)
         cycle = (steps // 10) % 2
         if cycle == 0:
             action = mcio.ActionPacket(keys=[(glfw.KEY_SPACE, glfw.PRESS)])
         elif cycle == 1:
             action = mcio.ActionPacket(keys=[(glfw.KEY_SPACE, glfw.RELEASE)])
+        # observation, reward, terminated, truncated, info = env.step(action)
         observation = env.step(action)
-        #print(observation)
+        LOG.debug(observation)
         steps += 1
 
     env.close()
@@ -46,4 +46,4 @@ def parse_args():
 
 if __name__ == "__main__":
     args = parse_args()
-    test(args.scale)
+    tutorial(args.scale)

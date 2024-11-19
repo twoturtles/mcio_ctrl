@@ -172,11 +172,10 @@ class Controller:
     Use send_action() and recv_state() to safely send/recv packets.
     To use match_sequences you must use send_and_recv()
     '''
-    def __init__(self, host='localhost', match_sequences=True):
+    def __init__(self, host='localhost'):
         self.state_sequence_last_received = None
         self.state_sequence_last_processed = None
         self.action_sequence_last_queued = 0
-        self.match_sequences = True
 
         self.process_counter = TrackPerSecond('ProcessStatePPS')
         self.queued_counter = TrackPerSecond('QueuedActionsPPS')
@@ -204,52 +203,26 @@ class Controller:
 
     def send_and_recv(self, action: ActionPacket) -> StatePacket:
         '''
-        Enqueue action and update action_sequence_last_queued
-        If self.match_sequences is True, don't return a state until the one after Minecraft
-        has completed the action.
+        Enqueue action and recv state until the state recorded after Minecraft completed the action.
+        Return that state
         '''
-        self.send_action(action)
-
-        if self.match_sequences:
-            # Send action then keep receiving until we receive state after the action
-            while True:
-                state = self.recv_state()
-                LOG.debug(state)
-                if state.last_action_sequence >= self.action_sequence_last_queued:
-                    # Received an up-to-date state. Return it.
-
-                    # XXX If the agent restarts we'll mistakenly process any states that were # in flight
-                    # E.g., Use-State last_sent=1 server_last_processed=256
-                    '''
-                    LOG.debug(f'Use-State '
-                          f'last_sent={self.action_sequence_last_queued} '
-                          f'server_last_processed={state.last_action_sequence}'
-                    )
-                    '''
-
-                    break
-                else:
-                    # XXX If minecraft restarts the agent will get stuck here. Need to send reset
-                    # to minecraft to start sequences over.
-                    # E.g., [13:30:23] Skip-State last_sent=450 server_last_processed=0
-                    LOG.info(f'Skip-State '
-                          f'last_sent={self.action_sequence_last_queued} '
-                          f'server_last_processed={state.last_action_sequence}'
-                          )
-        else:
-            state = self.recv_state()
+        action_seq = self.send_action(action)
+        state = self._recv_and_match(action_seq)
         return state
 
-    def send_action(self, action: ActionPacket):
+    def send_action(self, action: ActionPacket) -> int:
         '''
         Send action to minecraft. Doesn't actually send. Places the packet on the queue
         to be sent by the action thread.
         Also updates action_sequence_last_queued
+        Returns the sequence number used
         '''
-        self.action_sequence_last_queued += 1
-        action.sequence = self.action_sequence_last_queued
+        new_seq = self.action_sequence_last_queued + 1
+        action.sequence = new_seq
         self.queued_counter.count()
         self._action_queue.put(action)
+        self.action_sequence_last_queued = new_seq
+        return new_seq
 
     def recv_state(self, block=True, timeout=None) -> StatePacket:
         '''
@@ -266,6 +239,35 @@ class Controller:
         self.state_sequence_last_processed = state.sequence
         self.process_counter.count()
 
+        return state
+    
+    def _recv_and_match(self, action_sequence):
+        # Keep receiving until we receive state recorded after the action
+        while True:
+            state = self.recv_state(block=True)
+            LOG.debug(state)
+            if state.last_action_sequence >= action_sequence:
+                # Received an up-to-date state. Return it.
+
+                # XXX If the agent restarts we'll mistakenly process any states that were # in flight
+                # E.g., Use-State last_sent=1 server_last_processed=256
+                '''
+                LOG.debug(f'Use-State '
+                        f'last_sent={self.action_sequence_last_queued} '
+                        f'server_last_processed={state.last_action_sequence}'
+                )
+                '''
+
+                break
+            else:
+                # XXX If minecraft restarts the agent will get stuck here. Need to send reset
+                # to minecraft to start sequences over.
+                # E.g., [13:30:23] Skip-State last_sent=450 server_last_processed=0
+                LOG.info(f'Skip-State '
+                        f'last_sent={self.action_sequence_last_queued} '
+                        f'server_last_processed={state.last_action_sequence}'
+                        )
+        
         return state
 
     def _action_thread_fn(self):
@@ -370,27 +372,24 @@ class TrackPerSecond:
             self.start = end
 
 
-class GymAsync:
+class GymLiteAsync:
     ''' Stub in how gymn will work. Higher level interface than Controller '''
-    def __init__(self, name=None, render_mode="human", match_sequences=True):
+    def __init__(self, name=None, render_mode="human"):
         self.name = name
         self.render_mode = render_mode
         self.ctrl = None
-        self.match_sequences = match_sequences
-        self._last_action = None
-        self._last_state = None
         self._window_width = None
         self._window_height = None
 
     def reset(self):
         if self.render_mode == 'human':
             cv2.namedWindow(self.name, cv2.WINDOW_NORMAL)
-        self.ctrl = Controller(match_sequences=self.match_sequences)
-        # return observation, info
+        self.ctrl = Controller()
+        # TODO return observation, info
 
-    def render(self):
+    def render(self, state: StatePacket):
         if self.render_mode == 'human':
-            frame = self._last_state.get_frame_with_cursor()
+            frame = state.get_frame_with_cursor()
             arr = np.asarray(frame)
             cv2_frame = cv2.cvtColor(arr, cv2.COLOR_RGB2BGR)
             height, width, _ = cv2_frame.shape
@@ -402,26 +401,21 @@ class GymAsync:
             cv2.imshow(self.name, cv2_frame)
             cv2.waitKey(1)
             
-    # XXX TODO
     def step(self, action):
-        # XXX Change recv to take action (or store) and do match_sequences handling
-        state = self.ctrl.send_and_recv(action)
-        self._last_action = action
-        self._last_state = state
-        self.render()
-        # return observation, reward, terminated, truncated, info
+        # XXX Change recv to take action (or store) and do sync handling
+        self.ctrl.send_action(action)
+        state = self.ctrl.recv_state(block=True)
+        self.render(state)
+        # TODO return observation, reward, terminated, truncated, info
         return state
 
-class GymSync(GymAsync):
+class GymLiteSync(GymLiteAsync):
     ''' Synchronous version of stub gym interface '''
     def __init__(self, *args, **kwargs):
-        super().__init__(match_sequences=True, *args, **kwargs)
+        super().__init__(*args, **kwargs)
 
     def step(self, action):
-        # XXX Change recv to take action (or store) and do match_sequences handling
         state = self.ctrl.send_and_recv(action)
-        self._last_action = action
-        self._last_state = state
-        self.render()
+        self.render(state)
         # return observation, reward, terminated, truncated, info
         return state
