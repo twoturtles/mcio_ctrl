@@ -373,8 +373,12 @@ class TrackPerSecond:
 
 
 class GymLiteAsync:
-    ''' Stub in how gymn will work. Higher level interface than Controller '''
-    def __init__(self, name=None, render_mode="human"):
+    '''
+    Stub in how gymn will work. Higher level interface than Controller
+    This is async in the sense that it doesn't ensure the received state follows the previous
+    action. But it does still block on recv.
+    '''
+    def __init__(self, name: str | None = None, render_mode: str = "human"):
         self.name = name
         self.render_mode = render_mode
         self.ctrl = None
@@ -410,7 +414,10 @@ class GymLiteAsync:
         return state
 
 class GymLiteSync(GymLiteAsync):
-    ''' Synchronous version of stub gym interface '''
+    '''
+    Synchronous version of stub gym interface
+    step() ensures that the returned state follows the sent action.
+    '''
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 

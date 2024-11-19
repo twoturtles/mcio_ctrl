@@ -1,3 +1,5 @@
+# Prints received state to console. Doesn't rely on mcio_remote at all.
+
 import pprint
 import time
 
@@ -22,6 +24,7 @@ def recv_loop():
         pkt['frame_png'] = len(pkt['frame_png'])
         pprint.pprint(pkt)
 
+        # Print a PPS rate every second.
         end = time.time()
         pkt_count += 1
         if end - start >= 1:
