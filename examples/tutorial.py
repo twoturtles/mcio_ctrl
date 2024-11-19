@@ -21,7 +21,7 @@ def tutorial(scale):
 
     steps = 0
     while True:
-        cycle = (steps // 10) % 2
+        cycle = (steps // 50) % 2
         if cycle == 0:
             action = mcio.ActionPacket(keys=[(glfw.KEY_SPACE, glfw.PRESS)])
         elif cycle == 1:
