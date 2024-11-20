@@ -6,6 +6,7 @@ import pprint
 import threading
 import queue
 import time
+import logging
 
 import numpy as np
 import cv2
@@ -85,7 +86,7 @@ class ActionPacket:
     ## Control ##
     version: int = MCIO_PROTOCOL_VERSION
     sequence: int = 0           # sequence number. This will be automatically set by send_action.
-    key_reset: bool = False     # TODO: clear all presses
+    reset: bool = False         # Tells minecraft to reset state sequence clear all key / button presses
 
     ## Action ##
 
@@ -202,13 +203,19 @@ class Controller:
         LOG.info("Controller init complete")
 
     def send_and_recv(self, action: ActionPacket) -> StatePacket:
+        ''' Wrapper around send_and_recv_check for those who only want the state.  '''
+        state, _ = self.send_and_recv_check(action)
+        return state
+
+    def send_and_recv_check(self, action: ActionPacket) -> tuple[StatePacket, bool]:
         '''
         Enqueue action and recv state until the state recorded after Minecraft completed the action.
-        Return that state
+        Return that state and flag denoting if Minecraft restarted, in which case the action was
+        likely lost and the state is non-contiguous.
         '''
         action_seq = self.send_action(action)
-        state = self._recv_and_match(action_seq)
-        return state
+        state, restarted = self._recv_and_match(action_seq)
+        return state, restarted
 
     def send_action(self, action: ActionPacket) -> int:
         '''
@@ -220,55 +227,94 @@ class Controller:
         new_seq = self.action_sequence_last_queued + 1
         action.sequence = new_seq
         self.queued_counter.count()
+        LOG.info(f'Queue action: {action}')
         self._action_queue.put(action)
         self.action_sequence_last_queued = new_seq
         return new_seq
 
-    def recv_state(self, block=True, timeout=None) -> StatePacket:
+    def recv_state(self, *args, **kwargs) -> StatePacket:
+        ''' Wrapper around recv_check_state for those who only want the state.  '''
+        state, _ = self.recv_check_state(*args, **kwargs)
+        return state
+
+    def recv_check_state(self, block=True, timeout=None) -> tuple[StatePacket, bool]:
         '''
         Returns the most recently received state pulling it from the processing queue.
-        block and timeout are like queue.Queue.get(). Can raise Empty exception.
+        block and timeout are like queue.Queue.get(). Can raise Empty exception if
+        non-blocking or timeout is used.
+        Also returns bool denoting if Minecraft was restarted.
         '''
         # RECV 4
         state = self._state_queue.get(block=block, timeout=timeout)
         self._state_queue.task_done()
 
+        restarted = False
         if self.state_sequence_last_processed is None:
             LOG.info(f'Processing first state packet: sequence={state.sequence}')
+        elif state.sequence <= self.state_sequence_last_processed:
+            # Minecraft must have restarted
+            LOG.warning('Minecraft restarted')
+            restarted = True
         self._track_dropped("Process", state, self.state_sequence_last_processed)
+
         self.state_sequence_last_processed = state.sequence
         self.process_counter.count()
 
-        return state
+        return state, restarted
     
-    def _recv_and_match(self, action_sequence):
+    def _recv_and_match(self, action_sequence) -> tuple[StatePacket, bool]:
         # Keep receiving until we receive state recorded after the action
+        # Returns state and bool denoting if Minecraft restarted.
+        first_state = self.state_sequence_last_processed is None
         while True:
-            state = self.recv_state(block=True)
-            LOG.debug(state)
-            if state.last_action_sequence >= action_sequence:
+            state, restarted = self.recv_check_state(block=True)
+
+            # Detect if the action we're trying to match was lost, in which case we'll never
+            # get a match.
+            if restarted:
+                # Minecraft restarted. Just return this state.
+                # state.last_action_sequence < action_sequence, but Minecraft probably
+                # lost the action for action_sequence
+                LOG.info(f'Minecraft-Restart '
+                        f'last_sent={self.action_sequence_last_queued} '
+                        f'server_last_processed={state.last_action_sequence} '
+                        f'state_sequence={state.sequence}'
+                        )
+                return state, True
+
+            elif first_state and action_sequence == 1 and state.sequence == 0:
+                # Minecraft started after agent. Just count this as another case of restarted?
+                LOG.info(f'Minecraft-Start-Last '
+                        f'last_sent={self.action_sequence_last_queued} '
+                        f'server_last_processed={state.last_action_sequence} '
+                        f'state_sequence={state.sequence}'
+                        )
+                return state, False
+
+            # Now handling normal cases
+            elif state.last_action_sequence >= action_sequence:
                 # Received an up-to-date state. Return it.
 
-                # XXX If the agent restarts we'll mistakenly process any states that were # in flight
+                # XXX If the agent restarts we'll mistakenly process any states that were in flight
                 # E.g., Use-State last_sent=1 server_last_processed=256
-                '''
-                LOG.debug(f'Use-State '
+                LOG.info(f'Use-State '
                         f'last_sent={self.action_sequence_last_queued} '
-                        f'server_last_processed={state.last_action_sequence}'
+                        f'server_last_processed={state.last_action_sequence} '
+                        f'state_sequence={state.sequence}'
                 )
-                '''
-
                 break
+
             else:
-                # XXX If minecraft restarts the agent will get stuck here. Need to send reset
-                # to minecraft to start sequences over.
-                # E.g., [13:30:23] Skip-State last_sent=450 server_last_processed=0
+                # This is skipping through states that were in flight before Minecraft
+                # received the action.
                 LOG.info(f'Skip-State '
                         f'last_sent={self.action_sequence_last_queued} '
-                        f'server_last_processed={state.last_action_sequence}'
+                        f'server_last_processed={state.last_action_sequence} '
+                        f'state_sequence={state.sequence}'
                         )
+                # Continue loop
         
-        return state
+        return state, False
 
     def _action_thread_fn(self):
         ''' Loops. Pulls packets from the action_queue and sends to minecraft. '''
@@ -316,7 +362,7 @@ class Controller:
         elif state.sequence > last_sequence + 1:
             # Dropped
             n_dropped = state.sequence - last_sequence - 1
-            LOG.info(f'State packets dropped: step={tag} n_dropped={n_dropped}')
+            LOG.info(f'State packets dropped: tag={tag} n_dropped={n_dropped}')
 
     def shutdown(self):
         # XXX
@@ -408,7 +454,8 @@ class GymLiteAsync:
     def step(self, action):
         # XXX Change recv to take action (or store) and do sync handling
         self.ctrl.send_action(action)
-        state = self.ctrl.recv_state(block=True)
+        # XXX Ignoring restarted for now
+        state, restarted = self.ctrl.recv_check_state(block=True)
         self.render(state)
         # TODO return observation, reward, terminated, truncated, info
         return state
