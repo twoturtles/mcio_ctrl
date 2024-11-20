@@ -275,7 +275,7 @@ class Controller:
                 # Minecraft restarted. Just return this state.
                 # state.last_action_sequence < action_sequence, but Minecraft probably
                 # lost the action for action_sequence
-                LOG.info(f'Minecraft-Restart '
+                LOG.debug(f'Minecraft-Restart '
                         f'last_sent={self.action_sequence_last_queued} '
                         f'server_last_processed={state.last_action_sequence} '
                         f'state_sequence={state.sequence}'
@@ -284,7 +284,7 @@ class Controller:
 
             elif first_state and action_sequence == 1 and state.sequence == 0:
                 # Minecraft started after agent. Just count this as another case of restarted?
-                LOG.info(f'Minecraft-Start-Last '
+                LOG.debug(f'Minecraft-Start-Last '
                         f'last_sent={self.action_sequence_last_queued} '
                         f'server_last_processed={state.last_action_sequence} '
                         f'state_sequence={state.sequence}'
@@ -297,7 +297,7 @@ class Controller:
 
                 # XXX If the agent restarts we'll mistakenly process any states that were in flight
                 # E.g., Use-State last_sent=1 server_last_processed=256
-                LOG.info(f'Use-State '
+                LOG.debug(f'Use-State '
                         f'last_sent={self.action_sequence_last_queued} '
                         f'server_last_processed={state.last_action_sequence} '
                         f'state_sequence={state.sequence}'
@@ -307,7 +307,7 @@ class Controller:
             else:
                 # This is skipping through states that were in flight before Minecraft
                 # received the action.
-                LOG.info(f'Skip-State '
+                LOG.debug(f'Skip-State '
                         f'last_sent={self.action_sequence_last_queued} '
                         f'server_last_processed={state.last_action_sequence} '
                         f'state_sequence={state.sequence}'
