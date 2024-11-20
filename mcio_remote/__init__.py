@@ -18,8 +18,9 @@ def _setup_logger():
 LOG = _setup_logger()
 
 # module imports
-from .main import *
 from .network import *
+from .controller import *
+from .gym_lite import *
 
 # constants
 __version__ = "0.1.0"
