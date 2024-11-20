@@ -424,7 +424,7 @@ class GymLiteAsync:
     This is async in the sense that it doesn't ensure the received state follows the previous
     action. But it does still block on recv.
     '''
-    def __init__(self, name: str | None = None, render_mode: str = "human"):
+    def __init__(self, name: str|None = None, render_mode: str|None = "human"):
         self.name = name
         self.render_mode = render_mode
         self.ctrl = None
@@ -435,7 +435,10 @@ class GymLiteAsync:
         if self.render_mode == 'human':
             cv2.namedWindow(self.name, cv2.WINDOW_NORMAL)
         self.ctrl = Controller()
+        action = ActionPacket(reset=True)
+        state = self.ctrl.send_and_recv(action)
         # TODO return observation, info
+        return state
 
     def render(self, state: StatePacket):
         if self.render_mode == 'human':
