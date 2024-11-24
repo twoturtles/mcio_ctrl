@@ -17,7 +17,7 @@ class GymLiteAsync:
         self._window_width = None
         self._window_height = None
 
-    def reset(self):
+    def reset(self, send_reset=True):
         if self.render_mode == 'human':
             cv2.namedWindow(self.name, cv2.WINDOW_NORMAL)
         self.ctrl = controller.Controller()
@@ -48,6 +48,10 @@ class GymLiteAsync:
         self.render(state)
         # TODO return observation, reward, terminated, truncated, info
         return state
+
+    def close(self):
+        # TODO
+        ...
 
 class GymLiteSync(GymLiteAsync):
     '''
