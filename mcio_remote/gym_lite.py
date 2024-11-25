@@ -7,7 +7,7 @@ from mcio_remote import controller, network, LOG
 class GymLiteAsync:
     '''
     Stub in how gymn will work. Higher level interface than Controller
-    This is async in the sense that it doesn't ensure the received state follows the previous
+    This is async in the sense that it doesn't ensure the received observation follows the previous
     action. But it does still block on recv.
     '''
     def __init__(self, name: str|None = None, render_mode: str|None = "human"):
@@ -22,13 +22,13 @@ class GymLiteAsync:
             cv2.namedWindow(self.name, cv2.WINDOW_NORMAL)
         self.ctrl = controller.Controller()
         action = network.ActionPacket(reset=True)
-        state = self.ctrl.send_and_recv(action)
+        observation = self.ctrl.send_and_recv(action)
         # TODO return observation, info
-        return state
+        return observation
 
-    def render(self, state: network.StatePacket):
+    def render(self, observation: network.ObservationPacket):
         if self.render_mode == 'human':
-            frame = state.get_frame_with_cursor()
+            frame = observation.get_frame_with_cursor()
             arr = np.asarray(frame)
             cv2_frame = cv2.cvtColor(arr, cv2.COLOR_RGB2BGR)
             height, width, _ = cv2_frame.shape
@@ -44,10 +44,10 @@ class GymLiteAsync:
         # XXX Change recv to take action (or store) and do sync handling
         self.ctrl.send_action(action)
         # XXX Ignoring restarted for now
-        state, restarted = self.ctrl.recv_check_state(block=True)
-        self.render(state)
+        observation, restarted = self.ctrl.recv_check_observation(block=True)
+        self.render(observation)
         # TODO return observation, reward, terminated, truncated, info
-        return state
+        return observation
 
     def close(self):
         # TODO
@@ -56,16 +56,16 @@ class GymLiteAsync:
 class GymLiteSync(GymLiteAsync):
     '''
     Synchronous version of stub gym interface
-    step() ensures that the returned state follows the sent action.
+    step() ensures that the returned observation follows the sent action.
     '''
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
     def step(self, action):
-        state = self.ctrl.send_and_recv(action)
-        self.render(state)
+        observation = self.ctrl.send_and_recv(action)
+        self.render(observation)
         # return observation, reward, terminated, truncated, info
-        return state
+        return observation
 
 
 class GymNewSync:
@@ -82,13 +82,13 @@ class GymNewSync:
         self.ctrl = controller.Controller()
         action = network.ActionPacket(reset=True)
         self.ctrl.send_action(action)
-        state = self.ctrl.recv_state()
+        observation = self.ctrl.recv_observation()
         # TODO return observation, info
-        return state
+        return observation
 
-    def render(self, state: network.StatePacket):
+    def render(self, observation: network.ObservationPacket):
         if self.render_mode == 'human':
-            frame = state.get_frame_with_cursor()
+            frame = observation.get_frame_with_cursor()
             arr = np.asarray(frame)
             cv2_frame = cv2.cvtColor(arr, cv2.COLOR_RGB2BGR)
             height, width, _ = cv2_frame.shape
@@ -102,10 +102,10 @@ class GymNewSync:
 
     def step(self, action):
         self.ctrl.send_action(action)
-        state = self.ctrl.recv_state()
-        self.render(state)
+        observation = self.ctrl.recv_observation()
+        self.render(observation)
         # TODO return observation, reward, terminated, truncated, info
-        return state
+        return observation
 
     def close(self):
         # TODO

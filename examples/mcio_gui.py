@@ -23,14 +23,14 @@ class ControllerThreads:
         self.running.set()
 
         self.action_queue = queue.Queue()
-        self.state_queue = queue.Queue()
+        self.observation_queue = queue.Queue()
 
         self.mcio_conn = mcio.Connection()
 
         # Start threads
-        self.state_thread = threading.Thread(target=self.state_thread_fn, name="StateThread")
-        self.state_thread.daemon = True
-        self.state_thread.start()
+        self.observation_thread = threading.Thread(target=self.observation_thread_fn, name="ObservationThread")
+        self.observation_thread.daemon = True
+        self.observation_thread.start()
 
         self.action_thread = threading.Thread(target=self.action_thread_fn, name="ActionThread")
         self.action_thread.daemon = True
@@ -47,21 +47,21 @@ class ControllerThreads:
             self.mcio_conn.send_action(action)
         LOG.info("Action-Thread shut down")
 
-    def state_thread_fn(self):
-        ''' Loops. Receives state packets from minecraft and places on state_queue'''
-        LOG.info("StateThread start")
+    def observation_thread_fn(self):
+        ''' Loops. Receives observation packets from minecraft and places on observation_queue'''
+        LOG.info("ObservationThread start")
         while self.running.is_set():
-            state = self.mcio_conn.recv_state()
-            if state is None:
+            observation = self.mcio_conn.recv_observation()
+            if observation is None:
                 continue    # Exiting or packet decode error
-            self.state_queue.put(state)
-        LOG.info("StateThread shut down")
+            self.observation_queue.put(observation)
+        LOG.info("ObservationThread shut down")
 
     def shutdown(self):
         self.running.clear()
         self.mcio_conn.close()
 
-        self.state_thread.join()
+        self.observation_thread.join()
         # Send empty action to unblock ActionThread
         self.action_queue.put(None)
         self.action_thread.join()
@@ -138,15 +138,15 @@ class MCioGUI:
     def focus_callback(self, window, focused):
         self.is_focused = True if focused else False
 
-    def render(self, state: mcio.network.StatePacket):
+    def render(self, observation: mcio.network.ObservationPacket):
         """Render graphics"""
         gl.glClear(gl.GL_COLOR_BUFFER_BIT)
-        if state.frame_png:
+        if observation.frame_png:
             # Link cursor mode to Minecraft. May regret this.
-            glfw.set_input_mode(self.window, glfw.CURSOR, state.cursor_mode)
+            glfw.set_input_mode(self.window, glfw.CURSOR, observation.cursor_mode)
 
             # Convert PNG bytes to image
-            frame = state.get_frame_with_cursor()
+            frame = observation.get_frame_with_cursor()
             # Prepare frame for opengl
             frame = np.flipud(np.array(frame))
             frame = np.ascontiguousarray(frame)
@@ -201,12 +201,12 @@ class MCioGUI:
             # Poll for events
             glfw.poll_events()
             try:
-                state = self.controller.recv_state(block=False)
+                observation = self.controller.recv_observation(block=False)
             except queue.Empty:
                 pass
             else:
-                LOG.debug(state)
-                self.render(state)
+                LOG.debug(observation)
+                self.render(observation)
             
         # Cleanup
         LOG.info("Exiting...")

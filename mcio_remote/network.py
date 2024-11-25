@@ -15,19 +15,19 @@ from mcio_remote import LOG
 
 DEFAULT_HOST = "localhost"
 DEFAULT_ACTION_PORT = 4001  # 4ction
-DEFAULT_STATE_PORT = 5001   # 5tate
+DEFAULT_OBSERVATION_PORT = 8001   # 8bservation
 DEFAULT_ACTION_ADDR = f"tcp://{DEFAULT_HOST}:{DEFAULT_ACTION_PORT}"
-DEFAULT_STATE_ADDR = f"tcp://{DEFAULT_HOST}:{DEFAULT_STATE_PORT}"
+DEFAULT_OBSERVATION_ADDR = f"tcp://{DEFAULT_HOST}:{DEFAULT_OBSERVATION_PORT}"
 
 MCIO_PROTOCOL_VERSION = 0
 
-# State packets received from MCio
+# Observation packets received from MCio
 @dataclass
-class StatePacket:
+class ObservationPacket:
     version: int = MCIO_PROTOCOL_VERSION
     mode: str = ""      # "SYNC" or "ASYNC"
     sequence: int = 0
-    last_action_sequence: int = 0   # This is the last action sequenced before this state was generated
+    last_action_sequence: int = 0   # This is the last action sequenced before this observation was generated
     frame_png: bytes = field(repr=False, default=b"")   # Exclude the frame from repr output.
     health: float = 0.0
     cursor_mode: int = glfw.CURSOR_NORMAL,  # Either glfw.CURSOR_NORMAL (212993) or glfw.CURSOR_DISABLED (212995)
@@ -40,7 +40,7 @@ class StatePacket:
     inventory_offhand: List = field(default_factory=list)
 
     @classmethod
-    def unpack(cls, data: bytes) -> 'StatePacket':
+    def unpack(cls, data: bytes) -> 'ObservationPacket':
         try:
             decoded_dict = cbor2.loads(data)
         except Exception as e:
@@ -50,8 +50,8 @@ class StatePacket:
         try:
             rv = cls(**decoded_dict)
         except Exception as e:
-            # This means the received packet doesn't match StatePacket
-            LOG.error(f"StatePacket decode error: {type(e).__name__}: {e}")
+            # This means the received packet doesn't match ObservationPacket
+            LOG.error(f"ObservationPacket decode error: {type(e).__name__}: {e}")
             if 'frame_png' in decoded_dict:
                 decoded_dict['frame_png'] = f"Frame len: {len(decoded_dict['frame_png'])}"
             LOG.error("Raw packet:")
@@ -83,7 +83,7 @@ class ActionPacket:
     ## Control ##
     version: int = MCIO_PROTOCOL_VERSION
     sequence: int = 0           # sequence number. This will be automatically set by send_action.
-    reset: bool = False         # Tells minecraft to reset state sequence clear all key / button presses
+    reset: bool = False         # Tells minecraft to reset observation sequence clear all key / button presses
 
     ## Action ##
 
@@ -107,7 +107,7 @@ class ActionPacket:
 
 # Connections to MCio mod
 class _Connection:
-    def __init__(self, action_addr=DEFAULT_ACTION_ADDR, state_addr=DEFAULT_STATE_ADDR):
+    def __init__(self, action_addr=DEFAULT_ACTION_ADDR, observation_addr=DEFAULT_OBSERVATION_ADDR):
         # Initialize ZMQ context
         self.zmq_context = zmq.Context()
 
@@ -115,12 +115,12 @@ class _Connection:
         self.action_socket = self.zmq_context.socket(zmq.PUB)
         self.action_socket.bind(action_addr)
         
-        # Socket to receive state updates
-        self.state_socket = self.zmq_context.socket(zmq.SUB)
-        self.state_socket.connect(state_addr)
-        self.state_socket.setsockopt_string(zmq.SUBSCRIBE, "")
+        # Socket to receive observation updates
+        self.observation_socket = self.zmq_context.socket(zmq.SUB)
+        self.observation_socket.connect(observation_addr)
+        self.observation_socket.setsockopt_string(zmq.SUBSCRIBE, "")
 
-        self.recv_counter = TrackPerSecond("RecvStatePPS")
+        self.recv_counter = TrackPerSecond("RecvObservationPPS")
         self.send_counter = TrackPerSecond("SendActionPPS")
 
         # XXX zmq has this weird behavior that if you send a packet before it's connected
@@ -136,29 +136,29 @@ class _Connection:
         self.send_counter.count()
         self.action_socket.send(action.pack())
 
-    def recv_state(self) -> StatePacket | None:
+    def recv_observation(self) -> ObservationPacket | None:
         '''
-        Receives state from zmq socket. Blocks until a state packet is returned
+        Receives observation from zmq socket. Blocks until a observation packet is returned
         '''
         try:
             # RECV 1
-            pbytes = self.state_socket.recv()
+            pbytes = self.observation_socket.recv()
         except zmq.error.ContextTerminated:
             return None
         
         # This may also return None if there was an unpack error.
         # XXX Maybe these errors should be separated. A context error can happen during shutdown.
         # We could continue after a parse error.
-        state = StatePacket.unpack(pbytes)
+        observation = ObservationPacket.unpack(pbytes)
         self.recv_counter.count()
-        LOG.debug(state)
-        return state
+        LOG.debug(observation)
+        return observation
 
     # TODO add a simplified interface that encapsulates threads
 
     def close(self):
         self.action_socket.close()
-        self.state_socket.close()
+        self.observation_socket.close()
         self.zmq_context.term()
 
 

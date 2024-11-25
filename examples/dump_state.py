@@ -1,4 +1,4 @@
-# Prints received state to console. Doesn't rely on mcio_remote at all.
+# Prints received observation to console. Doesn't rely on mcio_remote at all.
 
 import pprint
 import time
@@ -6,20 +6,20 @@ import time
 import cbor2
 import zmq
 
-STATE_PORT = 5001
+OBSERVATION_PORT = 5001
 
 def recv_loop():
     zmq_context = zmq.Context()
 
-    # Socket to receive state updates
-    state_socket = zmq_context.socket(zmq.SUB)
-    state_socket.connect(f"tcp://localhost:{STATE_PORT}")
-    state_socket.setsockopt_string(zmq.SUBSCRIBE, "")
+    # Socket to receive observation updates
+    observation_socket = zmq_context.socket(zmq.SUB)
+    observation_socket.connect(f"tcp://localhost:{OBSERVATION_PORT}")
+    observation_socket.setsockopt_string(zmq.SUBSCRIBE, "")
 
     start = time.time()
     pkt_count = 0
     while True:
-        pbytes = state_socket.recv()
+        pbytes = observation_socket.recv()
 
         pkt = cbor2.loads(pbytes)
         # The frame is too big to print, so replace with its length.
