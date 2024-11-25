@@ -83,6 +83,7 @@ class GymNewSync:
         action = network.ActionPacket(reset=True)
         self.ctrl.send_action(action)
         observation = self.ctrl.recv_observation()
+        self.render(observation)
         # TODO return observation, info
         return observation
 
@@ -91,17 +92,18 @@ class GymNewSync:
             frame = observation.get_frame_with_cursor()
             arr = np.asarray(frame)
             cv2_frame = cv2.cvtColor(arr, cv2.COLOR_RGB2BGR)
+            cv2.imshow(self.name, cv2_frame)
             height, width, _ = cv2_frame.shape
             if height != self._window_height or width != self._window_width:
                 # On first frame or if size changed, resize window
                 self._window_width = width
                 self._window_height = height
                 cv2.resizeWindow(self.name, width, height)
-            cv2.imshow(self.name, cv2_frame)
             cv2.waitKey(1)
 
     def step(self, action):
-        self.ctrl.send_action(action)
+        seq = self.ctrl.send_action(action)
+        LOG.info(f'Action Sequence = {seq}')
         observation = self.ctrl.recv_observation()
         self.render(observation)
         # TODO return observation, reward, terminated, truncated, info
