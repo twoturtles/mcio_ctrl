@@ -66,3 +66,47 @@ class GymLiteSync(GymLiteAsync):
         self.render(state)
         # return observation, reward, terminated, truncated, info
         return state
+
+
+class GymNewSync:
+    def __init__(self, name: str|None = None, render_mode: str|None = "human"):
+        self.name = name
+        self.render_mode = render_mode
+        self.ctrl = None
+        self._window_width = None
+        self._window_height = None
+
+    def reset(self, send_reset=True):
+        if self.render_mode == 'human':
+            cv2.namedWindow(self.name, cv2.WINDOW_NORMAL)
+        self.ctrl = controller.Controller()
+        action = network.ActionPacket(reset=True)
+        self.ctrl.send_action(action)
+        state = self.ctrl.recv_state()
+        # TODO return observation, info
+        return state
+
+    def render(self, state: network.StatePacket):
+        if self.render_mode == 'human':
+            frame = state.get_frame_with_cursor()
+            arr = np.asarray(frame)
+            cv2_frame = cv2.cvtColor(arr, cv2.COLOR_RGB2BGR)
+            height, width, _ = cv2_frame.shape
+            if height != self._window_height or width != self._window_width:
+                # On first frame or if size changed, resize window
+                self._window_width = width
+                self._window_height = height
+                cv2.resizeWindow(self.name, width, height)
+            cv2.imshow(self.name, cv2_frame)
+            cv2.waitKey(1)
+
+    def step(self, action):
+        self.ctrl.send_action(action)
+        state = self.ctrl.recv_state()
+        self.render(state)
+        # TODO return observation, reward, terminated, truncated, info
+        return state
+
+    def close(self):
+        # TODO
+        ...

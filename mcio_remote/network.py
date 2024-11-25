@@ -25,6 +25,7 @@ MCIO_PROTOCOL_VERSION = 0
 @dataclass
 class StatePacket:
     version: int = MCIO_PROTOCOL_VERSION
+    mode: str = ""      # "SYNC" or "ASYNC"
     sequence: int = 0
     last_action_sequence: int = 0   # This is the last action sequenced before this state was generated
     frame_png: bytes = field(repr=False, default=b"")   # Exclude the frame from repr output.
