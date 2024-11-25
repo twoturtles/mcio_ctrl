@@ -13,7 +13,7 @@ def steps(n_steps: int, wait: bool = False):
         n_steps = sys.maxsize # Go forever
     for i in range(n_steps):
         if wait:
-            input("Enter> ")
+            input("Step> ")
         action = mcio.ActionPacket()
         observation = env.step(action)
         LOG.info(f'Step {i}: {observation}')
