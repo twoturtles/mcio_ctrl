@@ -6,7 +6,31 @@ from mcio_remote import network
 from mcio_remote import LOG
 
 class ControllerSync:
-    ...
+    '''
+    Handles SYNC mode connections to Minecraft.
+    Blocks in recv waiting for a new observation.
+    '''
+    # XXX Implement context manager
+    def __init__(self, host='localhost'):
+        self.action_sequence_last_sent = 0
+
+        # This briefly sleeps for zmq initialization.
+        self._mcio_conn = network._Connection()
+
+    def send_action(self, action: network.ActionPacket):
+        ''' Send action to minecraft. Automatically sets action.sequence.  '''
+        self.action_sequence_last_sent += 1
+        action.sequence = self.action_sequence_last_sent
+        self._mcio_conn.send_action(action)
+
+    def recv_observation(self) -> network.ObservationPacket:
+        ''' Receive observation. Blocks '''
+        return self._mcio_conn.recv_observation()
+
+    def close(self):
+        ''' Shut down the network connection '''
+        self._mcio_conn.close()
+        self._mcio_conn = None
 
 class ControllerAsync:
     '''
@@ -63,9 +87,9 @@ class ControllerAsync:
 
     def send_action(self, action: network.ActionPacket) -> int:
         '''
-        Send action to minecraft. Doesn't actually send. Places the packet on the queue
-        to be sent by the action thread.
-        Also updates action_sequence_last_queued
+        Send action to minecraft. Automatically sets action.sequence
+        Doesn't actually send. Places the packet on the queue to be sent
+        by the action thread. Also updates action_sequence_last_queued
         Returns the sequence number used
         '''
         new_seq = self.action_sequence_last_queued + 1
@@ -160,6 +184,7 @@ class ControllerAsync:
         
         return observation, False
 
+    # XXX Since send doesn't block, we could get rid of this thread.
     def _action_thread_fn(self):
         ''' Loops. Pulls packets from the action_queue and sends to minecraft. '''
         LOG.info("ActionThread start")

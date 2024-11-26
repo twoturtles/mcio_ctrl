@@ -79,7 +79,7 @@ class GymNewSync:
     def reset(self, send_reset=True):
         if self.render_mode == 'human':
             cv2.namedWindow(self.name, cv2.WINDOW_NORMAL)
-        self.ctrl = controller.Controller()
+        self.ctrl = controller.ControllerSync()
         action = network.ActionPacket(reset=True)
         seq = self.ctrl.send_action(action)
         observation = self.ctrl.recv_observation()

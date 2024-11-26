@@ -158,8 +158,6 @@ class _Connection:
         LOG.debug(observation)
         return observation
 
-    # TODO add a simplified interface that encapsulates threads
-
     def close(self):
         self.action_socket.close()
         self.observation_socket.close()
