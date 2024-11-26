@@ -8,7 +8,7 @@ from mcio_remote import LOG
 
 def tutorial(scale):
     # env = gym.make("LunarLander-v3", render_mode="human")
-    env = mcio.GymLiteSync("Hello", render_mode="human")
+    env = mcio.GymLite("Hello", render_mode="human")
     # observation, info = env.reset()
     env.reset()
 
