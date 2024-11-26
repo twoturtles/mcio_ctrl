@@ -8,7 +8,7 @@ from mcio_remote import LOG
 # XXX Doesn't work if agent is started first
 
 def steps(n_steps: int, wait: bool = False):
-    env = mcio.GymNewSync("Hello", render_mode="human")
+    env = mcio.GymLiteSync("Hello", render_mode="human")
     observation = env.reset(send_reset=False)
     print(f'Step 1 (reset): {observation}')
     if n_steps == 0 or wait:

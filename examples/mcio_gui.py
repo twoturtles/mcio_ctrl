@@ -2,7 +2,6 @@
 # Example allowing human control through MCio
 #
 
-import threading
 import queue
 import argparse
 import textwrap
