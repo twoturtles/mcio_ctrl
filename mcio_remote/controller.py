@@ -5,7 +5,10 @@ import logging
 from mcio_remote import network
 from mcio_remote import LOG
 
-class Controller:
+class ControllerSync:
+    ...
+
+class ControllerAsync:
     '''
     Handles the connections to minecraft. Uses two threads
     One pulls observation packets from the _Connection recv socket and places them on the

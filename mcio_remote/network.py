@@ -109,7 +109,7 @@ class ActionPacket:
         return cbor2.dumps(pkt_dict)
     
 
-# Connections to MCio mod
+# Connections to MCio mod. Used by Controller.
 class _Connection:
     def __init__(self, action_addr=DEFAULT_ACTION_ADDR, observation_addr=DEFAULT_OBSERVATION_ADDR):
         # Initialize ZMQ context

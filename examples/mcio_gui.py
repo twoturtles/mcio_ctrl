@@ -15,57 +15,6 @@ import numpy as np
 import mcio_remote as mcio
 from mcio_remote import LOG
 
-# Threads to handle zmq i/o.
-class ControllerThreads:
-    def __init__(self, host='localhost'):
-        # Flag to signal threads to stop.
-        self.running = threading.Event()
-        self.running.set()
-
-        self.action_queue = queue.Queue()
-        self.observation_queue = queue.Queue()
-
-        self.mcio_conn = mcio.Connection()
-
-        # Start threads
-        self.observation_thread = threading.Thread(target=self.observation_thread_fn, name="ObservationThread")
-        self.observation_thread.daemon = True
-        self.observation_thread.start()
-
-        self.action_thread = threading.Thread(target=self.action_thread_fn, name="ActionThread")
-        self.action_thread.daemon = True
-        self.action_thread.start()
-
-    def action_thread_fn(self):
-        ''' Loops. Pulls packets from the action_queue and sends to minecraft. '''
-        LOG.info("ActionThread start")
-        while self.running.is_set():
-            action = self.action_queue.get()
-            self.action_queue.task_done()
-            if action is None:
-                break   # Action None to signal exit
-            self.mcio_conn.send_action(action)
-        LOG.info("Action-Thread shut down")
-
-    def observation_thread_fn(self):
-        ''' Loops. Receives observation packets from minecraft and places on observation_queue'''
-        LOG.info("ObservationThread start")
-        while self.running.is_set():
-            observation = self.mcio_conn.recv_observation()
-            if observation is None:
-                continue    # Exiting or packet decode error
-            self.observation_queue.put(observation)
-        LOG.info("ObservationThread shut down")
-
-    def shutdown(self):
-        self.running.clear()
-        self.mcio_conn.close()
-
-        self.observation_thread.join()
-        # Send empty action to unblock ActionThread
-        self.action_queue.put(None)
-        self.action_thread.join()
-
 class MCioGUI:
     def __init__(self, scale=1.0, width=800, height=600, name="MCio GUI"):
         ''' scale allows you to use a window larger or smaller than the minecraft window '''
@@ -98,7 +47,7 @@ class MCioGUI:
         self.scale = scale
         self.is_focused = glfw.get_window_attrib(self.window, glfw.FOCUSED)
 
-        self.controller = mcio.Controller()
+        self.controller = mcio.ControllerAsync()
         
     def key_callback(self, window, key, scancode, action, mods):
         """Handle keyboard input"""

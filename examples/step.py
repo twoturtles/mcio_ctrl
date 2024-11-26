@@ -5,6 +5,8 @@ import textwrap
 import mcio_remote as mcio
 from mcio_remote import LOG
 
+# XXX Doesn't work if agent is started first
+
 def steps(n_steps: int, wait: bool = False):
     env = mcio.GymNewSync("Hello", render_mode="human")
     observation = env.reset(send_reset=False)
@@ -28,7 +30,7 @@ def parse_args():
     )
     parser.add_argument('--steps', '-s', type=int, default=1,
                         help='Number of steps, 0 for forever')
-    parser.add_argument('--wait', '-w', action='store_true', help="Wait for enter between steps")
+    parser.add_argument('--wait', '-w', action='store_true', help="Wait for enter between steps. Overrides -s")
     return parser.parse_args()
 
 if __name__ == "__main__":
