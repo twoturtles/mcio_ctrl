@@ -81,7 +81,7 @@ class GymNewSync:
             cv2.namedWindow(self.name, cv2.WINDOW_NORMAL)
         self.ctrl = controller.Controller()
         action = network.ActionPacket(reset=True)
-        self.ctrl.send_action(action)
+        seq = self.ctrl.send_action(action)
         observation = self.ctrl.recv_observation()
         self.render(observation)
         # TODO return observation, info
@@ -99,11 +99,11 @@ class GymNewSync:
                 self._window_width = width
                 self._window_height = height
                 cv2.resizeWindow(self.name, width, height)
-            cv2.waitKey(1)
+            cv2.pollKey()
+            cv2.pollKey()
 
     def step(self, action):
         seq = self.ctrl.send_action(action)
-        LOG.info(f'Action Sequence = {seq}')
         observation = self.ctrl.recv_observation()
         self.render(observation)
         # TODO return observation, reward, terminated, truncated, info

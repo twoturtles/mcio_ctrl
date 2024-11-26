@@ -8,15 +8,15 @@ from mcio_remote import LOG
 def steps(n_steps: int, wait: bool = False):
     env = mcio.GymNewSync("Hello", render_mode="human")
     observation = env.reset(send_reset=False)
-    LOG.info(f'Reset: {observation}')
+    print(f'Step 1 (reset): {observation}')
     if n_steps == 0 or wait:
         n_steps = sys.maxsize # Go forever
-    for i in range(n_steps):
+    for i in range(1, n_steps):
         if wait:
             input("Step> ")
         action = mcio.ActionPacket()
         observation = env.step(action)
-        LOG.info(f'Step {i}: {observation}')
+        print(f'Step {i+1}: {observation}')
 
     env.close()
 
@@ -33,4 +33,5 @@ def parse_args():
 
 if __name__ == "__main__":
     args = parse_args()
+    #mcio.LOG.setLevel(mcio.logging.WARNING)
     steps(args.steps, args.wait)

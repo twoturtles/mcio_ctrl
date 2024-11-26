@@ -24,10 +24,14 @@ MCIO_PROTOCOL_VERSION = 0
 # Observation packets received from MCio
 @dataclass
 class ObservationPacket:
+    ## Control ##
     version: int = MCIO_PROTOCOL_VERSION
     mode: str = ""      # "SYNC" or "ASYNC"
     sequence: int = 0
     last_action_sequence: int = 0   # This is the last action sequenced before this observation was generated
+    frame_sequence: int = 0         # Frame number since Minecraft started
+
+    ## Observation ##
     frame_png: bytes = field(repr=False, default=b"")   # Exclude the frame from repr output.
     health: float = 0.0
     cursor_mode: int = glfw.CURSOR_NORMAL,  # Either glfw.CURSOR_NORMAL (212993) or glfw.CURSOR_DISABLED (212995)
