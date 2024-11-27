@@ -1,9 +1,7 @@
 import threading
-import queue
 import logging
 
-from mcio_remote import network
-from mcio_remote import LOG
+from mcio_remote import network, util, LOG
 
 class ControllerSync:
     '''
@@ -46,7 +44,7 @@ class ControllerAsync:
         self._running = threading.Event()
         self._running.set()
 
-        self._observation_queue = _LatestItemQueue()
+        self._observation_queue = util.LatestItemQueue()
 
         # This briefly sleeps for zmq initialization.
         self._mcio_conn = network._Connection()
@@ -76,7 +74,6 @@ class ControllerAsync:
         '''
         # RECV 3
         observation = self._observation_queue.get(block=block, timeout=timeout)
-        self._observation_queue.task_done()
         return observation
 
     def _observation_thread_fn(self):
@@ -113,26 +110,3 @@ class ControllerAsync:
         '''
         ...
 
-
-class _LatestItemQueue(queue.Queue):
-    ''' 
-        Queue that only saves the most recent item.
-        Puts replace any item on the queue.
-        If the agents gets behind on observation, just keep the most recent.
-    '''
-    def __init__(self):
-        super().__init__(maxsize=1)
-
-    def put(self, item) -> bool:
-        ''' Return True if the previous packet had to be dropped '''
-        # RECV 3
-        dropped = False
-        try:
-            # Discard the current item if the queue isn't empty
-            x = self.get_nowait()
-            dropped = True
-        except queue.Empty:
-            pass
-
-        super().put(item)
-        return dropped

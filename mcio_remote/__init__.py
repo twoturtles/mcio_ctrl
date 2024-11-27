@@ -21,6 +21,7 @@ LOG = _setup_logger()
 from .network import *
 from .controller import *
 from .gym_lite import *
+from .gui import *
 
 # constants
 __version__ = "0.1.0"

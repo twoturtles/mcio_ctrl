@@ -7,7 +7,7 @@ from mcio_remote import LOG
 
 # XXX Doesn't work if agent is started first
 
-def steps(n_steps: int, wait: bool = False):
+def step(n_steps: int, wait: bool = False):
     env = mcio.GymLite("Hello", render_mode="human", mcio_mode='sync')
     observation = env.reset(send_reset=False)
     print(f'Step 1 (reset): {observation}')
@@ -36,4 +36,5 @@ def parse_args():
 if __name__ == "__main__":
     args = parse_args()
     #mcio.LOG.setLevel(mcio.logging.WARNING)
-    steps(args.steps, args.wait)
+
+    step(args.steps, args.wait)
