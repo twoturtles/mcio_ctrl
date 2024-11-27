@@ -20,7 +20,7 @@ def pp(msg):
     print(f'{os.getpid()}: {msg}')
 
 class TestPattern:
-    def __init__(self, width=640, height=480, frequency=0.01):
+    def __init__(self, width=640, height=480, frequency=0.1):
         self.width = width
         self.height = height
         self.frequency = frequency
@@ -28,20 +28,23 @@ class TestPattern:
         
     def get_frame(self):
         # Create image with background color
-        color = self.cycle_color(self.step, self.frequency)
+        color = self.cycle_spectrum(self.step, self.frequency)
         frame = np.full((self.height, self.width, 3), color, dtype=np.uint8)
         self.step += 1
         return frame
 
-    def cycle_color(self, step, frequency=0.1):
+    def sin(self, x, frequency, phase_shift):
+        # sin from 0 to 255. phase shift is fraction of 2*pi.
+        return 127.5 * (np.sin(frequency * x + (phase_shift * 2 * np.pi)) + 1)
+
+    def cycle_spectrum(self, step, frequency=0.1):
         """
-        Generate RGB colors using sine waves.
         step: current step in the cycle
         frequency: how fast to cycle through colors
         """
-        r = np.sin(frequency * step + 0) * 127 + 128
-        g = np.sin(frequency * step + 2*np.pi/3) * 127 + 128
-        b = np.sin(frequency * step + 4*np.pi/3) * 127 + 128
+        r = self.sin(step, frequency, 3/12)
+        g = self.sin(step, frequency, 11/12)
+        b = self.sin(step, frequency, 7/12)
         return np.array([r, g, b], dtype=np.uint8)
 
 
@@ -114,34 +117,12 @@ class DisplayManager:
 class ImageStreamGui:
     def __init__(self, scale=1.0, width=800, height=600, name="MCio GUI"):
         ''' scale allows you to use a window larger or smaller than the minecraft window '''
-        # Initialize GLFW
-        if not glfw.init():
-            raise Exception("GLFW initialization failed")
-            
-        # This fixes only filling the bottom-left 1/4 of the window on mac.
-        glfw.window_hint(glfw.COCOA_RETINA_FRAMEBUFFER, glfw.FALSE)
-        # Create window
-        self.window = glfw.create_window(width, height, name, None, None)
-        if not self.window:
-            glfw.terminate()
-            raise Exception("Window creation failed")
-            
-        # Set up OpenGL context
-        glfw.make_context_current(self.window)
-        gl.glClearColor(0.0, 0.0, 0.0, 1.0)
-
-        # Set callbacks
-        glfw.set_key_callback(self.window, self.key_callback)
-        glfw.set_cursor_pos_callback(self.window, self.cursor_position_callback)
-        glfw.set_mouse_button_callback(self.window, self.mouse_button_callback)
-        glfw.set_window_size_callback(self.window, self.resize_callback)
-        glfw.set_window_focus_callback(self.window, self.focus_callback)
+        self.window, self.is_focused = self._glfw_init(width, height, name)
 
         # Initialize
         self.frame_width = 0
         self.frame_height = 0
         self.scale = scale
-        self.is_focused = glfw.get_window_attrib(self.window, glfw.FOCUSED)
 
         self._frame_queue = util.LatestItemQueue()
         # Flag to signal gui thread to stop.
@@ -153,7 +134,8 @@ class ImageStreamGui:
         # self._gui_thread.daemon = True
         # self._gui_thread.start()
 
-        self.test_thread = threading.Thread(target=self.test_pattern, name='TestThread')
+        self.test_thread = threading.Thread(target=self.test_pattern,
+                                            args=[width, height], name='TestThread')
         self.test_thread.daemon = True
         self.test_thread.start()
         self._gui_thread_fn()
@@ -161,12 +143,40 @@ class ImageStreamGui:
     def show(self, image: Image):
         self._frame_queue.put(image)
 
-    def test_pattern(self):
-        pat = TestPattern()
+    def test_pattern(self, width, height, frequency=0.1):
+        pat = TestPattern(width, height, frequency=frequency)
         while True:
             frame = pat.get_frame()
             self.show(frame)
             time.sleep(.1)
+
+    def _glfw_init(self, width, height, name):
+        # Initialize GLFW
+        if not glfw.init():
+            raise Exception("GLFW initialization failed")
+
+        # This fixes only filling the bottom-left 1/4 of the window on mac.
+        glfw.window_hint(glfw.COCOA_RETINA_FRAMEBUFFER, glfw.FALSE)
+        # Create window
+        window = glfw.create_window(width, height, name, None, None)
+        if not window:
+            glfw.terminate()
+            raise Exception("Window creation failed")
+
+        # Set up OpenGL context
+        glfw.make_context_current(window)
+        gl.glClearColor(0.0, 0.0, 0.0, 1.0)
+
+        # Set callbacks
+        glfw.set_key_callback(window, self.key_callback)
+        glfw.set_cursor_pos_callback(window, self.cursor_position_callback)
+        glfw.set_mouse_button_callback(window, self.mouse_button_callback)
+        glfw.set_window_size_callback(window, self.resize_callback)
+        glfw.set_window_focus_callback(window, self.focus_callback)
+
+        is_focused = glfw.get_window_attrib(window, glfw.FOCUSED)
+
+        return window, is_focused
 
     def _gui_thread_fn(self, fps=60):
         print("GuiThread start")
