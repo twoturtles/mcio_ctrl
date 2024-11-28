@@ -14,12 +14,11 @@ from PIL import Image
 
 import numpy as np
 
-from mcio_remote import util
-
 class ImageStreamGui:
     def __init__(self, scale=1.0, width=800, height=600, name="MCio GUI"):
         ''' scale allows you to use a window larger or smaller than the minecraft window '''
-        self.window, self.is_focused = self._glfw_init(width, height, name)
+        self.window = self._glfw_init(width, height, name)
+        self.is_focused = glfw.get_window_attrib(self.window, glfw.FOCUSED)
 
         # Initialize
         self.frame_width = 0
@@ -49,13 +48,11 @@ class ImageStreamGui:
         glfw.set_window_size_callback(window, self.resize_callback)
         glfw.set_window_focus_callback(window, self.focus_callback)
 
-        is_focused = glfw.get_window_attrib(window, glfw.FOCUSED)
-
-        return window, is_focused
+        return window
 
     def show(self, frame):
         glfw.poll_events() # Poll for events
-        self.render(frame)
+        self._render(frame)
         return bool(glfw.window_should_close(self.window))
 
     def key_callback(self, window, key, scancode, action, mods):
@@ -87,7 +84,22 @@ class ImageStreamGui:
     def focus_callback(self, window, focused):
         pass
 
-    def render(self, frame: Image):
+    def _render(self, frame: Image):
+        ''' glfw portion of render '''
+        # shape = (height, width, channels)
+        height = frame.shape[0]
+        width = frame.shape[1]
+        # On first frame or if size changed, resize window
+        if height != self.frame_height or width != self.frame_width:
+            self.frame_width = width
+            self.frame_height = height
+            glfw.set_window_size(self.window, int(width * self.scale), int(height * self.scale))
+
+        self._render_gl(frame)
+        glfw.swap_buffers(self.window)
+        
+    def _render_gl(self, frame: Image):
+        ''' opengl portion of render '''
         gl.glClearColor(0.0, 0.0, 0.0, 1.0)
         gl.glClear(gl.GL_COLOR_BUFFER_BIT)
 
@@ -95,16 +107,6 @@ class ImageStreamGui:
         frame = np.flipud(np.array(frame))
         frame = np.ascontiguousarray(frame)
 
-        # shape = (height, width, channels)
-        height = frame.shape[0]
-        width = frame.shape[1]
-
-        # On first frame or if size changed, resize window
-        if height != self.frame_height or width != self.frame_width:
-            self.frame_width = width
-            self.frame_height = height
-            glfw.set_window_size(self.window, int(width * self.scale), int(height * self.scale))
-        
         # Create and bind texture
         texture = gl.glGenTextures(1)
         gl.glBindTexture(gl.GL_TEXTURE_2D, texture)
@@ -114,6 +116,9 @@ class ImageStreamGui:
         gl.glTexParameteri(gl.GL_TEXTURE_2D, gl.GL_TEXTURE_MAG_FILTER, gl.GL_NEAREST)
         
         # Upload the image to texture
+        # shape = (height, width, channels)
+        height = frame.shape[0]
+        width = frame.shape[1]
         gl.glTexImage2D(
             gl.GL_TEXTURE_2D, 0, gl.GL_RGB, 
             width, height, 0,
@@ -136,8 +141,6 @@ class ImageStreamGui:
         # Clean up
         gl.glDisable(gl.GL_TEXTURE_2D)
         gl.glDeleteTextures([texture])
-        
-        glfw.swap_buffers(self.window)
         
     def cleanup(self):
         """Clean up resources"""
