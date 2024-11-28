@@ -5,11 +5,8 @@ doesn't seem reliable - sometimes the window isn't updated.
 Using glfw since we already use that as a requirement.
 '''
 
-import queue
-import argparse
-import textwrap
 import time
-import threading
+from typing import Callable
 
 import glfw
 import OpenGL.GL as gl
@@ -17,88 +14,49 @@ from PIL import Image
 
 import numpy as np
 
-from mcio_remote import util, LOG
+from mcio_remote import util
 
 class ImageStreamGui:
     def __init__(self, scale=1.0, width=800, height=600, name="MCio GUI"):
-        ...
-
-    def setup(self, scale=1.0, width=800, height=600, name="MCio GUI"):
         ''' scale allows you to use a window larger or smaller than the minecraft window '''
-        # Initialize GLFW
-        if not glfw.init():
-            raise Exception("GLFW initialization failed")
-            
-        # This fixes only filling the bottom-left 1/4 of the window on mac.
-        glfw.window_hint(glfw.COCOA_RETINA_FRAMEBUFFER, glfw.FALSE)
-        # Create window
-        self.window = glfw.create_window(width, height, name, None, None)
-        if not self.window:
-            glfw.terminate()
-            raise Exception("Window creation failed")
-            
-        # Set up OpenGL context
-        glfw.make_context_current(self.window)
-        gl.glClearColor(0.0, 0.0, 0.0, 1.0)
-
-        # Set callbacks
-        glfw.set_key_callback(self.window, self.key_callback)
-        glfw.set_cursor_pos_callback(self.window, self.cursor_position_callback)
-        glfw.set_mouse_button_callback(self.window, self.mouse_button_callback)
-        glfw.set_window_size_callback(self.window, self.resize_callback)
-        glfw.set_window_focus_callback(self.window, self.focus_callback)
-
-
-        self._frame_queue = util.LatestItemQueue()
+        self.window, self.is_focused = self._glfw_init(width, height, name)
 
         # Initialize
         self.frame_width = 0
         self.frame_height = 0
         self.scale = scale
-        self.is_focused = glfw.get_window_attrib(self.window, glfw.FOCUSED)
 
-        self.parent_thread = threading.Thread(target=self._continue_parent_thread)
-        self.parent_thread.start()
+    def _glfw_init(self, width, height, name):
+        # Initialize GLFW
+        if not glfw.init():
+            raise Exception("GLFW initialization failed")
 
-        # Flag to signal gui thread to stop.
-        self._running = threading.Event()
-        self._running.set()
+        # This fixes only filling the bottom-left 1/4 of the window on mac.
+        glfw.window_hint(glfw.COCOA_RETINA_FRAMEBUFFER, glfw.FALSE)
+        # Create window
+        window = glfw.create_window(width, height, name, None, None)
+        if not window:
+            glfw.terminate()
+            raise Exception("Window creation failed")
 
-        self._gui_thread_fn()
+        # Set up OpenGL context
+        glfw.make_context_current(window)
 
-        # # Start the gui thread 
-        # self._gui_thread = threading.Thread(target=self._gui_thread_fn, name="GuiThread")
-        # self._gui_thread.daemon = True
-        # self._gui_thread.start()
+        # Set callbacks
+        glfw.set_key_callback(window, self.key_callback)
+        glfw.set_cursor_pos_callback(window, self.cursor_position_callback)
+        glfw.set_mouse_button_callback(window, self.mouse_button_callback)
+        glfw.set_window_size_callback(window, self.resize_callback)
+        glfw.set_window_focus_callback(window, self.focus_callback)
 
-    def first(self):
-        ...
+        is_focused = glfw.get_window_attrib(window, glfw.FOCUSED)
 
-    def show(self, image: Image):
-        self._frame_queue.put(image)
+        return window, is_focused
 
-    def _gui_thread_fn(self, fps=60):
-        LOG.info("GuiThread start")
-        frame_time = 1.0 / fps  # Time per frame in seconds
-        while self._running.is_set() and not glfw.window_should_close(self.window):
-            start_time = time.perf_counter()
-            glfw.poll_events() # Poll for events
-
-            # Render next frame
-            try:
-                frame = self._frame_queue.get()
-            except queue.Empty:
-                pass
-            else:
-                self.render(frame)
-
-            # FPS limit
-            elapsed = time.perf_counter() - start_time
-            if elapsed < frame_time:
-                time.sleep(frame_time - elapsed)
-
-        self.cleanup()
-        LOG.info("GuiThread shutdown")
+    def show(self, frame):
+        glfw.poll_events() # Poll for events
+        self.render(frame)
+        return bool(glfw.window_should_close(self.window))
 
     def key_callback(self, window, key, scancode, action, mods):
         """Handle keyboard input"""
@@ -121,17 +79,17 @@ class ImageStreamGui:
         # Force a redraw
         glfw.post_empty_event()
 
+    def set_cursor_mode(self, mode: int):
+        ''' Minecraft uses glfw.CURSOR_NORMAL (212993) and glfw.CURSOR_DISABLED (212995) '''
+        glfw.set_input_mode(self.window, glfw.CURSOR, observation.cursor_mode)
+
     # Note: focused is 0 or 1
     def focus_callback(self, window, focused):
         pass
 
     def render(self, frame: Image):
-        """Render graphics"""
+        gl.glClearColor(0.0, 0.0, 0.0, 1.0)
         gl.glClear(gl.GL_COLOR_BUFFER_BIT)
-
-        # Link cursor mode to Minecraft. May regret this.
-        # XXX
-        #glfw.set_input_mode(self.window, glfw.CURSOR, observation.cursor_mode)
 
         # Prepare frame for opengl
         frame = np.flipud(np.array(frame))
@@ -183,5 +141,45 @@ class ImageStreamGui:
         
     def cleanup(self):
         """Clean up resources"""
-        self.controller.shutdown()
         glfw.terminate()
+
+class TestPattern:
+    def __init__(self, width=640, height=480, frequency=0.1):
+        self.width = width
+        self.height = height
+        self.frequency = frequency
+        self.step = 0
+        
+    def get_frame(self):
+        # Create image with background color
+        color = self.cycle_spectrum(self.step, self.frequency)
+        frame = np.full((self.height, self.width, 3), color, dtype=np.uint8)
+        self.step += 1
+        return frame
+
+    def sin(self, x, frequency, phase_shift):
+        # sin from 0 to 255. phase shift is fraction of 2*pi.
+        return 127.5 * (np.sin(frequency * x + (phase_shift * 2 * np.pi)) + 1)
+
+    def cycle_spectrum(self, step, frequency=0.1):
+        """
+        step: current step in the cycle
+        frequency: how fast to cycle through colors
+        """
+        r = self.sin(step, frequency, 3/12)     # 0 = max
+        g = self.sin(step, frequency, 11/12)    # 0 = going up
+        b = self.sin(step, frequency, 7/12)     # 0 = going down
+        return np.array([r, g, b], dtype=np.uint8)
+
+
+def main():
+    pat = TestPattern()
+    gui = ImageStreamGui()
+    while True:
+        frame = pat.get_frame()
+        if gui.show(frame):
+            break
+        time.sleep(.1)
+
+if __name__ == "__main__":
+    main()
