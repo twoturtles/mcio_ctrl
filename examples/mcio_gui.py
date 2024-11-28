@@ -96,7 +96,7 @@ class MCioGUI:
             # Convert PNG bytes to image
             frame = observation.get_frame_with_cursor()
             # Prepare frame for opengl
-            frame = np.flipud(np.array(frame))
+            frame = np.flipud(frame)
             frame = np.ascontiguousarray(frame)
 
             # shape = (height, width, channels)

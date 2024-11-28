@@ -3,7 +3,7 @@ from typing import Callable
 
 import glfw
 import OpenGL.GL as gl
-from PIL import Image
+from numpy.typing import NDArray
 
 import numpy as np
 
@@ -33,10 +33,10 @@ class ImageStreamGui:
         self.frame_height = 0
         self.scale = scale
 
-    def show(self, frame: Image) -> bool:
+    def show(self, frame: NDArray[np.uint8]) -> bool:
         """Display the next frame
         Args:
-            frame (Image): The new frame image
+            frame (NDArray[np.uint8]): The new frame image
         Returns:
             bool: should_close - received request to quit / close the window
         """
@@ -131,13 +131,13 @@ class ImageStreamGui:
 
         return window
 
-    def _render(self, frame: Image):
+    def _render(self, frame: NDArray[np.uint8]):
         ''' glfw portion of render '''
         self._auto_resize(frame)
         self._render_gl(frame)
         glfw.swap_buffers(self.window)
 
-    def _auto_resize(self, frame: Image):
+    def _auto_resize(self, frame: NDArray[np.uint8]):
         # shape = (height, width, channels)
         height = frame.shape[0]
         width = frame.shape[1]
@@ -147,7 +147,7 @@ class ImageStreamGui:
             self.frame_height = height
             glfw.set_window_size(self.window, int(width * self.scale), int(height * self.scale))
         
-    def _render_gl(self, frame: Image):
+    def _render_gl(self, frame: NDArray[np.uint8]):
         ''' opengl portion of render '''
         gl.glClearColor(0.0, 0.0, 0.0, 1.0)
         gl.glClear(gl.GL_COLOR_BUFFER_BIT)

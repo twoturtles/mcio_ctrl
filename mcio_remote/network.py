@@ -4,11 +4,12 @@ from typing import Set, List, Tuple
 import io
 import pprint
 import time
-import logging
 
 import cbor2
 import glfw
 import zmq
+import numpy as np
+from numpy.typing import NDArray
 from PIL import Image, ImageDraw
 
 from mcio_remote import LOG
@@ -69,7 +70,7 @@ class ObservationPacket:
         frame = Image.open(io.BytesIO(self.frame_png))
         return f"{repr(self)} frame.size={frame.size}"
 
-    def get_frame_with_cursor(self) -> Image:
+    def get_frame_with_cursor(self) -> NDArray[np.uint8]:
         # Convert PNG bytes to image
         frame = Image.open(io.BytesIO(self.frame_png))
         if self.cursor_mode == glfw.CURSOR_NORMAL:
@@ -78,7 +79,7 @@ class ObservationPacket:
             x, y = self.cursor_pos[0], self.cursor_pos[1]
             radius = 5
             draw.ellipse([x-radius, y-radius, x+radius, y+radius], fill='red')
-        return frame
+        return np.ascontiguousarray(frame)
 
 
 # Action packets sent by the agent to MCio

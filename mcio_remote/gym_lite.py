@@ -25,7 +25,6 @@ class GymLite:
     def reset(self, send_reset=True):
         if self.render_mode == 'human':
             self.gui = gui.ImageStreamGui()
-            print("HERE")
         if self.mcio_mode == 'async':
             self.ctrl = controller.ControllerAsync()
         else:
