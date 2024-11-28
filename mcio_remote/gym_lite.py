@@ -1,9 +1,8 @@
 from typing import Literal
 
-import cv2
 import numpy as np
 
-from mcio_remote import controller, network
+from mcio_remote import controller, network, gui
 
 class GymLite:
     '''
@@ -25,7 +24,8 @@ class GymLite:
 
     def reset(self, send_reset=True):
         if self.render_mode == 'human':
-            cv2.namedWindow(self.name, cv2.WINDOW_NORMAL)
+            self.gui = gui.ImageStreamGui()
+            print("HERE")
         if self.mcio_mode == 'async':
             self.ctrl = controller.ControllerAsync()
         else:
@@ -40,19 +40,7 @@ class GymLite:
     def render(self, observation: network.ObservationPacket):
         if self.render_mode == 'human':
             frame = observation.get_frame_with_cursor()
-            arr = np.asarray(frame)
-            cv2_frame = cv2.cvtColor(arr, cv2.COLOR_RGB2BGR)
-            cv2.imshow(self.name, cv2_frame)
-            height, width, _ = cv2_frame.shape
-            if height != self._window_height or width != self._window_width:
-                # On first frame or if size changed, resize window
-                self._window_width = width
-                self._window_height = height
-                cv2.resizeWindow(self.name, width, height)
-            # cv2 doesn't always update the window with the latest frame.
-            # Calling pollKey() twice seems to help.
-            cv2.pollKey()
-            cv2.pollKey()
+            self.gui.show(frame)
 
     def step(self, action):
         seq = self.ctrl.send_action(action)

@@ -3,10 +3,11 @@ import threading
 import time
 import sys
 import os
+import platform
+from typing import Callable
+
 
 import queue
-import argparse
-import textwrap
 
 import glfw
 import OpenGL.GL as gl
@@ -15,9 +16,6 @@ from PIL import Image
 import numpy as np
 
 from mcio_remote import util
-
-def pp(msg):
-    print(f'{os.getpid()}: {msg}')
 
 class TestPattern:
     def __init__(self, width=640, height=480, frequency=0.1):
@@ -42,77 +40,11 @@ class TestPattern:
         step: current step in the cycle
         frequency: how fast to cycle through colors
         """
-        r = self.sin(step, frequency, 3/12)
-        g = self.sin(step, frequency, 11/12)
-        b = self.sin(step, frequency, 7/12)
+        r = self.sin(step, frequency, 3/12)     # 0 = max
+        g = self.sin(step, frequency, 11/12)    # 0 = going up
+        b = self.sin(step, frequency, 7/12)     # 0 = going down
         return np.array([r, g, b], dtype=np.uint8)
 
-
-class DisplayManager:
-    def __init__(self):
-        # Create a queue for communication between processes
-        self._frame_queue = mp.Queue(maxsize=2)
-        self._cmd_queue = mp.Queue()
-        self._process = None
-        
-        # Start the display process (which will be our parent process)
-        self._start_display_process()
-        
-    def _start_display_process(self):
-        if sys.platform == 'darwin':
-            # On macOS, we need to use 'spawn' instead of 'fork'
-            mp.set_start_method('spawn', force=True)
-            
-        self._process = mp.Process(
-            target=self._run_display_loop,
-            args=(self._frame_queue, self._cmd_queue)
-        )
-        self._process.daemon = True
-        self._process.start()
-        
-    def show_frame(self, frame):
-        """Non-blocking frame send"""
-        try:
-            # Remove old frame if queue is full
-            if self._frame_queue.full():
-                try:
-                    self._frame_queue.get_nowait()
-                except:
-                    pass
-            self._frame_queue.put_nowait(frame)
-        except:
-            pass  # Skip frame if queue is full
-            
-    def close(self):
-        """Cleanup and close the display"""
-        self._cmd_queue.put("QUIT")
-        if self._process is not None:
-            self._process.join(timeout=1.0)
-            if self._process.is_alive():
-                self._process.terminate()
-    
-    @staticmethod
-    def _run_display_loop(frame_queue, cmd_queue):
-        """Main display loop that runs in the parent process"""
-        pp("Display loop running on parent process")
-        
-        while True:
-            # Check for commands
-            try:
-                cmd = cmd_queue.get_nowait()
-                if cmd == "QUIT":
-                    break
-            except:
-                pass
-                
-            # Check for new frames
-            try:
-                frame = frame_queue.get_nowait()
-                pp(f"Received frame: {frame}")  # In real GUI, would display the frame
-            except:
-                pass
-                
-            time.sleep(0.016)  # Simulate 60 FPS
 
 class ImageStreamGui:
     def __init__(self, scale=1.0, width=800, height=600, name="MCio GUI"):
@@ -123,32 +55,6 @@ class ImageStreamGui:
         self.frame_width = 0
         self.frame_height = 0
         self.scale = scale
-
-        self._frame_queue = util.LatestItemQueue()
-        # Flag to signal gui thread to stop.
-        self._running = threading.Event()
-        self._running.set()
-
-        # Start the gui thread 
-        # self._gui_thread = threading.Thread(target=self._gui_thread_fn, name="GuiThread")
-        # self._gui_thread.daemon = True
-        # self._gui_thread.start()
-
-        self.test_thread = threading.Thread(target=self.test_pattern,
-                                            args=[width, height], name='TestThread')
-        self.test_thread.daemon = True
-        self.test_thread.start()
-        self._gui_thread_fn()
-
-    def show(self, image: Image):
-        self._frame_queue.put(image)
-
-    def test_pattern(self, width, height, frequency=0.1):
-        pat = TestPattern(width, height, frequency=frequency)
-        while True:
-            frame = pat.get_frame()
-            self.show(frame)
-            time.sleep(.1)
 
     def _glfw_init(self, width, height, name):
         # Initialize GLFW
@@ -178,28 +84,10 @@ class ImageStreamGui:
 
         return window, is_focused
 
-    def _gui_thread_fn(self, fps=60):
-        print("GuiThread start")
-        frame_time = 1.0 / fps  # Time per frame in seconds
-        while self._running.is_set() and not glfw.window_should_close(self.window):
-            start_time = time.perf_counter()
-            glfw.poll_events() # Poll for events
-
-            # Render next frame
-            try:
-                frame = self._frame_queue.get()
-            except queue.Empty:
-                pass
-            else:
-                self.render(frame)
-
-            # FPS limit
-            elapsed = time.perf_counter() - start_time
-            if elapsed < frame_time:
-                time.sleep(frame_time - elapsed)
-
-        self.cleanup()
-        print("GuiThread shutdown")
+    def show(self, frame):
+        glfw.poll_events() # Poll for events
+        self.render(frame)
+        return bool(glfw.window_should_close(self.window))
 
     def key_callback(self, window, key, scancode, action, mods):
         """Handle keyboard input"""
@@ -227,7 +115,7 @@ class ImageStreamGui:
         pass
 
     def render(self, frame: Image):
-        """Render graphics"""
+        glfw.poll_events() # Poll for events
         gl.glClear(gl.GL_COLOR_BUFFER_BIT)
 
         # Link cursor mode to Minecraft. May regret this.
@@ -286,34 +174,14 @@ class ImageStreamGui:
         """Clean up resources"""
         glfw.terminate()
 
-def main1():
-    pp('start')
-
-    # Create the display manager
-    display = DisplayManager()
-    
-    # Simulate sending frames
-    try:
-        frame_count = 0
-        while frame_count < 10:  # Send 10 test frames
-            frame = f"Frame {frame_count}"
-            display.show_frame(frame)
-            pp(f"Sent {frame} ")
-            frame_count += 1
-            time.sleep(0.1)
-    finally:
-        display.close()
-
-def main2():
+def main():
     pat = TestPattern()
     gui = ImageStreamGui()
     while True:
         frame = pat.get_frame()
-        gui.show(frame)
+        if gui.show(frame):
+            break
         time.sleep(.1)
 
-def main3():
-    gui = ImageStreamGui()
-
 if __name__ == "__main__":
-    main3()
+    main()

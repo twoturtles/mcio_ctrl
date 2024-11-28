@@ -21,6 +21,9 @@ from mcio_remote import util, LOG
 
 class ImageStreamGui:
     def __init__(self, scale=1.0, width=800, height=600, name="MCio GUI"):
+        ...
+
+    def setup(self, scale=1.0, width=800, height=600, name="MCio GUI"):
         ''' scale allows you to use a window larger or smaller than the minecraft window '''
         # Initialize GLFW
         if not glfw.init():
@@ -54,11 +57,22 @@ class ImageStreamGui:
         self.scale = scale
         self.is_focused = glfw.get_window_attrib(self.window, glfw.FOCUSED)
 
-        # Start the gui thread 
-        self._gui_thread = threading.Thread(target=self._gui_thread_fn, name="GuiThread")
-        self._gui_thread.daemon = True
-        self._gui_thread.start()
+        self.parent_thread = threading.Thread(target=self._continue_parent_thread)
+        self.parent_thread.start()
 
+        # Flag to signal gui thread to stop.
+        self._running = threading.Event()
+        self._running.set()
+
+        self._gui_thread_fn()
+
+        # # Start the gui thread 
+        # self._gui_thread = threading.Thread(target=self._gui_thread_fn, name="GuiThread")
+        # self._gui_thread.daemon = True
+        # self._gui_thread.start()
+
+    def first(self):
+        ...
 
     def show(self, image: Image):
         self._frame_queue.put(image)
