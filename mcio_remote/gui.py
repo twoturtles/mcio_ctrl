@@ -81,6 +81,7 @@ class ImageStreamGui:
 
     def cleanup(self):
         """Clean up resources"""
+        glfw.set_window_should_close(self.window, True)
         glfw.terminate()
 
     # Default Callbacks
@@ -107,7 +108,7 @@ class ImageStreamGui:
 
     def default_focus_callback(self, window, focused):
         ''' Handle focus change Note: focused is 0 or 1 '''
-        pass
+        self.is_focused = bool(focused)
 
     #
     # Internal functions
