@@ -1,10 +1,3 @@
-'''
-Provide a simple gui interface.
-cv2 can provide something similar with less code, but its window rendering
-doesn't seem reliable - sometimes the window isn't updated.
-Using glfw since we already use that as a requirement.
-'''
-
 import time
 from typing import Callable
 
@@ -15,15 +8,110 @@ from PIL import Image
 import numpy as np
 
 class ImageStreamGui:
-    def __init__(self, scale=1.0, width=800, height=600, name="MCio GUI"):
-        ''' scale allows you to use a window larger or smaller than the minecraft window '''
+    """
+    Provides a simple interface to send a stream of images to a window.
+    cv2 can provide something similar with less code, but its window rendering
+    doesn't seem reliable - sometimes the window isn't updated.
+    Uses glfw since we already use that as a requirement.
+    """
+    ''' scale allows you to use a window larger or smaller than the minecraft window '''
+    def __init__(self, name: str = "MCio GUI", scale: float = 1.0, width: int = 800, height: int = 600):
+        """Create ImageStreamGui. Use show() to stream images to the window.
+
+        Args:
+            name (str, optional): Window title. Defaults to "MCio GUI".
+            scale (float, optional): Allows you to use a window larger or smaller than the Minecraft window. Defaults to 1.0.
+            width (int, optional): Initial window width in pixels. Defaults to 800.
+            height (int, optional): Initial window height in pixels. Defaults to 600.
+        """
         self.window = self._glfw_init(width, height, name)
-        self.is_focused = glfw.get_window_attrib(self.window, glfw.FOCUSED)
+        self.set_callbacks()
+        self.is_focused = bool(glfw.get_window_attrib(self.window, glfw.FOCUSED))
 
         # Initialize
         self.frame_width = 0
         self.frame_height = 0
         self.scale = scale
+
+    def show(self, frame: Image) -> bool:
+        """Display the next frame
+        Args:
+            frame (Image): The new frame image
+        Returns:
+            bool: should_close - received request to quit / close the window
+        """
+        glfw.poll_events() # Poll for events
+        self._render(frame)
+        should_close = bool(glfw.window_should_close(self.window))
+        return should_close
+
+    def set_callbacks(self,
+                key_callback: Callable | None = None,
+                cursor_position_callback: Callable | None = None,
+                mouse_button_callback: Callable | None = None,
+                resize_callback: Callable | None = None,
+                focus_callback: Callable | None = None
+                ) -> None:
+        """Set GLFW callbacks. See defaults for examples
+
+        Args:
+            key_callback (Callable | None, optional): Defaults to None.
+            cursor_position_callback (Callable | None, optional): Defaults to None.
+            mouse_button_callback (Callable | None, optional): Defaults to None.
+            resize_callback (Callable | None, optional): Defaults to None.
+            focus_callback (Callable | None, optional): Defaults to None.
+        """
+        # Use provided callbacks or fall back to defaults
+        self.key_callback = key_callback or self.default_key_callback
+        self.cursor_position_callback = cursor_position_callback or self.default_cursor_position_callback
+        self.mouse_button_callback = mouse_button_callback or self.default_mouse_button_callback
+        self.resize_callback = resize_callback or self.default_resize_callback
+        self.focus_callback = focus_callback or self.default_focus_callback
+
+        # Set the callbacks in GLFW
+        glfw.set_key_callback(self.window, self.key_callback)
+        glfw.set_cursor_pos_callback(self.window, self.cursor_position_callback)
+        glfw.set_mouse_button_callback(self.window, self.mouse_button_callback)
+        glfw.set_window_size_callback(self.window, self.resize_callback)
+        glfw.set_window_focus_callback(self.window, self.focus_callback)
+
+    def set_cursor_mode(self, mode: int):
+        ''' Set the cursor mode. Minecraft uses glfw.CURSOR_NORMAL (212993) and glfw.CURSOR_DISABLED (212995) '''
+        glfw.set_input_mode(self.window, glfw.CURSOR, mode)
+
+    def cleanup(self):
+        """Clean up resources"""
+        glfw.terminate()
+
+    # Default Callbacks
+    def default_key_callback(self, window, key, scancode, action, mods):
+        """Handle keyboard input"""
+        # Quit handling
+        if key == glfw.KEY_Q and action == glfw.PRESS:
+            glfw.set_window_should_close(self.window, True)
+            return
+
+    def default_cursor_position_callback(self, window, xpos, ypos):
+        """Handle mouse movement"""
+        pass
+        
+    def default_mouse_button_callback(self, window, button, action, mods):
+        """Handle mouse button events"""
+        pass
+
+    def default_resize_callback(self, window, width, height):
+        """Handle window resize"""
+        gl.glViewport(0, 0, width, height)
+        # Force a redraw
+        glfw.post_empty_event()
+
+    def default_focus_callback(self, window, focused):
+        ''' Handle focus change Note: focused is 0 or 1 '''
+        pass
+
+    #
+    # Internal functions
+    #
 
     def _glfw_init(self, width, height, name):
         # Initialize GLFW
@@ -41,51 +129,15 @@ class ImageStreamGui:
         # Set up OpenGL context
         glfw.make_context_current(window)
 
-        # Set callbacks
-        glfw.set_key_callback(window, self.key_callback)
-        glfw.set_cursor_pos_callback(window, self.cursor_position_callback)
-        glfw.set_mouse_button_callback(window, self.mouse_button_callback)
-        glfw.set_window_size_callback(window, self.resize_callback)
-        glfw.set_window_focus_callback(window, self.focus_callback)
-
         return window
-
-    def show(self, frame):
-        glfw.poll_events() # Poll for events
-        self._render(frame)
-        return bool(glfw.window_should_close(self.window))
-
-    def key_callback(self, window, key, scancode, action, mods):
-        """Handle keyboard input"""
-        # Quit handling
-        if key == glfw.KEY_Q and action == glfw.PRESS:
-            glfw.set_window_should_close(self.window, True)
-            return
-
-    def cursor_position_callback(self, window, xpos, ypos):
-        """Handle mouse movement"""
-        pass
-        
-    def mouse_button_callback(self, window, button, action, mods):
-        """Handle mouse button events"""
-        pass
-
-    def resize_callback(self, window, width, height):
-        """Handle window resize"""
-        gl.glViewport(0, 0, width, height)
-        # Force a redraw
-        glfw.post_empty_event()
-
-    def set_cursor_mode(self, mode: int):
-        ''' Minecraft uses glfw.CURSOR_NORMAL (212993) and glfw.CURSOR_DISABLED (212995) '''
-        glfw.set_input_mode(self.window, glfw.CURSOR, observation.cursor_mode)
-
-    # Note: focused is 0 or 1
-    def focus_callback(self, window, focused):
-        pass
 
     def _render(self, frame: Image):
         ''' glfw portion of render '''
+        self._auto_resize(frame)
+        self._render_gl(frame)
+        glfw.swap_buffers(self.window)
+
+    def _auto_resize(self, frame: Image):
         # shape = (height, width, channels)
         height = frame.shape[0]
         width = frame.shape[1]
@@ -94,9 +146,6 @@ class ImageStreamGui:
             self.frame_width = width
             self.frame_height = height
             glfw.set_window_size(self.window, int(width * self.scale), int(height * self.scale))
-
-        self._render_gl(frame)
-        glfw.swap_buffers(self.window)
         
     def _render_gl(self, frame: Image):
         ''' opengl portion of render '''
@@ -142,11 +191,8 @@ class ImageStreamGui:
         gl.glDisable(gl.GL_TEXTURE_2D)
         gl.glDeleteTextures([texture])
         
-    def cleanup(self):
-        """Clean up resources"""
-        glfw.terminate()
-
 class TestPattern:
+    ''' Generate a stream of images. Useful for testing. '''
     def __init__(self, width=640, height=480, frequency=0.1):
         self.width = width
         self.height = height
@@ -175,14 +221,21 @@ class TestPattern:
         return np.array([r, g, b], dtype=np.uint8)
 
 
+# Testing
 def main():
     pat = TestPattern()
     gui = ImageStreamGui()
+
+    def cursor_position_callback(window, xpos, ypos):
+        print(xpos, ypos)
+    gui.set_callbacks(cursor_position_callback=cursor_position_callback)
+
     while True:
         frame = pat.get_frame()
         if gui.show(frame):
             break
         time.sleep(.1)
+    gui.cleanup()
 
 if __name__ == "__main__":
     main()
