@@ -5,18 +5,18 @@
 import queue
 import argparse
 import textwrap
+import time
 
 import glfw
 import OpenGL.GL as gl
-
-import numpy as np
 
 import mcio_remote as mcio
 from mcio_remote import LOG
 
 class MCioGUI:
-    def __init__(self, name="MCio GUI", scale=1.0):
+    def __init__(self, name:str = "MCio GUI", scale:float=1.0, fps:int=60):
         self.scale = scale
+        self.fps = fps if fps > 0 else 60
         self.running = True
         self.gui = mcio.ImageStreamGui("MCio GUI", scale=scale, width=800, height=600)
         self.controller = mcio.ControllerAsync()
@@ -67,7 +67,11 @@ class MCioGUI:
         
     def run(self):
         """Main application loop"""
+        frame_time = 1.0 / self.fps
+        fps_track = mcio.TrackPerSecond("FPS")
         while self.running:
+            frame_start = time.perf_counter()
+            self.gui.poll()
             try:
                 observation = self.controller.recv_observation(block=False)
             except queue.Empty:
@@ -76,6 +80,13 @@ class MCioGUI:
                 LOG.debug(observation)
                 self.show(observation)
             
+            # Calculate sleep time to maintain target FPS
+            elapsed = time.perf_counter() - frame_start
+            sleep_time = max(0, frame_time - elapsed)
+            if sleep_time > 0:
+                time.sleep(sleep_time)
+            fps_track.count()
+
         # Cleanup
         LOG.info("Exiting...")
         self.cleanup()
@@ -95,9 +106,11 @@ def parse_args():
     )
     parser.add_argument('--scale', type=float, default=1.0,
                         help='Window scale factor')
+    parser.add_argument('--fps', type=int, default=60,
+                        help='Set fps limit')
     return parser.parse_args()
 
 if __name__ == "__main__":
     args = parse_args()
-    app = MCioGUI(args.scale)
+    app = MCioGUI(scale=args.scale, fps=args.fps)
     app.run()
