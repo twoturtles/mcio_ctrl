@@ -4,6 +4,8 @@ import pygame
 import numpy as np
 import glfw
 
+import mcio_remote as mcio
+
 
 # Define the subset of all keys/buttons that we're using
 MINECRAFT_KEYS = [
@@ -20,7 +22,9 @@ MINECRAFT_MOUSE_BUTTONS = [
     glfw.MOUSE_BUTTON_RIGHT,
 ]
 
+NO_ACTION = -1
 ACTIONS = [
+    NO_ACTION,
     glfw.PRESS,
     glfw.RELEASE
 ]
@@ -32,9 +36,6 @@ class MCioEnv(gym.Env):
     def __init__(self, width=640, height=480, render_mode=None):
         self.window_size = 512  # The size of the PyGame window
 
-        # Observations are dictionaries with the agent's and the target's location.
-        # Each location is encoded as an element of {0, ..., `size`}^2,
-        # i.e. MultiDiscrete([size, size]).
         self.observation_space = spaces.Dict(
             {
                 # shape = (height, width, channels)
@@ -59,13 +60,13 @@ class MCioEnv(gym.Env):
 
         self.action_space = spaces.Dict({
             'keys': spaces.Dict({
-                str(key): spaces.Discrete(3)  # 0 for no action, 1 for PRESS, 2 for RELEASE
+                str(key): spaces.Discrete(len(ACTIONS))
                 for key in MINECRAFT_KEYS
             }),
 
             # Mouse button actions
             'mouse_buttons': spaces.Dict({
-                str(button): spaces.Discrete(3)  # 0 for no action, 1 for PRESS, 2 for RELEASE
+                str(button): spaces.Discrete(len(ACTIONS))
                 for button in MINECRAFT_MOUSE_BUTTONS
             }),
 
@@ -76,18 +77,6 @@ class MCioEnv(gym.Env):
                 dtype=np.float32
             )
         })
-
-        """
-        The following dictionary maps abstract actions from `self.action_space` to
-        the direction we will walk in if that action is taken.
-        i.e. 0 corresponds to "right", 1 to "up" etc.
-        """
-        self._action_to_direction = {
-            Actions.right.value: np.array([1, 0]),
-            Actions.up.value: np.array([0, 1]),
-            Actions.left.value: np.array([-1, 0]),
-            Actions.down.value: np.array([0, -1]),
-        }
 
         assert render_mode is None or render_mode in self.metadata["render_modes"]
         self.render_mode = render_mode
@@ -101,6 +90,29 @@ class MCioEnv(gym.Env):
         """
         self.window = None
         self.clock = None
+
+    def build_action_packet(action) -> mcio.ActionPacket:
+        packet = mcio.ActionPacket()
+
+        # Convert key actions to (key, action) pairs
+        keys = []
+        for key, val in action['keys'].items():
+            if val != NO_ACTION:
+                keys.append((int(key), val))
+        packet.keys = keys
+
+        # Convert mouse button actions to (button, action) pairs
+        buttons = []
+        for button, val in action['mouse_buttons'].items():
+            if val != NO_ACTION:
+                buttons.append((int(button), val))
+        packet.buttons = buttons
+
+        # Convert mouse position
+        if not np.array_equal(action['mouse_pos'], [0, 0]):  # Only include if moved
+            packet.mouse_pos = [(float(action['mouse_pos'][0]), float(action['mouse_pos'][1]))]
+
+        return packet
 
     def _get_obs(self):
         return {"agent": self._agent_location, "target": self._target_location}
