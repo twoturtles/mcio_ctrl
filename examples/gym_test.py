@@ -1,5 +1,4 @@
 import argparse
-import sys
 import textwrap
 
 import mcio_remote as mcio
@@ -9,19 +8,19 @@ import gymnasium as gym
 import mcio_env
 
 
-
-def step(n_steps: int, wait: bool = False):
-    env = gym.make('mcio_env/MCioEnv-v0')
-    observation = env.reset()
-    print(f'Step 1 (reset): {observation}')
-    if n_steps == 0 or wait:
-        n_steps = sys.maxsize # Go forever
-    for i in range(1, n_steps):
-        if wait:
-            input("Step> ")
+def run():
+    env = gym.make('mcio_env/MCioEnv-v0', render_mode='human')
+    step = 0
+    observation, info = env.reset()
+    print(f'Step {step}: {observation}')
+    step += 1
+    done = False
+    while not done:
         action = mcio.ActionPacket()
-        observation = env.step(action)
-        print(f'Step {i+1}: {observation}')
+        observation, reward, terminated, truncated, info = env.step(action)
+        # print(f'Step {step}: {observation}')
+        step += 1
+        done = terminated or truncated
 
     env.close()
 
@@ -40,4 +39,4 @@ if __name__ == "__main__":
     args = parse_args()
     #mcio.LOG.setLevel(mcio.logging.WARNING)
 
-    step(args.steps, args.wait)
+    run()

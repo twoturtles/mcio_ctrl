@@ -32,7 +32,6 @@ ACTIONS = [
     glfw.RELEASE
 ]
 
-
 class MCioEnv(gym.Env):
     metadata = {"render_modes": ["human", "rgb_array"], "render_fps": 60}
 
@@ -40,26 +39,23 @@ class MCioEnv(gym.Env):
                  mcio_mode: Literal["sync", "async"] = "sync",
                  render_mode=None):
         self.mcio_mode = mcio_mode
-        self.window_size = 512  # The size of the PyGame window
+        self.width = width
+        self.height = height
+        self.last_most_pos = (None, None)
+        self.last_frame = None
 
         self.observation_space = spaces.Dict(
             {
-                # shape = (height, width, channels)
-                'frame': spaces.Box(
-                    low=0,
-                    high=255,
-                    shape=(height, width, 3),
-                    dtype=np.uint8
-                ),
+                'frame': spaces.Box(low=0, high=255,
+                                    # shape = (height, width, channels)
+                                    shape=(height, width, 3),
+                                    dtype=np.uint8),
 
-                'player_pos': spaces.Box(
-                    low=np.array(nf32([-np.inf, -np.inf, -np.inf])),
-                    high=np.array(nf32([np.inf, np.inf, np.inf])),
-                    dtype=np.float32
-                ),
+                'player_pos': spaces.Box(low=nf32([-np.inf, -np.inf, -np.inf]),
+                                         high=nf32([np.inf, np.inf, np.inf])),
 
-                'player_pitch': spaces.Box(low=nf32(-90), high=nf32(90), dtype=np.float32),
-                'player_yaw': spaces.Box(low=nf32(-180), high=nf32(180), dtype=np.float32),
+                'player_pitch': spaces.Box(low=nf32(-90), high=nf32(90)),
+                'player_yaw': spaces.Box(low=nf32(-180), high=nf32(180))
             }
         )
 
@@ -75,12 +71,7 @@ class MCioEnv(gym.Env):
                 for button in MINECRAFT_MOUSE_BUTTONS
             }),
 
-            # Mouse position - assuming screen coordinates
-            'mouse_pos': spaces.Box(
-                low=np.array([0, 0]),
-                high=np.array([width, height]),
-                dtype=np.float32
-            )
+            'mouse_pos': spaces.Box(low=nf32([-np.inf, -np.inf]), high=nf32([np.inf, np.inf]))
         })
 
         assert render_mode is None or render_mode in self.metadata["render_modes"]
@@ -96,15 +87,24 @@ class MCioEnv(gym.Env):
         self.window = None
         self.clock = None
 
+    def _get_obs(self):
+        packet = self.ctrl.recv_observation()
+        return self._packet_to_observation(packet)
+
     def _packet_to_observation(self, packet:mcio.ObservationPacket) -> dict:
         # Convert all fields to numpy arrays with correct dtypes
+        self.last_frame = packet.get_frame_with_cursor()
         observation = {
-            'frame': packet.get_frame_with_cursor(),
+            'frame': self.last_frame,
             'player_pos': nf32(packet.player_pos),
             'player_pitch': nf32(packet.player_pitch),
             'player_yaw': nf32(packet.player_yaw)
         }
         return observation
+
+    def _send_action(self, action:dict):
+        packet = self._action_to_packet(action)
+        self.ctrl.send_action(packet)
 
     def _action_to_packet(self, action:dict) -> mcio.ActionPacket:
         packet = mcio.ActionPacket()
@@ -124,14 +124,12 @@ class MCioEnv(gym.Env):
         packet.buttons = buttons
 
         # Convert mouse position
+        print(action['mouse_pos'])
+        # XXX
         if not np.array_equal(action['mouse_pos'], [0, 0]):  # Only include if moved
             packet.mouse_pos = [(float(action['mouse_pos'][0]), float(action['mouse_pos'][1]))]
 
         return packet
-
-    def _get_obs(self):
-        packet = self.ctrl.recv_observation()
-        return self._packet_to_observation(packet)
 
     def _get_info(self):
         return {}
@@ -144,9 +142,13 @@ class MCioEnv(gym.Env):
             self.ctrl = controller.ControllerAsync()
         else:
             self.ctrl = controller.ControllerSync()
+        # print(self.action_space.sample())
         # Send empty action to trigger an observation
-        action = network.ActionPacket()
-        self.ctrl.send_action(action)
+        self._send_action({
+            'keys': {},
+            'mouse_buttons': {},
+            'mouse_pos': nf32([0,0])
+        })
         observation = self._get_obs()
         info = self._get_info()
 
@@ -178,64 +180,23 @@ class MCioEnv(gym.Env):
         if self.window is None and self.render_mode == "human":
             pygame.init()
             pygame.display.init()
-            self.window = pygame.display.set_mode((self.window_size, self.window_size))
+            self.window = pygame.display.set_mode((self.width, self.height))
         if self.clock is None and self.render_mode == "human":
             self.clock = pygame.time.Clock()
 
-        canvas = pygame.Surface((self.window_size, self.window_size))
-        canvas.fill((255, 255, 255))
-        pix_square_size = (
-            self.window_size / self.size
-        )  # The size of a single grid square in pixels
+        if self.last_frame is None:
+            return
 
-        # First we draw the target
-        pygame.draw.rect(
-            canvas,
-            (255, 0, 0),
-            pygame.Rect(
-                pix_square_size * self._target_location,
-                (pix_square_size, pix_square_size),
-            ),
-        )
-        # Now we draw the agent
-        pygame.draw.circle(
-            canvas,
-            (0, 0, 255),
-            (self._agent_location + 0.5) * pix_square_size,
-            pix_square_size / 3,
-        )
+        # Convert numpy array to Pygame surface
+        # Ensure frame is in the correct format (HxWx3 uint8)
+        frame = np.transpose(self.last_frame, (1, 0, 2)) if self.last_frame is not None else None
+        surface = pygame.surfarray.make_surface(frame)
 
-        # Finally, add some gridlines
-        for x in range(self.size + 1):
-            pygame.draw.line(
-                canvas,
-                0,
-                (0, pix_square_size * x),
-                (self.window_size, pix_square_size * x),
-                width=3,
-            )
-            pygame.draw.line(
-                canvas,
-                0,
-                (pix_square_size * x, 0),
-                (pix_square_size * x, self.window_size),
-                width=3,
-            )
+        # Draw the surface to the window
+        self.window.blit(surface, (0, 0))
 
-        if self.render_mode == "human":
-            # The following line copies our drawings from `canvas` to the visible window
-            self.window.blit(canvas, canvas.get_rect())
-            pygame.event.pump()
-            pygame.display.update()
-
-            # We need to ensure that human-rendering occurs at the predefined framerate.
-            # The following line will automatically add a delay to
-            # keep the framerate stable.
-            self.clock.tick(self.metadata["render_fps"])
-        else:  # rgb_array
-            return np.transpose(
-                np.array(pygame.surfarray.pixels3d(canvas)), axes=(1, 0, 2)
-            )
+        # Update the display
+        pygame.display.flip()
 
     def close(self):
         if self.window is not None:
