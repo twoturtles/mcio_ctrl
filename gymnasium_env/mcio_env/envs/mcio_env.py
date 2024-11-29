@@ -1,3 +1,5 @@
+from typing import Literal, TypedDict
+
 import gymnasium as gym
 from gymnasium import spaces
 import pygame
@@ -5,7 +7,7 @@ import numpy as np
 import glfw
 
 import mcio_remote as mcio
-
+from mcio_remote import controller, network
 
 # Define the subset of all keys/buttons that we're using
 MINECRAFT_KEYS = [
@@ -33,9 +35,13 @@ ACTIONS = [
 class MCioEnv(gym.Env):
     metadata = {"render_modes": ["human", "rgb_array"], "render_fps": 60}
 
-    def __init__(self, width=640, height=480, render_mode=None):
+    def __init__(self, width=640, height=480,
+                 mcio_mode: Literal["sync", "async"] = "sync",
+                 render_mode=None):
+        self.mcio_mode = mcio_mode
         self.window_size = 512  # The size of the PyGame window
 
+        inf32 = np.float32(np.inf)
         self.observation_space = spaces.Dict(
             {
                 # shape = (height, width, channels)
@@ -47,14 +53,13 @@ class MCioEnv(gym.Env):
                 ),
 
                 'player_pos': spaces.Box(
-                    low=np.array([-np.inf, -np.inf, -np.inf]),
-                    high=np.array([np.inf, np.inf, np.inf]),
+                    low=np.array([-inf32, -inf32, -inf32]),
+                    high=np.array([inf32, inf32, inf32]),
                     dtype=np.float32
                 ),
 
                 'player_pitch': spaces.Box(low=-90.0, high=90.0, shape=(), dtype=np.float32),
                 'player_yaw': spaces.Box(low=-180.0, high=180.0, shape=(), dtype=np.float32),
-
             }
         )
 
@@ -91,7 +96,17 @@ class MCioEnv(gym.Env):
         self.window = None
         self.clock = None
 
-    def build_action_packet(action) -> mcio.ActionPacket:
+    def _packet_to_observation(self, packet:mcio.ObservationPacket) -> dict:
+        # Convert all fields to numpy arrays with correct dtypes
+        observation = {
+            'frame': packet.get_frame_with_cursor(),
+            'player_pos': np.array(packet.player_pos, dtype=np.float32),
+            'player_pitch': np.array(packet.player_pitch, dtype=np.float32),
+            'player_yaw': np.array(packet.player_yaw, dtype=np.float32),
+        }
+        return observation
+
+    def _action_to_packet(self, action:dict) -> mcio.ActionPacket:
         packet = mcio.ActionPacket()
 
         # Convert key actions to (key, action) pairs
@@ -115,30 +130,23 @@ class MCioEnv(gym.Env):
         return packet
 
     def _get_obs(self):
-        return {"agent": self._agent_location, "target": self._target_location}
+        packet = self.ctrl.recv_observation()
+        return self._packet_to_observation(packet)
 
     def _get_info(self):
-        return {
-            "distance": np.linalg.norm(
-                self._agent_location - self._target_location, ord=1
-            )
-        }
+        return {}
 
     def reset(self, seed=None, options=None):
         # We need the following line to seed self.np_random
         super().reset(seed=seed)
 
-        # Choose the agent's location uniformly at random
-        self._agent_location = self.np_random.integers(0, self.size, size=2, dtype=int)
-
-        # We will sample the target's location randomly until it does not
-        # coincide with the agent's location
-        self._target_location = self._agent_location
-        while np.array_equal(self._target_location, self._agent_location):
-            self._target_location = self.np_random.integers(
-                0, self.size, size=2, dtype=int
-            )
-
+        if self.mcio_mode == 'async':
+            self.ctrl = controller.ControllerAsync()
+        else:
+            self.ctrl = controller.ControllerSync()
+        # Send empty action to trigger an observation
+        action = network.ActionPacket()
+        self.ctrl.send_action(action)
         observation = self._get_obs()
         info = self._get_info()
 
@@ -148,22 +156,20 @@ class MCioEnv(gym.Env):
         return observation, info
 
     def step(self, action):
-        # Map the action (element of {0,1,2,3}) to the direction we walk in
-        direction = self._action_to_direction[action]
-        # We use `np.clip` to make sure we don't leave the grid
-        self._agent_location = np.clip(
-            self._agent_location + direction, 0, self.size - 1
-        )
-        # An episode is done iff the agent has reached the target
-        terminated = np.array_equal(self._agent_location, self._target_location)
-        reward = 1 if terminated else 0  # Binary sparse rewards
+        print(action)
+        action = network.ActionPacket()
+        self.ctrl.send_action(action)
+
         observation = self._get_obs()
+        reward = 0
+        terminated = False
+        truncated = False
         info = self._get_info()
 
         if self.render_mode == "human":
             self._render_frame()
 
-        return observation, reward, terminated, False, info
+        return observation, reward, terminated, truncated, info
 
     def render(self):
         if self.render_mode == "rgb_array":
