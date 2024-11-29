@@ -57,7 +57,7 @@ class MCioEnv(gym.Env):
             }
         )
 
-        action_space = spaces.Dict({
+        self.action_space = spaces.Dict({
             'keys': spaces.Dict({
                 str(key): spaces.Discrete(3)  # 0 for no action, 1 for PRESS, 2 for RELEASE
                 for key in MINECRAFT_KEYS
