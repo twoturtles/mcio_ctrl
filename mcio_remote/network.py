@@ -1,6 +1,6 @@
 # Code for communicating with the MCio mod
 from dataclasses import dataclass, asdict, field
-from typing import Set, List, Tuple
+from typing import List, Tuple
 import io
 import pprint
 import time

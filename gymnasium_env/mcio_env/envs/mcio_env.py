@@ -1,9 +1,10 @@
-from typing import Literal, TypedDict
+from typing import Literal, Sequence
 
 import gymnasium as gym
 from gymnasium import spaces
 import pygame
 import numpy as np
+from numpy.typing import NDArray
 import glfw
 
 import mcio_remote as mcio
@@ -41,7 +42,6 @@ class MCioEnv(gym.Env):
         self.mcio_mode = mcio_mode
         self.window_size = 512  # The size of the PyGame window
 
-        inf32 = np.float32(np.inf)
         self.observation_space = spaces.Dict(
             {
                 # shape = (height, width, channels)
@@ -53,13 +53,13 @@ class MCioEnv(gym.Env):
                 ),
 
                 'player_pos': spaces.Box(
-                    low=np.array([-inf32, -inf32, -inf32]),
-                    high=np.array([inf32, inf32, inf32]),
+                    low=np.array(nf32([-np.inf, -np.inf, -np.inf])),
+                    high=np.array(nf32([np.inf, np.inf, np.inf])),
                     dtype=np.float32
                 ),
 
-                'player_pitch': spaces.Box(low=-90.0, high=90.0, shape=(), dtype=np.float32),
-                'player_yaw': spaces.Box(low=-180.0, high=180.0, shape=(), dtype=np.float32),
+                'player_pitch': spaces.Box(low=nf32(-90), high=nf32(90), dtype=np.float32),
+                'player_yaw': spaces.Box(low=nf32(-180), high=nf32(180), dtype=np.float32),
             }
         )
 
@@ -100,9 +100,9 @@ class MCioEnv(gym.Env):
         # Convert all fields to numpy arrays with correct dtypes
         observation = {
             'frame': packet.get_frame_with_cursor(),
-            'player_pos': np.array(packet.player_pos, dtype=np.float32),
-            'player_pitch': np.array(packet.player_pitch, dtype=np.float32),
-            'player_yaw': np.array(packet.player_yaw, dtype=np.float32),
+            'player_pos': nf32(packet.player_pos),
+            'player_pitch': nf32(packet.player_pitch),
+            'player_yaw': nf32(packet.player_yaw)
         }
         return observation
 
@@ -156,7 +156,6 @@ class MCioEnv(gym.Env):
         return observation, info
 
     def step(self, action):
-        print(action)
         action = network.ActionPacket()
         self.ctrl.send_action(action)
 
@@ -242,3 +241,11 @@ class MCioEnv(gym.Env):
         if self.window is not None:
             pygame.display.quit()
             pygame.quit()
+
+def nf32(seq: Sequence|int|float) -> NDArray[np.float32]:
+    ''' Convert to np.float32 arrays. Turns single values into 1D arrays. '''
+    if isinstance(seq, (int, float)):
+        seq = [float(seq)]
+    seq = [np.float32(val) for val in seq]
+    a = np.array(seq, dtype=np.float32)
+    return a
