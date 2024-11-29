@@ -1,1 +1,1 @@
-from mcio_env.envs.grid_world import GridWorldEnv
+from mcio_env.envs.mcio_env import MCioEnv

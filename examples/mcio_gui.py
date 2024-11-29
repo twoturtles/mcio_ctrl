@@ -111,6 +111,7 @@ def parse_args():
     return parser.parse_args()
 
 if __name__ == "__main__":
+    mcio.LOG.setLevel(mcio.logging.DEBUG)
     args = parse_args()
     app = MCioGUI(scale=args.scale, fps=args.fps)
     app.run()

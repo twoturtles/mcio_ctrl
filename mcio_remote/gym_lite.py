@@ -7,8 +7,6 @@ from mcio_remote import controller, network, gui
 class GymLite:
     '''
     Stub in how gymn will work. Higher level interface than Controller
-    This is async in the sense that it doesn't ensure the received observation follows the previous
-    action. But it does still block on recv.
     '''
     def __init__(self,
                  name: str|None = None,
