@@ -1,22 +1,35 @@
-from enum import Enum
 import gymnasium as gym
 from gymnasium import spaces
 import pygame
 import numpy as np
+import glfw
 
 
-class Actions(Enum):
-    right = 0
-    up = 1
-    left = 2
-    down = 3
+# Define the subset of all keys/buttons that we're using
+MINECRAFT_KEYS = [
+    glfw.KEY_W,
+    glfw.KEY_A,
+    glfw.KEY_S,
+    glfw.KEY_D,
+    glfw.KEY_SPACE,
+    glfw.KEY_LEFT_SHIFT,
+]
+
+MINECRAFT_MOUSE_BUTTONS = [
+    glfw.MOUSE_BUTTON_LEFT,
+    glfw.MOUSE_BUTTON_RIGHT,
+]
+
+ACTIONS = [
+    glfw.PRESS,
+    glfw.RELEASE
+]
 
 
-class GridWorldEnv(gym.Env):
-    metadata = {"render_modes": ["human", "rgb_array"], "render_fps": 4}
+class MCioEnv(gym.Env):
+    metadata = {"render_modes": ["human", "rgb_array"], "render_fps": 60}
 
-    def __init__(self, render_mode=None, size=5):
-        self.size = size  # The size of the square grid
+    def __init__(self, width=640, height=480, render_mode=None):
         self.window_size = 512  # The size of the PyGame window
 
         # Observations are dictionaries with the agent's and the target's location.
@@ -24,16 +37,48 @@ class GridWorldEnv(gym.Env):
         # i.e. MultiDiscrete([size, size]).
         self.observation_space = spaces.Dict(
             {
-                "agent": spaces.Box(0, size - 1, shape=(2,), dtype=int),
-                "target": spaces.Box(0, size - 1, shape=(2,), dtype=int),
+                # shape = (height, width, channels)
+                'frame': spaces.Box(
+                    low=0,
+                    high=255,
+                    shape=(height, width, 3),
+                    dtype=np.uint8
+                ),
+
+                'player_pos': spaces.Box(
+                    low=np.array([-np.inf, -np.inf, -np.inf]),
+                    high=np.array([np.inf, np.inf, np.inf]),
+                    dtype=np.float32
+                ),
+
+                'player_pitch': spaces.Box(low=-90.0, high=90.0, shape=(), dtype=np.float32),
+                'player_yaw': spaces.Box(low=-180.0, high=180.0, shape=(), dtype=np.float32),
+
             }
         )
 
-        # We have 4 actions, corresponding to "right", "up", "left", "down", "right"
-        self.action_space = spaces.Discrete(4)
+        action_space = spaces.Dict({
+            'keys': spaces.Dict({
+                str(key): spaces.Discrete(3)  # 0 for no action, 1 for PRESS, 2 for RELEASE
+                for key in MINECRAFT_KEYS
+            }),
+
+            # Mouse button actions
+            'mouse_buttons': spaces.Dict({
+                str(button): spaces.Discrete(3)  # 0 for no action, 1 for PRESS, 2 for RELEASE
+                for button in MINECRAFT_MOUSE_BUTTONS
+            }),
+
+            # Mouse position - assuming screen coordinates
+            'mouse_pos': spaces.Box(
+                low=np.array([0, 0]),
+                high=np.array([width, height]),
+                dtype=np.float32
+            )
+        })
 
         """
-        The following dictionary maps abstract actions from `self.action_space` to 
+        The following dictionary maps abstract actions from `self.action_space` to
         the direction we will walk in if that action is taken.
         i.e. 0 corresponds to "right", 1 to "up" etc.
         """
