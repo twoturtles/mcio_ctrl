@@ -43,6 +43,7 @@ class MCioEnv(gym.Env):
         self.height = height
         self.last_most_pos = (None, None)
         self.last_frame = None
+        self.window = None
 
         self.observation_space = spaces.Dict(
             {
@@ -76,16 +77,6 @@ class MCioEnv(gym.Env):
 
         assert render_mode is None or render_mode in self.metadata["render_modes"]
         self.render_mode = render_mode
-
-        """
-        If human-rendering is used, `self.window` will be a reference
-        to the window that we draw to. `self.clock` will be a clock that is used
-        to ensure that the environment is rendered at the correct framerate in
-        human-mode. They will remain `None` until human-mode is used for the
-        first time.
-        """
-        self.window = None
-        self.clock = None
 
     def _get_obs(self):
         packet = self.ctrl.recv_observation()
@@ -153,7 +144,7 @@ class MCioEnv(gym.Env):
         info = self._get_info()
 
         if self.render_mode == "human":
-            self._render_frame()
+            self._render_frame_human()
 
         return observation, info
 
@@ -168,34 +159,38 @@ class MCioEnv(gym.Env):
         info = self._get_info()
 
         if self.render_mode == "human":
-            self._render_frame()
+            self._render_frame_human()
 
         return observation, reward, terminated, truncated, info
 
     def render(self):
-        if self.render_mode == "rgb_array":
-            return self._render_frame()
+        if self.render_mode == 'human':
+            self._render_frame_human()
+        elif self.render_mode == "rgb_array":
+            return self._render_frame_rgb_array()
 
-    def _render_frame(self):
+    def _render_frame_rgb_array():
+        ...
+
+    def _render_frame_human(self):
         if self.window is None and self.render_mode == "human":
             pygame.init()
             pygame.display.init()
             self.window = pygame.display.set_mode((self.width, self.height))
-        if self.clock is None and self.render_mode == "human":
-            self.clock = pygame.time.Clock()
 
         if self.last_frame is None:
             return
 
-        # Convert numpy array to Pygame surface
-        # Ensure frame is in the correct format (HxWx3 uint8)
-        frame = np.transpose(self.last_frame, (1, 0, 2)) if self.last_frame is not None else None
+        # numpy shape is (height, width, channels),
+        # pygame wants (width, height, channels)
+        frame = np.transpose(self.last_frame, (1, 0, 2))
         surface = pygame.surfarray.make_surface(frame)
 
         # Draw the surface to the window
         self.window.blit(surface, (0, 0))
 
         # Update the display
+        pygame.event.pump()
         pygame.display.flip()
 
     def close(self):
