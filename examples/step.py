@@ -16,7 +16,7 @@ def step(n_steps: int, wait: bool = False):
     for i in range(1, n_steps):
         if wait:
             input("Step> ")
-        action = mcio.ActionPacket()
+        action = mcio.network.ActionPacket()
         observation = env.step(action)
         print(f"Step {i+1}: {observation}")
 
