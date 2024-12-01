@@ -8,7 +8,6 @@ import textwrap
 import time
 
 import glfw
-import OpenGL.GL as gl
 
 import mcio_remote as mcio
 from mcio_remote import LOG

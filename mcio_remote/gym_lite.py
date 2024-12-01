@@ -1,6 +1,5 @@
 from typing import Literal
 
-import numpy as np
 
 from mcio_remote import controller, network, gui
 

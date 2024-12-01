@@ -4,10 +4,8 @@ import textwrap
 import glfw
 
 import gymnasium as gym
-import mcio_env
 
 import mcio_remote as mcio
-from mcio_remote import LOG
 
 
 def tutorial(steps):

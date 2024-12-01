@@ -3,7 +3,6 @@ import sys
 import textwrap
 
 import mcio_remote as mcio
-from mcio_remote import LOG
 
 # XXX Doesn't work if agent is started first
 

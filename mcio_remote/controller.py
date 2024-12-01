@@ -1,5 +1,4 @@
 import threading
-import logging
 
 from mcio_remote import network, util, LOG
 
