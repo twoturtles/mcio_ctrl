@@ -19,9 +19,9 @@ def tutorial(steps):
         # Cycle jumping on and off
         cycle = (steps // 50) % 2
         if cycle == 0:
-            action = mcio.ActionPacket(keys=[(glfw.KEY_SPACE, glfw.PRESS)])
+            action = mcio.network.ActionPacket(keys=[(glfw.KEY_SPACE, glfw.PRESS)])
         elif cycle == 1:
-            action = mcio.ActionPacket(keys=[(glfw.KEY_SPACE, glfw.RELEASE)])
+            action = mcio.network.ActionPacket(keys=[(glfw.KEY_SPACE, glfw.RELEASE)])
 
         # Go forward and press attack button
         action.keys.append((glfw.KEY_W, glfw.PRESS))

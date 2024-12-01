@@ -7,7 +7,6 @@ import numpy as np
 from numpy.typing import NDArray
 import glfw
 
-import mcio_remote as mcio
 from mcio_remote import controller, network
 
 # Define the subset of all keys/buttons that we're using
@@ -89,7 +88,7 @@ class MCioEnv(gym.Env):
         packet = self.ctrl.recv_observation()
         return self._packet_to_observation(packet)
 
-    def _packet_to_observation(self, packet: mcio.ObservationPacket) -> dict:
+    def _packet_to_observation(self, packet: network.ObservationPacket) -> dict:
         # Convert all fields to numpy arrays with correct dtypes
         self.last_frame = packet.get_frame_with_cursor()
         observation = {
@@ -104,8 +103,8 @@ class MCioEnv(gym.Env):
         packet = self._action_to_packet(action)
         self.ctrl.send_action(packet)
 
-    def _action_to_packet(self, action: dict) -> mcio.ActionPacket:
-        packet = mcio.ActionPacket()
+    def _action_to_packet(self, action: dict) -> network.ActionPacket:
+        packet = network.ActionPacket()
 
         # Convert key actions to (key, action) pairs
         keys = []
