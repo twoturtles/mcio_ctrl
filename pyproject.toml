@@ -1,0 +1,26 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "mcio_remote"
+version = "0.1.0"
+description = "Python interface to connect to the MCio Minecraft mod"
+readme = "README.md"
+requires-python = ">=3.10"
+license = {text = "MIT"}
+authors = [
+    {name = "TwoTurtles"}
+]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent"
+]
+dependencies = [
+    "cbor2>=5.6.5",
+    "glfw>=2.7.0"
+]
+
+[project.urls]
+Homepage = "https://github.com/twoturtles/mcio_remote"

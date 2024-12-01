@@ -22,6 +22,7 @@ from .network import *
 from .controller import *
 from .gym_lite import *
 from .gui import *
+from . import env
 
 # constants
 __version__ = "0.1.0"
