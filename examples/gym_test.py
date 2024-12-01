@@ -5,7 +5,6 @@ import mcio_remote as mcio
 from mcio_remote import LOG
 
 import gymnasium as gym
-import mcio_env
 
 
 def run():
