@@ -8,7 +8,7 @@ import mcio_remote as mcio
 
 
 def step(n_steps: int, wait: bool = False):
-    env = mcio.GymLite("Hello", render_mode="human", mcio_mode="sync")
+    env = mcio.gym_lite.GymLite("Hello", render_mode="human", mcio_mode="sync")
     observation = env.reset(send_reset=False)
     print(f"Step 1 (reset): {observation}")
     if n_steps == 0 or wait:
@@ -42,6 +42,5 @@ def parse_args():
 
 if __name__ == "__main__":
     args = parse_args()
-    # mcio.LOG.setLevel(mcio.logging.WARNING)
 
     step(args.steps, args.wait)
