@@ -15,7 +15,7 @@ class LatestItemQueue(queue.Queue):
         dropped = False
         try:
             # Discard the current item if the queue isn't empty
-            x = self.get_nowait()
+            self.get_nowait()
             dropped = True
         except queue.Empty:
             pass

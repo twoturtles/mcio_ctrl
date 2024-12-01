@@ -42,7 +42,7 @@ class GymLite:
             self.gui.show(frame)
 
     def step(self, action):
-        seq = self.ctrl.send_action(action)
+        self.ctrl.send_action(action)
         observation = self.ctrl.recv_observation()
         self.render(observation)
         # TODO return observation, reward, terminated, truncated, info
