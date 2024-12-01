@@ -7,6 +7,7 @@ from numpy.typing import NDArray
 
 import numpy as np
 
+
 class ImageStreamGui:
     """
     Provides a simple interface to send a stream of images to a window.
@@ -14,8 +15,16 @@ class ImageStreamGui:
     doesn't seem reliable - sometimes the window isn't updated.
     Uses glfw since we already use that as a requirement.
     """
-    ''' scale allows you to use a window larger or smaller than the minecraft window '''
-    def __init__(self, name: str = "MCio GUI", scale: float = 1.0, width: int = 800, height: int = 600):
+
+    """ scale allows you to use a window larger or smaller than the minecraft window """
+
+    def __init__(
+        self,
+        name: str = "MCio GUI",
+        scale: float = 1.0,
+        width: int = 800,
+        height: int = 600,
+    ):
         """Create ImageStreamGui. Use show() to stream images to the window.
 
         Args:
@@ -33,9 +42,8 @@ class ImageStreamGui:
         self.frame_height = 0
         self.scale = scale
 
-
     def poll(self):
-        glfw.poll_events() # Poll for events
+        glfw.poll_events()  # Poll for events
 
     def show(self, frame: NDArray[np.uint8]) -> bool:
         """Display the next frame
@@ -48,13 +56,14 @@ class ImageStreamGui:
         should_close = bool(glfw.window_should_close(self.window))
         return should_close
 
-    def set_callbacks(self,
-                key_callback: Callable | None = None,
-                cursor_position_callback: Callable | None = None,
-                mouse_button_callback: Callable | None = None,
-                resize_callback: Callable | None = None,
-                focus_callback: Callable | None = None
-                ) -> None:
+    def set_callbacks(
+        self,
+        key_callback: Callable | None = None,
+        cursor_position_callback: Callable | None = None,
+        mouse_button_callback: Callable | None = None,
+        resize_callback: Callable | None = None,
+        focus_callback: Callable | None = None,
+    ) -> None:
         """Set GLFW callbacks. See defaults for examples
 
         Args:
@@ -66,8 +75,12 @@ class ImageStreamGui:
         """
         # Use provided callbacks or fall back to defaults
         self.key_callback = key_callback or self.default_key_callback
-        self.cursor_position_callback = cursor_position_callback or self.default_cursor_position_callback
-        self.mouse_button_callback = mouse_button_callback or self.default_mouse_button_callback
+        self.cursor_position_callback = (
+            cursor_position_callback or self.default_cursor_position_callback
+        )
+        self.mouse_button_callback = (
+            mouse_button_callback or self.default_mouse_button_callback
+        )
         self.resize_callback = resize_callback or self.default_resize_callback
         self.focus_callback = focus_callback or self.default_focus_callback
 
@@ -79,7 +92,7 @@ class ImageStreamGui:
         glfw.set_window_focus_callback(self.window, self.focus_callback)
 
     def set_cursor_mode(self, mode: int):
-        ''' Set the cursor mode. Minecraft uses glfw.CURSOR_NORMAL (212993) and glfw.CURSOR_DISABLED (212995) '''
+        """Set the cursor mode. Minecraft uses glfw.CURSOR_NORMAL (212993) and glfw.CURSOR_DISABLED (212995)"""
         glfw.set_input_mode(self.window, glfw.CURSOR, mode)
 
     def cleanup(self):
@@ -98,7 +111,7 @@ class ImageStreamGui:
     def default_cursor_position_callback(self, window, xpos, ypos):
         """Handle mouse movement"""
         pass
-        
+
     def default_mouse_button_callback(self, window, button, action, mods):
         """Handle mouse button events"""
         pass
@@ -110,7 +123,7 @@ class ImageStreamGui:
         glfw.post_empty_event()
 
     def default_focus_callback(self, window, focused):
-        ''' Handle focus change Note: focused is 0 or 1 '''
+        """Handle focus change Note: focused is 0 or 1"""
         self.is_focused = bool(focused)
 
     #
@@ -136,7 +149,7 @@ class ImageStreamGui:
         return window
 
     def _render(self, frame: NDArray[np.uint8]):
-        ''' glfw portion of render '''
+        """glfw portion of render"""
         self._auto_resize(frame)
         self._render_gl(frame)
         glfw.swap_buffers(self.window)
@@ -149,10 +162,12 @@ class ImageStreamGui:
         if height != self.frame_height or width != self.frame_width:
             self.frame_width = width
             self.frame_height = height
-            glfw.set_window_size(self.window, int(width * self.scale), int(height * self.scale))
-        
+            glfw.set_window_size(
+                self.window, int(width * self.scale), int(height * self.scale)
+            )
+
     def _render_gl(self, frame: NDArray[np.uint8]):
-        ''' opengl portion of render '''
+        """opengl portion of render"""
         gl.glClearColor(0.0, 0.0, 0.0, 1.0)
         gl.glClear(gl.GL_COLOR_BUFFER_BIT)
 
@@ -163,46 +178,58 @@ class ImageStreamGui:
         # Create and bind texture
         texture = gl.glGenTextures(1)
         gl.glBindTexture(gl.GL_TEXTURE_2D, texture)
-        
+
         # Set texture parameters for scaling down/up
         gl.glTexParameteri(gl.GL_TEXTURE_2D, gl.GL_TEXTURE_MIN_FILTER, gl.GL_NEAREST)
         gl.glTexParameteri(gl.GL_TEXTURE_2D, gl.GL_TEXTURE_MAG_FILTER, gl.GL_NEAREST)
-        
+
         # Upload the image to texture
         # shape = (height, width, channels)
         height = frame.shape[0]
         width = frame.shape[1]
         gl.glTexImage2D(
-            gl.GL_TEXTURE_2D, 0, gl.GL_RGB, 
-            width, height, 0,
-            gl.GL_RGB, gl.GL_UNSIGNED_BYTE, frame
+            gl.GL_TEXTURE_2D,
+            0,
+            gl.GL_RGB,
+            width,
+            height,
+            0,
+            gl.GL_RGB,
+            gl.GL_UNSIGNED_BYTE,
+            frame,
         )
-        
+
         # Enable texture mapping
         gl.glEnable(gl.GL_TEXTURE_2D)
-        
+
         # Draw a quad (rectangle made of two triangles) that fills the screen
         # The quad goes from -1 to 1 in both x and y (OpenGL normalized coordinates)
         gl.glBegin(gl.GL_QUADS)
         # For each vertex, set texture coordinate (0-1) and vertex position (-1 to 1)
-        gl.glTexCoord2f(0, 0); gl.glVertex2f(-1, -1)
-        gl.glTexCoord2f(1, 0); gl.glVertex2f(1, -1)
-        gl.glTexCoord2f(1, 1); gl.glVertex2f(1, 1)
-        gl.glTexCoord2f(0, 1); gl.glVertex2f(-1, 1)
+        gl.glTexCoord2f(0, 0)
+        gl.glVertex2f(-1, -1)
+        gl.glTexCoord2f(1, 0)
+        gl.glVertex2f(1, -1)
+        gl.glTexCoord2f(1, 1)
+        gl.glVertex2f(1, 1)
+        gl.glTexCoord2f(0, 1)
+        gl.glVertex2f(-1, 1)
         gl.glEnd()
-        
+
         # Clean up
         gl.glDisable(gl.GL_TEXTURE_2D)
         gl.glDeleteTextures([texture])
-        
+
+
 class TestPattern:
-    ''' Generate a stream of images. Useful for testing. '''
+    """Generate a stream of images. Useful for testing."""
+
     def __init__(self, width=640, height=480, frequency=0.1):
         self.width = width
         self.height = height
         self.frequency = frequency
         self.step = 0
-        
+
     def get_frame(self):
         # Create image with background color
         color = self.cycle_spectrum(self.step, self.frequency)
@@ -219,9 +246,9 @@ class TestPattern:
         step: current step in the cycle
         frequency: how fast to cycle through colors
         """
-        r = self.sin(step, frequency, 3/12)     # 0 = max
-        g = self.sin(step, frequency, 11/12)    # 0 = going up
-        b = self.sin(step, frequency, 7/12)     # 0 = going down
+        r = self.sin(step, frequency, 3 / 12)  # 0 = max
+        g = self.sin(step, frequency, 11 / 12)  # 0 = going up
+        b = self.sin(step, frequency, 7 / 12)  # 0 = going down
         return np.array([r, g, b], dtype=np.uint8)
 
 
@@ -232,14 +259,16 @@ def main():
 
     def cursor_position_callback(window, xpos, ypos):
         print(xpos, ypos)
+
     gui.set_callbacks(cursor_position_callback=cursor_position_callback)
 
     while True:
         frame = pat.get_frame()
         if gui.show(frame):
             break
-        time.sleep(.1)
+        time.sleep(0.1)
     gui.cleanup()
+
 
 if __name__ == "__main__":
     main()

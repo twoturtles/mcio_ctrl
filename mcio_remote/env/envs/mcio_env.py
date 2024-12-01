@@ -26,18 +26,19 @@ MINECRAFT_MOUSE_BUTTONS = [
 ]
 
 NO_ACTION = -1
-ACTIONS = [
-    NO_ACTION,
-    glfw.PRESS,
-    glfw.RELEASE
-]
+ACTIONS = [NO_ACTION, glfw.PRESS, glfw.RELEASE]
+
 
 class MCioEnv(gym.Env):
     metadata = {"render_modes": ["human", "rgb_array"], "render_fps": 60}
 
-    def __init__(self, width=640, height=480,
-                 mcio_mode: Literal["sync", "async"] = "sync",
-                 render_mode=None):
+    def __init__(
+        self,
+        width=640,
+        height=480,
+        mcio_mode: Literal["sync", "async"] = "sync",
+        render_mode=None,
+    ):
         self.mcio_mode = mcio_mode
         self.width = width
         self.height = height
@@ -47,33 +48,39 @@ class MCioEnv(gym.Env):
 
         self.observation_space = spaces.Dict(
             {
-                'frame': spaces.Box(low=0, high=255,
-                                    # shape = (height, width, channels)
-                                    shape=(height, width, 3),
-                                    dtype=np.uint8),
-
-                'player_pos': spaces.Box(low=nf32([-np.inf, -np.inf, -np.inf]),
-                                         high=nf32([np.inf, np.inf, np.inf])),
-
-                'player_pitch': spaces.Box(low=nf32(-90), high=nf32(90)),
-                'player_yaw': spaces.Box(low=nf32(-180), high=nf32(180))
+                "frame": spaces.Box(
+                    low=0,
+                    high=255,
+                    # shape = (height, width, channels)
+                    shape=(height, width, 3),
+                    dtype=np.uint8,
+                ),
+                "player_pos": spaces.Box(
+                    low=nf32([-np.inf, -np.inf, -np.inf]),
+                    high=nf32([np.inf, np.inf, np.inf]),
+                ),
+                "player_pitch": spaces.Box(low=nf32(-90), high=nf32(90)),
+                "player_yaw": spaces.Box(low=nf32(-180), high=nf32(180)),
             }
         )
 
-        self.action_space = spaces.Dict({
-            'keys': spaces.Dict({
-                str(key): spaces.Discrete(len(ACTIONS))
-                for key in MINECRAFT_KEYS
-            }),
-
-            # Mouse button actions
-            'mouse_buttons': spaces.Dict({
-                str(button): spaces.Discrete(len(ACTIONS))
-                for button in MINECRAFT_MOUSE_BUTTONS
-            }),
-
-            'mouse_pos': spaces.Box(low=nf32([-np.inf, -np.inf]), high=nf32([np.inf, np.inf]))
-        })
+        self.action_space = spaces.Dict(
+            {
+                "keys": spaces.Dict(
+                    {str(key): spaces.Discrete(len(ACTIONS)) for key in MINECRAFT_KEYS}
+                ),
+                # Mouse button actions
+                "mouse_buttons": spaces.Dict(
+                    {
+                        str(button): spaces.Discrete(len(ACTIONS))
+                        for button in MINECRAFT_MOUSE_BUTTONS
+                    }
+                ),
+                "mouse_pos": spaces.Box(
+                    low=nf32([-np.inf, -np.inf]), high=nf32([np.inf, np.inf])
+                ),
+            }
+        )
 
         assert render_mode is None or render_mode in self.metadata["render_modes"]
         self.render_mode = render_mode
@@ -82,43 +89,45 @@ class MCioEnv(gym.Env):
         packet = self.ctrl.recv_observation()
         return self._packet_to_observation(packet)
 
-    def _packet_to_observation(self, packet:mcio.ObservationPacket) -> dict:
+    def _packet_to_observation(self, packet: mcio.ObservationPacket) -> dict:
         # Convert all fields to numpy arrays with correct dtypes
         self.last_frame = packet.get_frame_with_cursor()
         observation = {
-            'frame': self.last_frame,
-            'player_pos': nf32(packet.player_pos),
-            'player_pitch': nf32(packet.player_pitch),
-            'player_yaw': nf32(packet.player_yaw)
+            "frame": self.last_frame,
+            "player_pos": nf32(packet.player_pos),
+            "player_pitch": nf32(packet.player_pitch),
+            "player_yaw": nf32(packet.player_yaw),
         }
         return observation
 
-    def _send_action(self, action:dict):
+    def _send_action(self, action: dict):
         packet = self._action_to_packet(action)
         self.ctrl.send_action(packet)
 
-    def _action_to_packet(self, action:dict) -> mcio.ActionPacket:
+    def _action_to_packet(self, action: dict) -> mcio.ActionPacket:
         packet = mcio.ActionPacket()
 
         # Convert key actions to (key, action) pairs
         keys = []
-        for key, val in action['keys'].items():
+        for key, val in action["keys"].items():
             if val != NO_ACTION:
                 keys.append((int(key), val))
         packet.keys = keys
 
         # Convert mouse button actions to (button, action) pairs
         buttons = []
-        for button, val in action['mouse_buttons'].items():
+        for button, val in action["mouse_buttons"].items():
             if val != NO_ACTION:
                 buttons.append((int(button), val))
         packet.buttons = buttons
 
         # Convert mouse position
-        print(action['mouse_pos'])
+        print(action["mouse_pos"])
         # XXX
-        if not np.array_equal(action['mouse_pos'], [0, 0]):  # Only include if moved
-            packet.mouse_pos = [(float(action['mouse_pos'][0]), float(action['mouse_pos'][1]))]
+        if not np.array_equal(action["mouse_pos"], [0, 0]):  # Only include if moved
+            packet.mouse_pos = [
+                (float(action["mouse_pos"][0]), float(action["mouse_pos"][1]))
+            ]
 
         return packet
 
@@ -129,17 +138,13 @@ class MCioEnv(gym.Env):
         # We need the following line to seed self.np_random
         super().reset(seed=seed)
 
-        if self.mcio_mode == 'async':
+        if self.mcio_mode == "async":
             self.ctrl = controller.ControllerAsync()
         else:
             self.ctrl = controller.ControllerSync()
         # print(self.action_space.sample())
         # Send empty action to trigger an observation
-        self._send_action({
-            'keys': {},
-            'mouse_buttons': {},
-            'mouse_pos': nf32([0,0])
-        })
+        self._send_action({"keys": {}, "mouse_buttons": {}, "mouse_pos": nf32([0, 0])})
         observation = self._get_obs()
         info = self._get_info()
 
@@ -164,13 +169,12 @@ class MCioEnv(gym.Env):
         return observation, reward, terminated, truncated, info
 
     def render(self):
-        if self.render_mode == 'human':
+        if self.render_mode == "human":
             self._render_frame_human()
         elif self.render_mode == "rgb_array":
             return self._render_frame_rgb_array()
 
-    def _render_frame_rgb_array():
-        ...
+    def _render_frame_rgb_array(): ...
 
     def _render_frame_human(self):
         if self.window is None and self.render_mode == "human":
@@ -198,8 +202,9 @@ class MCioEnv(gym.Env):
             pygame.display.quit()
             pygame.quit()
 
-def nf32(seq: Sequence|int|float) -> NDArray[np.float32]:
-    ''' Convert to np.float32 arrays. Turns single values into 1D arrays. '''
+
+def nf32(seq: Sequence | int | float) -> NDArray[np.float32]:
+    """Convert to np.float32 arrays. Turns single values into 1D arrays."""
     if isinstance(seq, (int, float)):
         seq = [float(seq)]
     seq = [np.float32(val) for val in seq]

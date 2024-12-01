@@ -1,13 +1,14 @@
 # setup
 import logging
 
+
 def _setup_logger():
     logger = logging.getLogger(__name__)
     if not logger.handlers:
         handler = logging.StreamHandler()
         formatter = logging.Formatter(
-            '[%(asctime)s] [%(threadName)s/%(levelname)s] (%(name)s) %(message)s',
-            datefmt='%H:%M:%S'
+            "[%(asctime)s] [%(threadName)s/%(levelname)s] (%(name)s) %(message)s",
+            datefmt="%H:%M:%S",
         )
         handler.setFormatter(formatter)
         logger.addHandler(handler)
@@ -26,4 +27,3 @@ from . import env
 
 # constants
 __version__ = "0.1.0"
-

@@ -16,28 +16,35 @@ from mcio_remote import LOG
 
 DEFAULT_HOST = "localhost"
 DEFAULT_ACTION_PORT = 4001  # 4ction
-DEFAULT_OBSERVATION_PORT = 8001   # 8bservation
+DEFAULT_OBSERVATION_PORT = 8001  # 8bservation
 DEFAULT_ACTION_ADDR = f"tcp://{DEFAULT_HOST}:{DEFAULT_ACTION_PORT}"
 DEFAULT_OBSERVATION_ADDR = f"tcp://{DEFAULT_HOST}:{DEFAULT_OBSERVATION_PORT}"
 
 MCIO_PROTOCOL_VERSION = 0
+
 
 # Observation packets received from MCio
 @dataclass
 class ObservationPacket:
     ## Control ##
     version: int = MCIO_PROTOCOL_VERSION
-    mode: str = ""      # "SYNC" or "ASYNC"
+    mode: str = ""  # "SYNC" or "ASYNC"
     sequence: int = 0
-    last_action_sequence: int = 0   # This is the last action sequenced before this observation was generated
-    frame_sequence: int = 0         # Frame number since Minecraft started
+    last_action_sequence: int = (
+        0  # This is the last action sequenced before this observation was generated
+    )
+    frame_sequence: int = 0  # Frame number since Minecraft started
 
     ## Observation ##
-    frame_png: bytes = field(repr=False, default=b"")   # Exclude the frame from repr output.
+    frame_png: bytes = field(
+        repr=False, default=b""
+    )  # Exclude the frame from repr output.
     health: float = 0.0
-    cursor_mode: int = glfw.CURSOR_NORMAL,  # Either glfw.CURSOR_NORMAL (212993) or glfw.CURSOR_DISABLED (212995)
-    cursor_pos: Tuple[int, int] = field(default=(0, 0))     # x, y
-    player_pos: Tuple[float, float, float] = field(default=(0., 0., 0.))
+    cursor_mode: int = (
+        glfw.CURSOR_NORMAL,
+    )  # Either glfw.CURSOR_NORMAL (212993) or glfw.CURSOR_DISABLED (212995)
+    cursor_pos: Tuple[int, int] = field(default=(0, 0))  # x, y
+    player_pos: Tuple[float, float, float] = field(default=(0.0, 0.0, 0.0))
     player_pitch: float = 0
     player_yaw: float = 0
     inventory_main: List = field(default_factory=list)
@@ -45,7 +52,7 @@ class ObservationPacket:
     inventory_offhand: List = field(default_factory=list)
 
     @classmethod
-    def unpack(cls, data: bytes) -> 'ObservationPacket':
+    def unpack(cls, data: bytes) -> "ObservationPacket":
         try:
             decoded_dict = cbor2.loads(data)
         except Exception as e:
@@ -57,8 +64,10 @@ class ObservationPacket:
         except Exception as e:
             # This means the received packet doesn't match ObservationPacket
             LOG.error(f"ObservationPacket decode error: {type(e).__name__}: {e}")
-            if 'frame_png' in decoded_dict:
-                decoded_dict['frame_png'] = f"Frame len: {len(decoded_dict['frame_png'])}"
+            if "frame_png" in decoded_dict:
+                decoded_dict["frame_png"] = (
+                    f"Frame len: {len(decoded_dict['frame_png'])}"
+                )
             LOG.error("Raw packet:")
             LOG.error(pprint.pformat(decoded_dict))
             return None
@@ -78,7 +87,7 @@ class ObservationPacket:
             draw = ImageDraw.Draw(frame)
             x, y = self.cursor_pos[0], self.cursor_pos[1]
             radius = 5
-            draw.ellipse([x-radius, y-radius, x+radius, y+radius], fill='red')
+            draw.ellipse([x - radius, y - radius, x + radius, y + radius], fill="red")
         return np.ascontiguousarray(frame)
 
 
@@ -87,8 +96,12 @@ class ObservationPacket:
 class ActionPacket:
     ## Control ##
     version: int = MCIO_PROTOCOL_VERSION
-    sequence: int = 0           # sequence number. This will be automatically set by send_action in Controller.
-    reset: bool = False         # Tells minecraft to reset observation sequence clear all key / button presses
+    sequence: int = (
+        0  # sequence number. This will be automatically set by send_action in Controller.
+    )
+    reset: bool = (
+        False  # Tells minecraft to reset observation sequence clear all key / button presses
+    )
 
     ## Action ##
 
@@ -99,7 +112,9 @@ class ActionPacket:
 
     # List of (button, action) pairs.
     # E.g., (glfw.MOUSE_BUTTON_1, glfw.PRESS) or (glfw.MOUSE_BUTTON_1, glfw.RELEASE)
-    mouse_buttons: List[Tuple[int, int]] = field(default_factory=list)   # List of (button, action) pairs
+    mouse_buttons: List[Tuple[int, int]] = field(
+        default_factory=list
+    )  # List of (button, action) pairs
 
     # List of (x, y) pairs. Using a list for consistency
     mouse_pos: List[Tuple[float, float]] = field(default_factory=list)
@@ -108,18 +123,20 @@ class ActionPacket:
         pkt_dict = asdict(self)
         LOG.debug(pkt_dict)
         return cbor2.dumps(pkt_dict)
-    
+
 
 # Connections to MCio mod. Used by Controller.
 class _Connection:
-    def __init__(self, action_addr=DEFAULT_ACTION_ADDR, observation_addr=DEFAULT_OBSERVATION_ADDR):
+    def __init__(
+        self, action_addr=DEFAULT_ACTION_ADDR, observation_addr=DEFAULT_OBSERVATION_ADDR
+    ):
         # Initialize ZMQ context
         self.zmq_context = zmq.Context()
 
         # Socket to send commands
         self.action_socket = self.zmq_context.socket(zmq.PUB)
         self.action_socket.bind(action_addr)
-        
+
         # Socket to receive observation updates
         self.observation_socket = self.zmq_context.socket(zmq.SUB)
         self.observation_socket.connect(observation_addr)
@@ -132,25 +149,25 @@ class _Connection:
         # it just drops the packet. Pause here to give it a chance to connect. This only
         # works if minecraft is already running. Need to make a more reliable way of
         # handling this. See https://zguide.zeromq.org/docs/chapter5/ "slow joiner syndrome"
-        time.sleep(.5)
+        time.sleep(0.5)
 
-    def send_action(self, action:ActionPacket):
-        '''
+    def send_action(self, action: ActionPacket):
+        """
         Send action through zmq socket. Should not block. (Unless zmq buffer is full?)
-        '''
+        """
         self.send_counter.count()
         self.action_socket.send(action.pack())
 
     def recv_observation(self) -> ObservationPacket | None:
-        '''
+        """
         Receives observation from zmq socket. Blocks until a observation packet is returned
-        '''
+        """
         try:
             # RECV 1
             pbytes = self.observation_socket.recv()
         except zmq.error.ContextTerminated:
             return None
-        
+
         # This may also return None if there was an unpack error.
         # XXX Maybe these errors should be separated. A context error can happen during shutdown.
         # We could continue after a parse error.
@@ -177,7 +194,6 @@ class TrackPerSecond:
         self.item_count += 1
         if end - self.start >= self.log_time:
             per_sec = self.item_count / (end - self.start)
-            LOG.info(f'{self.name}: {per_sec:.1f}')
+            LOG.info(f"{self.name}: {per_sec:.1f}")
             self.item_count = 0
             self.start = end
-

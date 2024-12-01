@@ -9,11 +9,12 @@ import mcio_env
 import mcio_remote as mcio
 from mcio_remote import LOG
 
+
 def tutorial(steps):
-    env = gym.make('mcio_env/MCioEnv-v0', render_mode='human')
+    env = gym.make("mcio_env/MCioEnv-v0", render_mode="human")
     step = 0
     observation, info = env.reset()
-    print(f'Step {step}: {observation}')
+    print(f"Step {step}: {observation}")
     step += 1
     done = False
     while not done and step < steps:
@@ -28,7 +29,7 @@ def tutorial(steps):
         action.keys.append((glfw.KEY_W, glfw.PRESS))
         action.mouse_buttons = [(glfw.MOUSE_BUTTON_1, glfw.PRESS)]
         observation, reward, terminated, truncated, info = env.step(action)
-        print(f'Step {step}: {action}\n{observation}\n')
+        print(f"Step {step}: {action}\n{observation}\n")
         step += 1
         done = terminated or truncated
 
@@ -37,17 +38,21 @@ def tutorial(steps):
 
 def parse_args():
     parser = argparse.ArgumentParser(
-        description=textwrap.dedent('''
+        description=textwrap.dedent(
+            """
             Demonstrate actions and observations
-                                    '''),
-        formatter_class=argparse.RawDescriptionHelpFormatter
+                                    """
+        ),
+        formatter_class=argparse.RawDescriptionHelpFormatter,
     )
-    parser.add_argument('--steps', '-s', type=int, default=100,
-                        help='Number of steps, 0 for forever')
+    parser.add_argument(
+        "--steps", "-s", type=int, default=100, help="Number of steps, 0 for forever"
+    )
     return parser.parse_args()
+
 
 if __name__ == "__main__":
     args = parse_args()
-    #mcio.LOG.setLevel(mcio.logging.WARNING)
+    # mcio.LOG.setLevel(mcio.logging.WARNING)
 
     tutorial(args.steps)
