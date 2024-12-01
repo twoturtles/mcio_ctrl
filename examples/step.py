@@ -26,10 +26,7 @@ def step(n_steps: int, wait: bool = False):
 
 def parse_args():
     parser = argparse.ArgumentParser(
-        description=textwrap.dedent(
-            """
-                                    """
-        ),
+        description=textwrap.dedent(""" """),
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     parser.add_argument(
