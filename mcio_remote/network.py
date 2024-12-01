@@ -12,7 +12,11 @@ import numpy as np
 from numpy.typing import NDArray
 from PIL import Image, ImageDraw
 
-from mcio_remote import LOG
+from . import util
+from . import logger
+
+LOG = logger.LOG.get_logger(__name__)
+
 
 DEFAULT_HOST = "localhost"
 DEFAULT_ACTION_PORT = 4001  # 4ction
@@ -142,8 +146,8 @@ class _Connection:
         self.observation_socket.connect(observation_addr)
         self.observation_socket.setsockopt_string(zmq.SUBSCRIBE, "")
 
-        self.recv_counter = TrackPerSecond("RecvObservationPPS")
-        self.send_counter = TrackPerSecond("SendActionPPS")
+        self.recv_counter = util.TrackPerSecond("RecvObservationPPS")
+        self.send_counter = util.TrackPerSecond("SendActionPPS")
 
         # XXX zmq has this weird behavior that if you send a packet before it's connected
         # it just drops the packet. Pause here to give it a chance to connect. This only
@@ -180,20 +184,3 @@ class _Connection:
         self.action_socket.close()
         self.observation_socket.close()
         self.zmq_context.term()
-
-
-class TrackPerSecond:
-    def __init__(self, name: str, log_time: float = 10.0):
-        self.name = name
-        self.log_time = log_time
-        self.start = time.time()
-        self.item_count = 0
-
-    def count(self):
-        end = time.time()
-        self.item_count += 1
-        if end - self.start >= self.log_time:
-            per_sec = self.item_count / (end - self.start)
-            LOG.info(f"{self.name}: {per_sec:.1f}")
-            self.item_count = 0
-            self.start = end

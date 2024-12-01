@@ -1,4 +1,9 @@
+import time
 import queue
+
+from . import logger
+
+LOG = logger.LOG.get_logger(__name__)
 
 
 class LatestItemQueue(queue.Queue):
@@ -32,3 +37,20 @@ class LatestItemQueue(queue.Queue):
         item = super().get(block=block, timeout=timeout)
         super().task_done()
         return item
+
+
+class TrackPerSecond:
+    def __init__(self, name: str, log_time: float = 10.0):
+        self.name = name
+        self.log_time = log_time
+        self.start = time.time()
+        self.item_count = 0
+
+    def count(self):
+        end = time.time()
+        self.item_count += 1
+        if end - self.start >= self.log_time:
+            per_sec = self.item_count / (end - self.start)
+            LOG.info(f"{self.name}: {per_sec:.1f}")
+            self.item_count = 0
+            self.start = end

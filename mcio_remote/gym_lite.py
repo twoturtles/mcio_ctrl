@@ -1,7 +1,9 @@
 from typing import Literal
 
 
-from mcio_remote import controller, network, gui
+from . import controller
+from . import network
+from . import gui
 
 
 class GymLite:

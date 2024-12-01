@@ -1,6 +1,10 @@
 import threading
 
-from mcio_remote import network, util, LOG
+from . import network
+from . import util
+from . import logger
+
+LOG = logger.LOG.get_logger(__name__)
 
 
 class ControllerSync:
@@ -40,8 +44,8 @@ class ControllerAsync:
     def __init__(self, host="localhost"):
         self.action_sequence_last_sent = 0
 
-        self.process_counter = network.TrackPerSecond("ProcessObservationPPS")
-        self.queued_counter = network.TrackPerSecond("QueuedActionsPPS")
+        self.process_counter = util.TrackPerSecond("ProcessObservationPPS")
+        self.queued_counter = util.TrackPerSecond("QueuedActionsPPS")
 
         # Flag to signal observation thread to stop.
         self._running = threading.Event()

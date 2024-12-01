@@ -6,11 +6,13 @@ import queue
 import argparse
 import textwrap
 import time
+import logging
 
 import glfw
 
 import mcio_remote as mcio
-from mcio_remote import LOG
+
+LOG = mcio.logger.LOG.get_logger(__name__)
 
 
 class MCioGUI:
@@ -18,8 +20,10 @@ class MCioGUI:
         self.scale = scale
         self.fps = fps if fps > 0 else 60
         self.running = True
-        self.gui = mcio.ImageStreamGui("MCio GUI", scale=scale, width=800, height=600)
-        self.controller = mcio.ControllerAsync()
+        self.gui = mcio.gui.ImageStreamGui(
+            "MCio GUI", scale=scale, width=800, height=600
+        )
+        self.controller = mcio.controller.ControllerAsync()
 
         # Set callbacks. Defaults are good enough for resize and focus.
         self.gui.set_callbacks(
@@ -68,7 +72,7 @@ class MCioGUI:
     def run(self):
         """Main application loop"""
         frame_time = 1.0 / self.fps
-        fps_track = mcio.TrackPerSecond("FPS")
+        fps_track = mcio.util.TrackPerSecond("FPS")
         while self.running:
             frame_start = time.perf_counter()
             self.gui.poll()
@@ -113,7 +117,7 @@ def parse_args():
 
 
 if __name__ == "__main__":
-    mcio.LOG.setLevel(mcio.logging.DEBUG)
+    LOG.setLevel(logging.DEBUG)
     args = parse_args()
     app = MCioGUI(scale=args.scale, fps=args.fps)
     app.run()
