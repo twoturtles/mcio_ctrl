@@ -1,4 +1,4 @@
-from . import envs
+from . import envs as envs
 
 from gymnasium.envs.registration import register
 
