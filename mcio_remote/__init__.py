@@ -1,5 +1,10 @@
-# setup
 import logging
+
+from . import network as network
+from . import controller as controller
+from . import gym_lite as gym_litle
+from . import gui as gui
+from . import env as env
 
 
 def _setup_logger():
@@ -17,13 +22,6 @@ def _setup_logger():
 
 
 LOG = _setup_logger()
-
-# module imports
-from .network import *
-from .controller import *
-from .gym_lite import *
-from .gui import *
-from . import env
 
 # constants
 __version__ = "0.1.0"
