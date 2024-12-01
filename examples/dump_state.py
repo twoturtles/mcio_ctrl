@@ -6,7 +6,7 @@ import time
 import cbor2
 import zmq
 
-OBSERVATION_PORT = 5001
+OBSERVATION_PORT = 8001
 
 
 def recv_loop():
