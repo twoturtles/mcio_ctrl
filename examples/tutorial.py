@@ -4,6 +4,7 @@ import pprint
 
 import gymnasium as gym
 
+import mcio_remote as mcio  # noqa: F401
 
 
 def tutorial(steps):
