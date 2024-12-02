@@ -1,4 +1,4 @@
-from typing import Literal
+from typing import Literal, List
 
 
 from . import controller
@@ -24,14 +24,16 @@ class GymLite:
         self._window_width = None
         self._window_height = None
 
-    def reset(self, send_reset=True):
+    def reset(self, send_reset=True, commands: List[str] | None = None) -> None:
+        if commands is None:
+            commands = []
         if self.render_mode == "human":
             self.gui = gui.ImageStreamGui()
         if self.mcio_mode == "async":
             self.ctrl = controller.ControllerAsync()
         else:
             self.ctrl = controller.ControllerSync()
-        action = network.ActionPacket(reset=True)
+        action = network.ActionPacket(reset=True, commands=commands)
         self.ctrl.send_action(action)
         observation = self.ctrl.recv_observation()
         self.render(observation)
