@@ -9,6 +9,50 @@ import glfw
 
 from mcio_remote import controller, network
 
+##
+# Helper functions
+
+
+def _nf32(seq: Sequence | int | float) -> NDArray[np.float32]:
+    """Convert to np.float32 arrays. Turns single values into 1D arrays."""
+    if isinstance(seq, (int, float)):
+        seq = [float(seq)]
+    seq = [np.float32(val) for val in seq]
+    a = np.array(seq, dtype=np.float32)
+    return a
+
+
+def _nf2dint(val: np.int32) -> NDArray[np.float32]:
+    """Create the closest 2D Box bound for the passed in val"""
+    return np.array([val, val], dtype=np.float32)
+
+
+def _space_to_pairs(
+    space_dict: dict[str, np.int64], conv_list: list[int]
+) -> list[tuple[int, int]]:
+    """Convert gym Discrete Dict (keys or buttons) into pairs to send MCio"""
+    pairs = []
+    for kb_str, action_idx in space_dict.items():
+        kb = int(kb_str)
+        action = ACTIONS[int(action_idx)]
+        if action != NO_ACTION:
+            pairs.append((kb, action))
+    return pairs
+
+
+def _key_space_to_pairs(key_space_dict: dict[str, np.int64]) -> list[tuple[int, int]]:
+    return _space_to_pairs(key_space_dict, MINECRAFT_KEYS)
+
+
+def _mb_space_to_pairs(
+    mouse_button_space_dict: dict[str, np.int64]
+) -> list[tuple[int, int]]:
+    return _space_to_pairs(mouse_button_space_dict, MINECRAFT_MOUSE_BUTTONS)
+
+
+##
+# Defines used in creating spaces
+
 # Define the subset of all keys/buttons that we're using
 MINECRAFT_KEYS = [
     glfw.KEY_W,
@@ -24,14 +68,16 @@ MINECRAFT_MOUSE_BUTTONS = [
     glfw.MOUSE_BUTTON_RIGHT,
 ]
 
-NO_ACTION = -1
-ACTIONS = [NO_ACTION, glfw.PRESS, glfw.RELEASE]
+NO_ACTION = None
+ACTIONS = [NO_ACTION, glfw.RELEASE, glfw.PRESS]
 
-NO_MOUSE_POS = np.array(
-    [np.iinfo(np.int32).min, np.iinfo(np.int32).min], dtype=np.int32
-)
+MOUSE_POS_BOUND_DEFAULT = 1000
+NO_MOUSE_POS = (0, 0)
 
 # XXX gymnasium.utils.env_checker.check_env
+
+# XXX env width/height must match minecraft. Automate?
+
 
 class MCioEnv(gym.Env):
     metadata = {"render_modes": ["human", "rgb_array"], "render_fps": 60}
@@ -48,6 +94,7 @@ class MCioEnv(gym.Env):
         self.height = height
         self.last_frame = None
         self.window = None
+        self.last_mouse_pos = (0, 0)
 
         self.observation_space = spaces.Dict(
             {
@@ -59,11 +106,11 @@ class MCioEnv(gym.Env):
                     dtype=np.uint8,
                 ),
                 "player_pos": spaces.Box(
-                    low=nf32([-np.inf, -np.inf, -np.inf]),
-                    high=nf32([np.inf, np.inf, np.inf]),
+                    low=_nf32([-np.inf, -np.inf, -np.inf]),
+                    high=_nf32([np.inf, np.inf, np.inf]),
                 ),
-                "player_pitch": spaces.Box(low=nf32(-90), high=nf32(90)),
-                "player_yaw": spaces.Box(low=nf32(-180), high=nf32(180)),
+                "player_pitch": spaces.Box(low=_nf32(-90), high=_nf32(90)),
+                "player_yaw": spaces.Box(low=_nf32(-180), high=_nf32(180)),
             }
         )
 
@@ -72,20 +119,17 @@ class MCioEnv(gym.Env):
                 "keys": spaces.Dict(
                     {str(key): spaces.Discrete(len(ACTIONS)) for key in MINECRAFT_KEYS}
                 ),
-                # Mouse button actions
                 "mouse_buttons": spaces.Dict(
                     {
                         str(button): spaces.Discrete(len(ACTIONS))
                         for button in MINECRAFT_MOUSE_BUTTONS
                     }
                 ),
-                "mouse_pos": spaces.Box(
-                    low=np.array(
-                        [np.iinfo(np.int32).min, np.iinfo(np.int32).min], dtype=np.int32
-                    ),
-                    high=np.array(
-                        [np.iinfo(np.int32).max, np.iinfo(np.int32).max], dtype=np.int32
-                    ),
+
+                # Mouse movement relative to the current position
+                "mouse_pos_rel": spaces.Box(
+                    low=_nf2dint(-MOUSE_POS_BOUND_DEFAULT),
+                    high=_nf2dint(MOUSE_POS_BOUND_DEFAULT)
                 ),
             }
         )
@@ -97,48 +141,42 @@ class MCioEnv(gym.Env):
         packet = self.ctrl.recv_observation()
         return self._packet_to_observation(packet)
 
-    def _packet_to_observation(self, packet: network.ObservationPacket) -> dict:
-        # Convert all fields to numpy arrays with correct dtypes
-        self.last_frame = packet.get_frame_with_cursor()
-        observation = {
-            "frame": self.last_frame,
-            "player_pos": nf32(packet.player_pos),
-            "player_pitch": nf32(packet.player_pitch),
-            "player_yaw": nf32(packet.player_yaw),
-        }
-        return observation
-
     def _send_action(self, action: dict | None = None):
         packet = self._action_to_packet(action)
         self.ctrl.send_action(packet)
 
+    def _packet_to_observation(self, packet: network.ObservationPacket) -> dict:
+        """Convert an ObservationPacket to the environment observation_space"""
+        # Convert all fields to numpy arrays with correct dtypes
+        self.last_frame = packet.get_frame_with_cursor()
+        observation = {
+            "frame": self.last_frame,
+            "player_pos": _nf32(packet.player_pos),
+            "player_pitch": _nf32(packet.player_pitch),
+            "player_yaw": _nf32(packet.player_yaw),
+        }
+        return observation
+
     # Convert action space values to MCio/Minecraft values. Allow for empty actions.
     def _action_to_packet(self, action: dict | None = None) -> network.ActionPacket:
+        """Convert from the environment action_space to an ActionPacket"""
         packet = network.ActionPacket()
         if action is None:
             return packet
 
-        # Convert action space keys to Minecraft (key, action) pairs
+        # Convert action_space key indices to Minecraft (key, action) pairs
         if "keys" in action:
-            keys = []
-            for key, val in action["keys"].items():
-                if val != NO_ACTION:
-                    keys.append((int(key), val))
-            packet.keys = keys
+            packet.keys = _key_space_to_pairs(action["keys"])
 
-        # Convert action space mouse buttons to Minecraft (button, action) pairs
+        # Convert action_space mouse button indices to Minecraft (button, action) pairs
         if "mouse_buttons" in action:
-            buttons = []
-            for button, val in action["mouse_buttons"].items():
-                if val != NO_ACTION:
-                    buttons.append((int(button), val))
-            packet.buttons = buttons
+            packet.mouse_buttons = _mb_space_to_pairs(action["mouse_buttons"])
 
         # Convert mouse position
         if "mouse_pos" in action and not np.array_equal(
             action["mouse_pos"], NO_MOUSE_POS
         ):
-            packet.mouse_pos = [tuple(action["mouse_pos"])]
+            packet.mouse_pos = [tuple(action["mouse_pos"].astype(int).tolist())]
 
         return packet
 
@@ -146,9 +184,10 @@ class MCioEnv(gym.Env):
         return {}
 
     def reset(self, seed: int | None = None, options: dict[str, Any] | None = None):
-        ''' valid options:
-                commands: list of commands (Do not include the /)
-        '''
+        """valid options:
+        commands: list of server commands to initialize the environment.
+            E.g. teleport, time set, etc. Do not include the initial "/" in the commands.
+        """
         # We need the following line to seed self.np_random
         super().reset(seed=seed)
 
@@ -156,7 +195,7 @@ class MCioEnv(gym.Env):
             self.ctrl = controller.ControllerAsync()
         else:
             self.ctrl = controller.ControllerSync()
-        # print(self.action_space.sample())
+
         # Send empty action to trigger an observation
         self._send_action()
         observation = self._get_obs()
@@ -214,12 +253,3 @@ class MCioEnv(gym.Env):
         if self.window is not None:
             pygame.display.quit()
             pygame.quit()
-
-
-def nf32(seq: Sequence | int | float) -> NDArray[np.float32]:
-    """Convert to np.float32 arrays. Turns single values into 1D arrays."""
-    if isinstance(seq, (int, float)):
-        seq = [float(seq)]
-    seq = [np.float32(val) for val in seq]
-    a = np.array(seq, dtype=np.float32)
-    return a

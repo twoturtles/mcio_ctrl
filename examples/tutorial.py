@@ -1,11 +1,9 @@
 import argparse
 import textwrap
-
-import glfw
+import pprint
 
 import gymnasium as gym
 
-import mcio_remote as mcio
 
 
 def tutorial(steps):
@@ -14,27 +12,36 @@ def tutorial(steps):
     observation, info = env.reset(
         options={"commands": ["time set day", "teleport @s 0 -60 0 180 0"]}
     )
-    print(f"Step {step}: {observation}")
+    print(f"Step {step}: {obs_to_string(observation)}")
     step += 1
     done = False
     while not done and step < steps:
         # Cycle jumping on and off
-        cycle = (steps // 50) % 2
-        if cycle == 0:
-            action = mcio.network.ActionPacket(keys=[(glfw.KEY_SPACE, glfw.PRESS)])
-        elif cycle == 1:
-            action = mcio.network.ActionPacket(keys=[(glfw.KEY_SPACE, glfw.RELEASE)])
+        # cycle = (steps // 50) % 2
+        action = env.action_space.sample()
+        # if cycle == 0:
+        #     action['keys'] = [(glfw.KEY_SPACE, glfw.PRESS)]
+        # elif cycle == 1:
+        #     action['keys'] = [(glfw.KEY_SPACE, glfw.RELEASE)]
 
-        # Go forward and press attack button
-        action.keys.append((glfw.KEY_W, glfw.PRESS))
-        action.mouse_buttons = [(glfw.MOUSE_BUTTON_1, glfw.PRESS)]
+        # # Go forward and press attack button
+        # action['keys'].append((glfw.KEY_W, glfw.PRESS))
+        # action['mouse_buttons'] = [(glfw.MOUSE_BUTTON_1, glfw.PRESS)]
         observation, reward, terminated, truncated, info = env.step(action)
-        print(f"Step {step}: {action}\n{observation}\n")
+        print(f"Step {step}: {action}\n{obs_to_string(observation)}\n")
         step += 1
         done = terminated or truncated
 
     env.close()
 
+def obs_to_string(obs: dict):
+    """Return a pretty version of the observation as a string.
+    Prints the shape of the frame rather than the frame itself"""
+    frame = obs['frame']
+    obs['frame'] = frame.shape
+    formatted = pprint.pformat(obs)
+    obs["frame"] = frame
+    return formatted
 
 def parse_args():
     parser = argparse.ArgumentParser(
