@@ -106,6 +106,9 @@ class ActionPacket:
     reset: bool = (
         False  # Tells minecraft to reset observation sequence clear all key / button presses
     )
+    commands: List[str] = field(
+        default_factory=list
+    )  # Server commands to execute (teleport, time set, etc.). Do not include the /
 
     ## Action ##
 
