@@ -125,7 +125,7 @@ class ActionPacket:
     )  # List of (button, action) pairs
 
     # List of (x, y) pairs. Using a list for consistency
-    mouse_pos: List[Tuple[int, int]] = field(default_factory=list)
+    cursor_pos: List[Tuple[int, int]] = field(default_factory=list)
 
     def pack(self) -> bytes:
         pkt_dict = asdict(self)

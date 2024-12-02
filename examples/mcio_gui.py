@@ -53,7 +53,7 @@ class MCioGUI:
             # XXX If the user manually resizes the window, the scaling goes out of whack.
             # Need to change the scale based on actual window size vs frame size
             scaled_pos = (int(xpos / self.scale), int(ypos / self.scale))
-            action = mcio.network.ActionPacket(mouse_pos=[scaled_pos])
+            action = mcio.network.ActionPacket(cursor_pos=[scaled_pos])
             self.controller.send_action(action)
 
     def mouse_button_callback(self, window, button, action, mods):
