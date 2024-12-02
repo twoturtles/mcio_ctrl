@@ -11,7 +11,9 @@ import mcio_remote as mcio
 def tutorial(steps):
     env = gym.make("mcio_env/MCioEnv-v0", render_mode="human")
     step = 0
-    observation, info = env.reset()
+    observation, info = env.reset(
+        options={"commands": ["time set day", "teleport @s 0 -60 0 180 0"]}
+    )
     print(f"Step {step}: {observation}")
     step += 1
     done = False

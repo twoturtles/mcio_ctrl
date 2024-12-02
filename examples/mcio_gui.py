@@ -52,7 +52,7 @@ class MCioGUI:
             # If we're scaling the window, also scale the position so things line up
             # XXX If the user manually resizes the window, the scaling goes out of whack.
             # Need to change the scale based on actual window size vs frame size
-            scaled_pos = (xpos / self.scale, ypos / self.scale)
+            scaled_pos = (int(xpos / self.scale), int(ypos / self.scale))
             action = mcio.network.ActionPacket(mouse_pos=[scaled_pos])
             self.controller.send_action(action)
 

@@ -48,6 +48,7 @@ class ObservationPacket:
         glfw.CURSOR_NORMAL,
     )  # Either glfw.CURSOR_NORMAL (212993) or glfw.CURSOR_DISABLED (212995)
     cursor_pos: Tuple[int, int] = field(default=(0, 0))  # x, y
+    # Minecraft uses float player positions. This indicates the position within the block.
     player_pos: Tuple[float, float, float] = field(default=(0.0, 0.0, 0.0))
     player_pitch: float = 0
     player_yaw: float = 0

@@ -1,4 +1,4 @@
-from typing import Literal, Sequence
+from typing import Literal, Sequence, Any
 
 import gymnasium as gym
 from gymnasium import spaces
@@ -27,21 +27,25 @@ MINECRAFT_MOUSE_BUTTONS = [
 NO_ACTION = -1
 ACTIONS = [NO_ACTION, glfw.PRESS, glfw.RELEASE]
 
+NO_MOUSE_POS = np.array(
+    [np.iinfo(np.int32).min, np.iinfo(np.int32).min], dtype=np.int32
+)
+
+# XXX gymnasium.utils.env_checker.check_env
 
 class MCioEnv(gym.Env):
     metadata = {"render_modes": ["human", "rgb_array"], "render_fps": 60}
 
     def __init__(
         self,
-        width=640,
-        height=480,
+        width: int = 640,
+        height: int = 480,
         mcio_mode: Literal["sync", "async"] = "sync",
-        render_mode=None,
+        render_mode: str | None = None,
     ):
         self.mcio_mode = mcio_mode
         self.width = width
         self.height = height
-        self.last_most_pos = (None, None)
         self.last_frame = None
         self.window = None
 
@@ -76,7 +80,12 @@ class MCioEnv(gym.Env):
                     }
                 ),
                 "mouse_pos": spaces.Box(
-                    low=nf32([-np.inf, -np.inf]), high=nf32([np.inf, np.inf])
+                    low=np.array(
+                        [np.iinfo(np.int32).min, np.iinfo(np.int32).min], dtype=np.int32
+                    ),
+                    high=np.array(
+                        [np.iinfo(np.int32).max, np.iinfo(np.int32).max], dtype=np.int32
+                    ),
                 ),
             }
         )
@@ -99,41 +108,47 @@ class MCioEnv(gym.Env):
         }
         return observation
 
-    def _send_action(self, action: dict):
+    def _send_action(self, action: dict | None = None):
         packet = self._action_to_packet(action)
         self.ctrl.send_action(packet)
 
-    def _action_to_packet(self, action: dict) -> network.ActionPacket:
+    # Convert action space values to MCio/Minecraft values. Allow for empty actions.
+    def _action_to_packet(self, action: dict | None = None) -> network.ActionPacket:
         packet = network.ActionPacket()
+        if action is None:
+            return packet
 
-        # Convert key actions to (key, action) pairs
-        keys = []
-        for key, val in action["keys"].items():
-            if val != NO_ACTION:
-                keys.append((int(key), val))
-        packet.keys = keys
+        # Convert action space keys to Minecraft (key, action) pairs
+        if "keys" in action:
+            keys = []
+            for key, val in action["keys"].items():
+                if val != NO_ACTION:
+                    keys.append((int(key), val))
+            packet.keys = keys
 
-        # Convert mouse button actions to (button, action) pairs
-        buttons = []
-        for button, val in action["mouse_buttons"].items():
-            if val != NO_ACTION:
-                buttons.append((int(button), val))
-        packet.buttons = buttons
+        # Convert action space mouse buttons to Minecraft (button, action) pairs
+        if "mouse_buttons" in action:
+            buttons = []
+            for button, val in action["mouse_buttons"].items():
+                if val != NO_ACTION:
+                    buttons.append((int(button), val))
+            packet.buttons = buttons
 
         # Convert mouse position
-        print(action["mouse_pos"])
-        # XXX
-        if not np.array_equal(action["mouse_pos"], [0, 0]):  # Only include if moved
-            packet.mouse_pos = [
-                (float(action["mouse_pos"][0]), float(action["mouse_pos"][1]))
-            ]
+        if "mouse_pos" in action and not np.array_equal(
+            action["mouse_pos"], NO_MOUSE_POS
+        ):
+            packet.mouse_pos = [tuple(action["mouse_pos"])]
 
         return packet
 
     def _get_info(self):
         return {}
 
-    def reset(self, seed=None, options=None):
+    def reset(self, seed: int | None = None, options: dict[str, Any] | None = None):
+        ''' valid options:
+                commands: list of commands (Do not include the /)
+        '''
         # We need the following line to seed self.np_random
         super().reset(seed=seed)
 
@@ -143,7 +158,7 @@ class MCioEnv(gym.Env):
             self.ctrl = controller.ControllerSync()
         # print(self.action_space.sample())
         # Send empty action to trigger an observation
-        self._send_action({"keys": {}, "mouse_buttons": {}, "mouse_pos": nf32([0, 0])})
+        self._send_action()
         observation = self._get_obs()
         info = self._get_info()
 
@@ -152,9 +167,8 @@ class MCioEnv(gym.Env):
 
         return observation, info
 
-    def step(self, action):
-        action = network.ActionPacket()
-        self.ctrl.send_action(action)
+    def step(self, action: dict):
+        self._send_action(action)
 
         observation = self._get_obs()
         reward = 0
