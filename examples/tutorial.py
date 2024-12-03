@@ -3,6 +3,7 @@ import textwrap
 import pprint
 
 import gymnasium as gym
+import glfw
 
 import mcio_remote as mcio  # noqa: F401
 
@@ -18,16 +19,16 @@ def tutorial(steps):
     done = False
     while not done and step < steps:
         # Cycle jumping on and off
-        # cycle = (steps // 50) % 2
+        cycle = (steps // 50) % 2
         action = env.action_space.sample()
-        # if cycle == 0:
-        #     action['keys'] = [(glfw.KEY_SPACE, glfw.PRESS)]
-        # elif cycle == 1:
-        #     action['keys'] = [(glfw.KEY_SPACE, glfw.RELEASE)]
+        if cycle == 0:
+            action['keys'] = [(glfw.KEY_SPACE, glfw.PRESS)]
+        elif cycle == 1:
+            action['keys'] = [(glfw.KEY_SPACE, glfw.RELEASE)]
 
         # # Go forward and press attack button
-        # action['keys'].append((glfw.KEY_W, glfw.PRESS))
-        # action['mouse_buttons'] = [(glfw.MOUSE_BUTTON_1, glfw.PRESS)]
+        action['keys'].append((glfw.KEY_W, glfw.PRESS))
+        action['mouse_buttons'] = [(glfw.MOUSE_BUTTON_1, glfw.PRESS)]
         observation, reward, terminated, truncated, info = env.step(action)
         print(f"Step {step}: {action}\n{obs_to_string(observation)}\n")
         step += 1

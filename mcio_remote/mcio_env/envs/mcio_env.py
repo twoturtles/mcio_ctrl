@@ -170,6 +170,8 @@ class MCioEnv(gym.Env):
         return observation, info
 
     def step(self, action: dict):
+        if action not in self.action_space:
+            raise ValueError(f"Invalid action: {action}")
         self._send_action(action)
 
         observation = self._get_obs()
