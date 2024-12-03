@@ -71,8 +71,8 @@ MINECRAFT_MOUSE_BUTTONS = [
 NO_ACTION = None
 ACTIONS = [NO_ACTION, glfw.RELEASE, glfw.PRESS]
 
-CURSOR_POS_BOUND_DEFAULT = 1000
-NO_CURSOR_POS = (0, 0)
+CURSOR_REL_BOUND_DEFAULT = 1000
+NO_CURSOR_REL = (0, 0)
 
 # XXX gymnasium.utils.env_checker.check_env
 
@@ -127,8 +127,8 @@ class MCioEnv(gym.Env):
                 ),
                 # Mouse movement relative to the current position
                 "cursor_pos_rel": spaces.Box(
-                    low=_nf2dint(-CURSOR_POS_BOUND_DEFAULT),
-                    high=_nf2dint(CURSOR_POS_BOUND_DEFAULT),
+                    low=_nf2dint(-CURSOR_REL_BOUND_DEFAULT),
+                    high=_nf2dint(CURSOR_REL_BOUND_DEFAULT),
                 ),
             }
         )
@@ -148,6 +148,7 @@ class MCioEnv(gym.Env):
         """Convert an ObservationPacket to the environment observation_space"""
         # Convert all fields to numpy arrays with correct dtypes
         self.last_frame = packet.get_frame_with_cursor()
+        self.last_cursor_pos = packet.player_pos
         observation = {
             "frame": self.last_frame,
             "player_pos": _nf32(packet.player_pos),
@@ -172,10 +173,14 @@ class MCioEnv(gym.Env):
             packet.mouse_buttons = _mb_space_to_pairs(action["mouse_buttons"])
 
         # Convert cursor position
-        if "cursor_pos" in action and not np.array_equal(
-            action["cursor_pos"], NO_CURSOR_POS
-        ):
-            packet.cursor_pos = [tuple(action["cursor_pos"].astype(int).tolist())]
+        if "cursor_pos_rel" in action:
+            dx, dy = action["cursor_pos_rel"]
+            if (dx, dy) != NO_CURSOR_REL:
+                cursor_pos = (
+                    self.last_cursor_pos[0] + int(dx),
+                    self.last_cursor_pos[1] + int(dy),
+                )
+                packet.cursor_pos = cursor_pos
 
         return packet
 
