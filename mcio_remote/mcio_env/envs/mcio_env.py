@@ -10,47 +10,6 @@ import glfw
 from mcio_remote import controller, network
 
 ##
-# Helper functions
-
-
-def _nf32(seq: Sequence | int | float) -> NDArray[np.float32]:
-    """Convert to np.float32 arrays. Turns single values into 1D arrays."""
-    if isinstance(seq, (int, float)):
-        seq = [float(seq)]
-    seq = [np.float32(val) for val in seq]
-    a = np.array(seq, dtype=np.float32)
-    return a
-
-
-def _nf2dint(val: np.int32) -> NDArray[np.float32]:
-    """Create the closest 2D Box bound for the passed in val"""
-    return np.array([val, val], dtype=np.float32)
-
-
-def _space_to_pairs(
-    space_dict: dict[str, np.int64], conv_list: list[int]
-) -> list[tuple[int, int]]:
-    """Convert gym Discrete Dict (keys or buttons) into pairs to send MCio"""
-    pairs = []
-    for kb_str, action_idx in space_dict.items():
-        kb = int(kb_str)
-        action = ACTIONS[int(action_idx)]
-        if action != NO_ACTION:
-            pairs.append((kb, action))
-    return pairs
-
-
-def _key_space_to_pairs(key_space_dict: dict[str, np.int64]) -> list[tuple[int, int]]:
-    return _space_to_pairs(key_space_dict, MINECRAFT_KEYS)
-
-
-def _mb_space_to_pairs(
-    mouse_button_space_dict: dict[str, np.int64]
-) -> list[tuple[int, int]]:
-    return _space_to_pairs(mouse_button_space_dict, MINECRAFT_MOUSE_BUTTONS)
-
-
-##
 # Defines used in creating spaces
 
 # Define the subset of all keys/buttons that we're using
@@ -257,3 +216,44 @@ class MCioEnv(gym.Env):
         if self.window is not None:
             pygame.display.quit()
             pygame.quit()
+
+
+##
+# Helper functions
+
+
+def _nf32(seq: Sequence | int | float) -> NDArray[np.float32]:
+    """Convert to np.float32 arrays. Turns single values into 1D arrays."""
+    if isinstance(seq, (int, float)):
+        seq = [float(seq)]
+    seq = [np.float32(val) for val in seq]
+    a = np.array(seq, dtype=np.float32)
+    return a
+
+
+def _nf2dint(val: np.int32) -> NDArray[np.float32]:
+    """Create the closest 2D Box bound for the passed in val"""
+    return np.array([val, val], dtype=np.float32)
+
+
+def _space_to_pairs(
+    space_dict: dict[str, np.int64], conv_list: list[int]
+) -> list[tuple[int, int]]:
+    """Convert gym Discrete Dict (keys or buttons) into pairs to send MCio"""
+    pairs = []
+    for kb_str, action_idx in space_dict.items():
+        kb = int(kb_str)
+        action = ACTIONS[int(action_idx)]
+        if action != NO_ACTION:
+            pairs.append((kb, action))
+    return pairs
+
+
+def _key_space_to_pairs(key_space_dict: dict[str, np.int64]) -> list[tuple[int, int]]:
+    return _space_to_pairs(key_space_dict, MINECRAFT_KEYS)
+
+
+def _mb_space_to_pairs(
+    mouse_button_space_dict: dict[str, np.int64]
+) -> list[tuple[int, int]]:
+    return _space_to_pairs(mouse_button_space_dict, MINECRAFT_MOUSE_BUTTONS)
