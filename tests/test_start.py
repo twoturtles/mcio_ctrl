@@ -12,9 +12,11 @@ def action_space_dict1():
     }
 
 
-def test_space_to_pairs1(action_space_dict1):
+def test_key_space_to_pairs1(action_space_dict1):
     pairs = mcio_env._key_space_to_pairs(action_space_dict1["keys"])
     assert pairs == [(65, 1), (68, 0), (83, 1), (87, 1)]
+
+def test_mb_space_to_pairs1(action_space_dict1):
     pairs = mcio_env._mb_space_to_pairs(action_space_dict1["mouse_buttons"])
     print(pairs)
     assert pairs == [(0, 1)]
