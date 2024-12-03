@@ -28,7 +28,8 @@ MINECRAFT_MOUSE_BUTTONS = [
 ]
 
 NO_ACTION = None
-ACTIONS = [NO_ACTION, glfw.RELEASE, glfw.PRESS]
+# Note: release = 0 and press = 1. So they equal their indices.
+ACTIONS = [glfw.RELEASE, glfw.PRESS, NO_ACTION]
 
 CURSOR_REL_BOUND_DEFAULT = 1000
 NO_CURSOR_REL = (0, 0)

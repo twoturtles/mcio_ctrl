@@ -27,6 +27,7 @@ def tutorial(steps):
             action['keys'] = [(glfw.KEY_SPACE, glfw.RELEASE)]
 
         # # Go forward and press attack button
+        # XXX These are not valid in the action space
         action['keys'].append((glfw.KEY_W, glfw.PRESS))
         action['mouse_buttons'] = [(glfw.MOUSE_BUTTON_1, glfw.PRESS)]
         observation, reward, terminated, truncated, info = env.step(action)
