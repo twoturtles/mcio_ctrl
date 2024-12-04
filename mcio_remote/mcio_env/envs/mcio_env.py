@@ -131,7 +131,7 @@ class MCioEnv(gym.Env):
     def _send_action(
         self, action: dict | None = None, commands: list[str] | None = None
     ):
-        packet = self._action_to_packet(action)
+        packet = self._action_to_packet(action, commands)
         self.ctrl.send_action(packet)
 
     def _packet_to_observation(self, packet: network.ObservationPacket) -> dict:
