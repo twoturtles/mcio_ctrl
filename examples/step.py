@@ -10,7 +10,7 @@ import mcio_remote as mcio
 # XXX Doesn't work if agent is started first
 
 
-def step(n_steps: int, wait: bool = False):
+def step(n_steps: int, wait: bool = False) -> None:
     env = mcio.gym_lite.GymLite("Hello", render_mode="human", mcio_mode="sync")
     observation = env.reset(commands=["time set day", "teleport @s 0 -60 0 180 0"])
     print(f"Step 1 (reset): {observation}")
@@ -26,7 +26,7 @@ def step(n_steps: int, wait: bool = False):
     env.close()
 
 
-def parse_args():
+def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description=textwrap.dedent(""" """),
         formatter_class=argparse.RawDescriptionHelpFormatter,
@@ -43,7 +43,10 @@ def parse_args():
     return parser.parse_args()
 
 
-if __name__ == "__main__":
+def main() -> None:
     args = parse_args()
-
     step(args.steps, args.wait)
+
+
+if __name__ == "__main__":
+    main()

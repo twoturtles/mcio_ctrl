@@ -2,7 +2,7 @@ import logging
 
 
 class Logger:
-    def __init__(self):
+    def __init__(self) -> None:
         # Get the root logger for mcio_remote
         self.root_logger = logging.getLogger("mcio_remote")
         if not self.root_logger.handlers:
@@ -15,11 +15,11 @@ class Logger:
             self.root_logger.addHandler(handler)
             self.root_logger.setLevel(logging.INFO)
 
-    def get_logger(self, name):
+    def get_logger(self, name: str) -> logging.Logger:
         """Get a logger for a specific module."""
         return logging.getLogger(name)
 
-    def set_level(self, level):
+    def set_level(self, level: int) -> None:
         """Set the log level for all mcio_remote loggers."""
         self.root_logger.setLevel(level)
 

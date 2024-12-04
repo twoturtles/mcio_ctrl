@@ -1,4 +1,6 @@
-# Prints received observation to console. Doesn't rely on mcio_remote at all.
+"""
+For testing. Prints received observation to console. Doesn't rely on mcio_remote at all.
+"""
 
 import pprint
 import time
@@ -9,7 +11,7 @@ import zmq
 OBSERVATION_PORT = 8001
 
 
-def recv_loop():
+def recv_loop() -> None:
     zmq_context = zmq.Context()
 
     # Socket to receive observation updates

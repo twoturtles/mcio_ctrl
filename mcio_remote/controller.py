@@ -14,26 +14,25 @@ class ControllerSync:
     """
 
     # XXX Implement context manager
-    def __init__(self, host="localhost"):
+    def __init__(self, host: str = "localhost"):
         self.action_sequence_last_sent = 0
 
         # This briefly sleeps for zmq initialization.
         self._mcio_conn = network._Connection()
 
-    def send_action(self, action: network.ActionPacket):
+    def send_action(self, action: network.ActionPacket) -> None:
         """Send action to minecraft. Automatically sets action.sequence."""
         self.action_sequence_last_sent += 1
         action.sequence = self.action_sequence_last_sent
         self._mcio_conn.send_action(action)
 
-    def recv_observation(self) -> network.ObservationPacket:
+    def recv_observation(self) -> network.ObservationPacket | None:
         """Receive observation. Blocks"""
         return self._mcio_conn.recv_observation()
 
-    def close(self):
+    def close(self) -> None:
         """Shut down the network connection"""
         self._mcio_conn.close()
-        self._mcio_conn = None
 
 
 class ControllerAsync:
@@ -41,7 +40,7 @@ class ControllerAsync:
     Handles ASYNC mode connections to Minecraft
     """
 
-    def __init__(self, host="localhost"):
+    def __init__(self, host: str = "localhost"):
         self.action_sequence_last_sent = 0
 
         self.process_counter = util.TrackPerSecond("ProcessObservationPPS")
@@ -65,7 +64,7 @@ class ControllerAsync:
 
         LOG.info("Controller init complete")
 
-    def send_action(self, action: network.ActionPacket):
+    def send_action(self, action: network.ActionPacket) -> int:
         """
         Send action to minecraft. Automatically sets action.sequence.
         Returns the sequence number used
@@ -75,7 +74,9 @@ class ControllerAsync:
         self._mcio_conn.send_action(action)
         return self.action_sequence_last_sent
 
-    def recv_observation(self, block=True, timeout=None) -> network.ObservationPacket:
+    def recv_observation(
+        self, block: bool = True, timeout: float | None = None
+    ) -> network.ObservationPacket:
         """
         Returns the most recently received observation pulling it from the processing queue.
         Block and timeout are like queue.Queue.get().
@@ -85,7 +86,7 @@ class ControllerAsync:
         observation = self._observation_queue.get(block=block, timeout=timeout)
         return observation
 
-    def _observation_thread_fn(self):
+    def _observation_thread_fn(self) -> None:
         """Loops. Receives observation packets from minecraft and places on observation_queue"""
         LOG.info("ObservationThread start")
         while self._running.is_set():
@@ -106,7 +107,7 @@ class ControllerAsync:
 
         LOG.info("ObservationThread shut down")
 
-    def shutdown(self):
+    def shutdown(self) -> None:
         # XXX
         """
         self._running.clear()

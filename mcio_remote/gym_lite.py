@@ -47,13 +47,13 @@ class GymLite:
             self.gui.poll()
             self.gui.show(frame)
 
-    def step(self, action):
+    def step(self, action: network.ActionPacket) -> network.ObservationPacket:
         self.ctrl.send_action(action)
         observation = self.ctrl.recv_observation()
         self.render(observation)
         # TODO return observation, reward, terminated, truncated, info
         return observation
 
-    def close(self):
+    def close(self) -> None:
         # TODO
         ...

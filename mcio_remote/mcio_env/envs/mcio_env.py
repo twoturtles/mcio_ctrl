@@ -39,6 +39,10 @@ NO_CURSOR_REL = np.array((0.0, 0.0), dtype=np.float32)
 
 # XXX env width/height must match minecraft. Automate?
 
+# Stub in the action and observation space types
+type MCioAction = dict[str, Any]
+type MCioObservation = dict[str, Any]
+
 
 class MCioEnv(gym.Env):
     metadata = {"render_modes": ["human", "rgb_array"], "render_fps": 60}
@@ -295,7 +299,7 @@ class MCioEnv(gym.Env):
         self.gui.poll()
         self.gui.show(self.last_frame)
 
-    def close(self):
+    def close(self) -> None:
         if self.gui is not None:
             self.gui.cleanup()
 

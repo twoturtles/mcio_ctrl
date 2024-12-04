@@ -45,7 +45,7 @@ class ObservationPacket:
     )  # Exclude the frame from repr output.
     health: float = 0.0
     cursor_mode: int = (
-        glfw.CURSOR_NORMAL,
+        glfw.CURSOR_NORMAL
     )  # Either glfw.CURSOR_NORMAL (212993) or glfw.CURSOR_DISABLED (212995)
     cursor_pos: Tuple[int, int] = field(default=(0, 0))  # x, y
     # Minecraft uses float player positions. This indicates the position within the block.
@@ -57,7 +57,7 @@ class ObservationPacket:
     inventory_offhand: List = field(default_factory=list)
 
     @classmethod
-    def unpack(cls, data: bytes) -> "ObservationPacket":
+    def unpack(cls, data: bytes) -> "ObservationPacket" | None:
         try:
             decoded_dict = cbor2.loads(data)
         except Exception as e:
@@ -79,7 +79,7 @@ class ObservationPacket:
 
         return rv
 
-    def __str__(self):
+    def __str__(self) -> str:
         # frame_png is excluded from repr. Add its size to str. Slow?
         frame = Image.open(io.BytesIO(self.frame_png))
         return f"{repr(self)} frame.size={frame.size}"
@@ -133,7 +133,9 @@ class ActionPacket:
 # Connections to MCio mod. Used by Controller.
 class _Connection:
     def __init__(
-        self, action_addr=DEFAULT_ACTION_ADDR, observation_addr=DEFAULT_OBSERVATION_ADDR
+        self,
+        action_addr: str = DEFAULT_ACTION_ADDR,
+        observation_addr: str = DEFAULT_OBSERVATION_ADDR,
     ):
         # Initialize ZMQ context
         self.zmq_context = zmq.Context()
@@ -156,7 +158,7 @@ class _Connection:
         # handling this. See https://zguide.zeromq.org/docs/chapter5/ "slow joiner syndrome"
         time.sleep(0.5)
 
-    def send_action(self, action: ActionPacket):
+    def send_action(self, action: ActionPacket) -> None:
         """
         Send action through zmq socket. Should not block. (Unless zmq buffer is full?)
         """
@@ -181,7 +183,7 @@ class _Connection:
         LOG.debug(observation)
         return observation
 
-    def close(self):
+    def close(self) -> None:
         self.action_socket.close()
         self.observation_socket.close()
         self.zmq_context.term()
