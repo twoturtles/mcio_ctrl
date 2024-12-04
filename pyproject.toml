@@ -22,5 +22,13 @@ dependencies = [
     "glfw>=2.7.0"
 ]
 
+[[tool.mypy.overrides]]
+module = [
+    "glfw",
+    "OpenGL.*"
+]
+ignore_missing_imports = true
+
+
 [project.urls]
 Homepage = "https://github.com/twoturtles/mcio_remote"

@@ -25,7 +25,7 @@ class GymLite:
         self._window_width = None
         self._window_height = None
 
-    def reset(self, commands: List[str] | None = None) -> None:
+    def reset(self, commands: List[str] | None = None) -> network.ObservationPacket:
         if commands is None:
             commands = []
         if self.render_mode == "human":
