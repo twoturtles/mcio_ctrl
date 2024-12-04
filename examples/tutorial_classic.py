@@ -55,7 +55,7 @@ def print_step(step, action=None, observation=None):
     print("-" * 10)
 
 
-def obs_to_string(obs: dict):
+def obs_to_string(obs):
     """Return a pretty version of the observation as a string.
     Prints the shape of the frame rather than the frame itself"""
     frame = obs["frame"]
