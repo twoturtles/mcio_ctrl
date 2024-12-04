@@ -7,7 +7,7 @@ name = "mcio_remote"
 version = "0.1.0"
 description = "Python interface to connect to the MCio Minecraft mod"
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.12"
 license = {text = "MIT"}
 authors = [
     {name = "TwoTurtles"}
@@ -21,6 +21,9 @@ dependencies = [
     "cbor2>=5.6.5",
     "glfw>=2.7.0"
 ]
+
+[tool.mypy]
+strict = true
 
 [[tool.mypy.overrides]]
 module = [
