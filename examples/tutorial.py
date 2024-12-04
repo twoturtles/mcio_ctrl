@@ -22,8 +22,6 @@ def tutorial(steps):
         # Cycle jumping on and off
         cycle = (steps // 50) % 2
         action = env.action_space.sample()
-        # XXX don't require unwrapped
-        noop = env.unwrapped.get_noop_action()
         if cycle == 0:
             action["keys"]["SPACE"] = mcio_env.PRESS
         elif cycle == 1:
@@ -46,7 +44,7 @@ def print_step(step, action: dict | None = None, observation: dict | None = None
         print(f"Action: {action}")
     if observation is not None:
         print(f"Obs: {obs_to_string(observation)}")
-    print('-'*10)
+    print("-" * 10)
 
 
 def obs_to_string(obs: dict):
