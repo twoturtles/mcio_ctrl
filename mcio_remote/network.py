@@ -27,6 +27,13 @@ DEFAULT_OBSERVATION_ADDR = f"tcp://{DEFAULT_HOST}:{DEFAULT_OBSERVATION_PORT}"
 MCIO_PROTOCOL_VERSION = 0
 
 
+@dataclass
+class InventorySlot:
+    slot: int
+    id: str
+    count: int
+
+
 # Observation packets received from MCio
 @dataclass
 class ObservationPacket:
@@ -52,9 +59,9 @@ class ObservationPacket:
     player_pos: tuple[float, float, float] = field(default=(0.0, 0.0, 0.0))
     player_pitch: float = 0
     player_yaw: float = 0
-    inventory_main: list = field(default_factory=list)
-    inventory_armor: list = field(default_factory=list)
-    inventory_offhand: list = field(default_factory=list)
+    inventory_main: list[InventorySlot] = field(default_factory=list)
+    inventory_armor: list[InventorySlot] = field(default_factory=list)
+    inventory_offhand: list[InventorySlot] = field(default_factory=list)
 
     @classmethod
     def unpack(cls, data: bytes) -> Optional["ObservationPacket"]:
