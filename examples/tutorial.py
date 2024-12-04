@@ -15,7 +15,7 @@ def tutorial(steps):
     observation, info = env.reset(
         options={"commands": ["time set day", "teleport @s 0 -60 0 180 0"]}
     )
-    print(f"Step {step}:\n{obs_to_string(observation)}\n----------")
+    print_step(step, None, observation)
     step += 1
     done = False
     while not done and step < steps:
@@ -24,8 +24,6 @@ def tutorial(steps):
         action = env.action_space.sample()
         # XXX don't require unwrapped
         noop = env.unwrapped.get_noop_action()
-        print(action)
-        print(noop)
         if cycle == 0:
             action["keys"]["SPACE"] = mcio_env.PRESS
         elif cycle == 1:
@@ -35,11 +33,20 @@ def tutorial(steps):
         action["keys"]["W"] = mcio_env.PRESS
         action["mouse_buttons"]["LEFT"] = mcio_env.PRESS
         observation, reward, terminated, truncated, info = env.step(action)
-        print(f"Step {step}: {action}\n{obs_to_string(observation)}\n-----------")
+        print_step(step, action, observation)
         step += 1
         done = terminated or truncated
 
     env.close()
+
+
+def print_step(step, action: dict | None = None, observation: dict | None = None):
+    print(f"Step {step}:")
+    if action is not None:
+        print(f"Action: {action}")
+    if observation is not None:
+        print(f"Obs: {obs_to_string(observation)}")
+    print('-'*10)
 
 
 def obs_to_string(obs: dict):
