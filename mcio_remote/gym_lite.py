@@ -9,7 +9,7 @@ from . import gui
 class GymLite:
     """
     Stub in how gymn will work. Higher level interface than Controller.
-    Deprecated: Use the real gymnasium env in mcio_env.py now.
+    Useful for testing, otherwise use the real gymnasium env in mcio_env.py.
     """
 
     def __init__(

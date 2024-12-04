@@ -1,3 +1,7 @@
+"""Similar to the MineRL "Hello World" tutorial
+XXX Requires that Minecraft is started first (will fix)
+"""
+
 import argparse
 import textwrap
 import pprint
