@@ -166,6 +166,7 @@ class MCioEnv(gym.Env):
             packet.keys = self._space_map_to_packet(
                 action["keys"], MINECRAFT_KEYS, self.keys_pressed
             )
+            packet.keys.sort()
 
         # Convert action_space mouse button indices to Minecraft (button, action) pairs
         if "mouse_buttons" in action:
@@ -174,6 +175,7 @@ class MCioEnv(gym.Env):
                 MINECRAFT_MOUSE_BUTTONS,
                 self.mouse_buttons_pressed,
             )
+            packet.mouse_buttons.sort()
 
         # Convert cursor position
         if "cursor_pos_rel" in action:
