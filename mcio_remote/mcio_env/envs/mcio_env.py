@@ -2,12 +2,11 @@ from typing import Literal, Sequence, Any
 
 import gymnasium as gym
 from gymnasium import spaces
-import pygame
 import numpy as np
 from numpy.typing import NDArray
 import glfw
 
-from mcio_remote import controller, network
+from mcio_remote import controller, network, gui
 
 ##
 # Defines used in creating spaces
@@ -58,7 +57,7 @@ class MCioEnv(gym.Env):
         self.mcio_mode = mcio_mode
 
         self.last_frame: NDArray[np.uint8] = None
-        self.window = None
+        self.gui = None
         self.last_cursor_pos: tuple[int, int] = (0, 0)
         self.keys_pressed: set[str] = set()
         self.mouse_buttons_pressed: set[str] = set()
@@ -135,7 +134,8 @@ class MCioEnv(gym.Env):
         self.ctrl.send_action(packet)
 
     def _packet_to_observation(self, packet: network.ObservationPacket) -> dict:
-        """Convert an ObservationPacket to the environment observation_space"""
+        """Convert an ObservationPacket to the environment observation_space
+        XXX Sets self.last_frame and self.last_cursor_pos as side-effects"""
         # Convert all fields to numpy arrays with correct dtypes
         self.last_frame = packet.get_frame_with_cursor()
         self.last_cursor_pos = packet.player_pos
@@ -288,31 +288,16 @@ class MCioEnv(gym.Env):
     def _render_frame_rgb_array(): ...
 
     def _render_frame_human(self):
-        # XXX Change to use mcio.gui
-        if self.window is None and self.render_mode == "human":
-            pygame.init()
-            pygame.display.init()
-            self.window = pygame.display.set_mode((self.width, self.height))
-
+        if self.gui is None and self.render_mode == "human":
+            self.gui = gui.ImageStreamGui("MCio", width=self.width, height=self.height)
         if self.last_frame is None:
             return
-
-        # numpy shape is (height, width, channels),
-        # pygame wants (width, height, channels)
-        frame = np.transpose(self.last_frame, (1, 0, 2))
-        surface = pygame.surfarray.make_surface(frame)
-
-        # Draw the surface to the window
-        self.window.blit(surface, (0, 0))
-
-        # Update the display
-        pygame.event.pump()
-        pygame.display.flip()
+        self.gui.poll()
+        self.gui.show(self.last_frame)
 
     def close(self):
-        if self.window is not None:
-            pygame.display.quit()
-            pygame.quit()
+        if self.gui is not None:
+            self.gui.cleanup()
 
 
 ##
