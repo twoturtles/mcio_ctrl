@@ -41,9 +41,9 @@ def tutorial(steps):
 def print_step(step, action: dict | None = None, observation: dict | None = None):
     print(f"Step {step}:")
     if action is not None:
-        print(f"Action: {action}")
+        print(f"Action:\n{pprint.pformat(action)}")
     if observation is not None:
-        print(f"Obs: {obs_to_string(observation)}")
+        print(f"Obs:\n{obs_to_string(observation)}")
     print("-" * 10)
 
 
