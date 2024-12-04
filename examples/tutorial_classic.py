@@ -1,6 +1,10 @@
+# type: ignore
+
 """Similar to the MineRL "Hello World" tutorial
-XXX Requires that Minecraft is started first (will fix)
+This version doesn't use types to allow the use of gym.make(),
+ and to simplify
 """
+
 
 import argparse
 import textwrap
@@ -13,7 +17,7 @@ import mcio_remote as mcio  # noqa: F401
 from mcio_remote.mcio_env.envs import mcio_env
 
 
-def tutorial(steps):
+def tutorial_classic(steps):
     env = gym.make("mcio_env/MCioEnv-v0", render_mode="human")
     step = 0
     observation, info = env.reset(
@@ -42,7 +46,7 @@ def tutorial(steps):
     env.close()
 
 
-def print_step(step, action: dict | None = None, observation: dict | None = None):
+def print_step(step, action=None, observation=None):
     print(f"Step {step}:")
     if action is not None:
         print(f"Action:\n{pprint.pformat(action)}")
@@ -63,11 +67,7 @@ def obs_to_string(obs: dict):
 
 def parse_args():
     parser = argparse.ArgumentParser(
-        description=textwrap.dedent(
-            """
-            Demonstrate actions and observations
-                                    """
-        ),
+        description=textwrap.dedent(""" Demonstrate actions and observations """),
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     parser.add_argument(
@@ -80,4 +80,4 @@ if __name__ == "__main__":
     args = parse_args()
     # mcio.LOG.setLevel(mcio.logging.WARNING)
 
-    tutorial(args.steps)
+    tutorial_classic(args.steps)

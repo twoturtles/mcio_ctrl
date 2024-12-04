@@ -6,15 +6,14 @@ import argparse
 import textwrap
 import pprint
 
-import gymnasium as gym
-
-# import required to register gym env
-import mcio_remote as mcio  # noqa: F401
 from mcio_remote.mcio_env.envs import mcio_env
 
 
-def tutorial(steps):
-    env = gym.make("mcio_env/MCioEnv-v0", render_mode="human")
+def tutorial(steps: int) -> None:
+    # gym.make doesn't seem to play well with type checking
+    # env = gym.make("mcio_env/MCioEnv-v0", render_mode="human")
+    env = mcio_env.MCioEnv(render_mode="human")
+
     step = 0
     observation, info = env.reset(
         options={"commands": ["time set day", "teleport @s 0 -60 0 180 0"]}
@@ -42,7 +41,11 @@ def tutorial(steps):
     env.close()
 
 
-def print_step(step, action: dict | None = None, observation: dict | None = None):
+def print_step(
+    step: int,
+    action: mcio_env.MCioAction | None = None,
+    observation: mcio_env.MCioObservation | None = None,
+) -> None:
     print(f"Step {step}:")
     if action is not None:
         print(f"Action:\n{pprint.pformat(action)}")
@@ -51,7 +54,7 @@ def print_step(step, action: dict | None = None, observation: dict | None = None
     print("-" * 10)
 
 
-def obs_to_string(obs: dict):
+def obs_to_string(obs: mcio_env.MCioObservation) -> str:
     """Return a pretty version of the observation as a string.
     Prints the shape of the frame rather than the frame itself"""
     frame = obs["frame"]
@@ -61,7 +64,7 @@ def obs_to_string(obs: dict):
     return formatted
 
 
-def parse_args():
+def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description=textwrap.dedent(
             """

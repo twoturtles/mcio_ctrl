@@ -1,6 +1,6 @@
 # Code for communicating with the MCio mod
 from dataclasses import dataclass, asdict, field
-from typing import List, Tuple
+from typing import Optional
 import io
 import pprint
 import time
@@ -47,17 +47,17 @@ class ObservationPacket:
     cursor_mode: int = (
         glfw.CURSOR_NORMAL
     )  # Either glfw.CURSOR_NORMAL (212993) or glfw.CURSOR_DISABLED (212995)
-    cursor_pos: Tuple[int, int] = field(default=(0, 0))  # x, y
+    cursor_pos: tuple[int, int] = field(default=(0, 0))  # x, y
     # Minecraft uses float player positions. This indicates the position within the block.
-    player_pos: Tuple[float, float, float] = field(default=(0.0, 0.0, 0.0))
+    player_pos: tuple[float, float, float] = field(default=(0.0, 0.0, 0.0))
     player_pitch: float = 0
     player_yaw: float = 0
-    inventory_main: List = field(default_factory=list)
-    inventory_armor: List = field(default_factory=list)
-    inventory_offhand: List = field(default_factory=list)
+    inventory_main: list = field(default_factory=list)
+    inventory_armor: list = field(default_factory=list)
+    inventory_offhand: list = field(default_factory=list)
 
     @classmethod
-    def unpack(cls, data: bytes) -> "ObservationPacket" | None:
+    def unpack(cls, data: bytes) -> Optional["ObservationPacket"]:
         try:
             decoded_dict = cbor2.loads(data)
         except Exception as e:
@@ -104,7 +104,7 @@ class ActionPacket:
     sequence: int = (
         0  # sequence number. This will be automatically set by send_action in Controller.
     )
-    commands: List[str] = field(
+    commands: list[str] = field(
         default_factory=list
     )  # Server commands to execute (teleport, time set, etc.). Do not include the /
 
@@ -113,16 +113,16 @@ class ActionPacket:
     # List of (key, action) pairs.
     # E.g., (glfw.KEY_W, glfw.PRESS) or (glfw.KEY_LEFT_SHIFT, glfw.RELEASE)
     # I don't think there's any reason to use glfw.REPEAT
-    keys: List[Tuple[int, int]] = field(default_factory=list)
+    keys: list[tuple[int, int]] = field(default_factory=list)
 
     # List of (button, action) pairs.
     # E.g., (glfw.MOUSE_BUTTON_1, glfw.PRESS) or (glfw.MOUSE_BUTTON_1, glfw.RELEASE)
-    mouse_buttons: List[Tuple[int, int]] = field(
+    mouse_buttons: list[tuple[int, int]] = field(
         default_factory=list
     )  # List of (button, action) pairs
 
     # List of (x, y) pairs. Using a list for consistency
-    cursor_pos: List[Tuple[int, int]] = field(default_factory=list)
+    cursor_pos: list[tuple[int, int]] = field(default_factory=list)
 
     def pack(self) -> bytes:
         pkt_dict = asdict(self)
