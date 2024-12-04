@@ -1,21 +1,24 @@
 import time
 import queue
+from typing import TypeVar
 
 from . import logger
 
 LOG = logger.LOG.get_logger(__name__)
 
+T = TypeVar("T")
 
-class LatestItemQueue(queue.Queue):
+
+class LatestItemQueue(queue.Queue[T]):
     """
     Threadsafe Queue that only saves the most recent item.
     Puts replace any item on the queue.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__(maxsize=1)
 
-    def put(self, item) -> bool:
+    def put(self, item: T) -> bool:  # type: ignore[override]
         """Return True if the previous packet had to be dropped"""
         dropped = False
         try:
@@ -28,7 +31,7 @@ class LatestItemQueue(queue.Queue):
         super().put(item)
         return dropped
 
-    def get(self, block=True, timeout=None):
+    def get(self, block: bool = True, timeout: float | None = None) -> T:
         """
         The same as Queue.get, except this automatically calls task_done()
         I'm not sure task_done() really matters for how we're using Queue.
@@ -46,7 +49,8 @@ class TrackPerSecond:
         self.start = time.time()
         self.item_count = 0
 
-    def count(self):
+    def count(self) -> None:
+        """Increment the counter and log every log_time"""
         end = time.time()
         self.item_count += 1
         if end - self.start >= self.log_time:
