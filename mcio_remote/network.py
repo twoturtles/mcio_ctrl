@@ -104,9 +104,6 @@ class ActionPacket:
     sequence: int = (
         0  # sequence number. This will be automatically set by send_action in Controller.
     )
-    reset: bool = (
-        False  # Tells minecraft to reset observation sequence clear all key / button presses
-    )
     commands: List[str] = field(
         default_factory=list
     )  # Server commands to execute (teleport, time set, etc.). Do not include the /

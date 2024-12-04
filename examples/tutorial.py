@@ -3,9 +3,10 @@ import textwrap
 import pprint
 
 import gymnasium as gym
-import glfw
 
+# import required to register gym env
 import mcio_remote as mcio  # noqa: F401
+from mcio_remote.mcio_env.envs import mcio_env
 
 
 def tutorial(steps):
@@ -14,37 +15,42 @@ def tutorial(steps):
     observation, info = env.reset(
         options={"commands": ["time set day", "teleport @s 0 -60 0 180 0"]}
     )
-    print(f"Step {step}: {obs_to_string(observation)}")
+    print(f"Step {step}:\n{obs_to_string(observation)}\n----------")
     step += 1
     done = False
     while not done and step < steps:
         # Cycle jumping on and off
         cycle = (steps // 50) % 2
         action = env.action_space.sample()
+        # XXX don't require unwrapped
+        noop = env.unwrapped.get_noop_action()
+        print(action)
+        print(noop)
         if cycle == 0:
-            action['keys'] = [(glfw.KEY_SPACE, glfw.PRESS)]
+            action["keys"]["SPACE"] = mcio_env.PRESS
         elif cycle == 1:
-            action['keys'] = [(glfw.KEY_SPACE, glfw.RELEASE)]
+            action["keys"]["SPACE"] = mcio_env.NO_PRESS
 
-        # # Go forward and press attack button
-        # XXX These are not valid in the action space
-        action['keys'].append((glfw.KEY_W, glfw.PRESS))
-        action['mouse_buttons'] = [(glfw.MOUSE_BUTTON_1, glfw.PRESS)]
+        # # # Go forward and press attack button
+        action["keys"]["W"] = mcio_env.PRESS
+        action["mouse_buttons"]["LEFT"] = mcio_env.PRESS
         observation, reward, terminated, truncated, info = env.step(action)
-        print(f"Step {step}: {action}\n{obs_to_string(observation)}\n")
+        print(f"Step {step}: {action}\n{obs_to_string(observation)}\n-----------")
         step += 1
         done = terminated or truncated
 
     env.close()
 
+
 def obs_to_string(obs: dict):
     """Return a pretty version of the observation as a string.
     Prints the shape of the frame rather than the frame itself"""
-    frame = obs['frame']
-    obs['frame'] = frame.shape
+    frame = obs["frame"]
+    obs["frame"] = frame.shape
     formatted = pprint.pformat(obs)
     obs["frame"] = frame
     return formatted
+
 
 def parse_args():
     parser = argparse.ArgumentParser(

@@ -1,5 +1,6 @@
 import logging
 
+
 class Logger:
     def __init__(self):
         # Get the root logger for mcio_remote
