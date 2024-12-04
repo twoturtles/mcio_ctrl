@@ -42,6 +42,7 @@ class ImageStreamGui:
         self.frame_height = 0
         self.scale = scale
 
+    # Should this just be part of show()?
     def poll(self):
         glfw.poll_events()  # Poll for events
 

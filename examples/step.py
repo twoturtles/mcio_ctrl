@@ -1,3 +1,6 @@
+""" Test that communication is working properly.
+Just sends noop actions and displays observations"""
+
 import argparse
 import sys
 import textwrap
@@ -9,9 +12,7 @@ import mcio_remote as mcio
 
 def step(n_steps: int, wait: bool = False):
     env = mcio.gym_lite.GymLite("Hello", render_mode="human", mcio_mode="sync")
-    observation = env.reset(
-        send_reset=False, commands=["time set day", "teleport @s 0 -60 0 180 0"]
-    )
+    observation = env.reset(commands=["time set day", "teleport @s 0 -60 0 180 0"])
     print(f"Step 1 (reset): {observation}")
     if n_steps == 0 or wait:
         n_steps = sys.maxsize  # Go forever
