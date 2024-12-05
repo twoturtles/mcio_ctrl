@@ -19,7 +19,18 @@ classifiers = [
 ]
 dependencies = [
     "cbor2>=5.6.5",
-    "glfw>=2.7.0"
+    "glfw>=2.7.0",
+    "PyOpenGL>=3.1.7",
+    "gymnasium>=1.0.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pre-commit>=4.0.1",
+    "mypy>=1.13.0",
+    "ruff>=0.8.1",
+    "black>=24.10.0",
+    "pytest>=8.3.4"
 ]
 
 [tool.mypy]
