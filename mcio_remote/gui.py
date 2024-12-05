@@ -1,5 +1,5 @@
 import time
-from typing import Callable
+from typing import Callable, Any
 
 import glfw
 import OpenGL.GL as gl
@@ -43,7 +43,7 @@ class ImageStreamGui:
         self.scale = scale
 
     # Should this just be part of show()?
-    def poll(self):
+    def poll(self) -> None:
         glfw.poll_events()  # Poll for events
 
     def show(self, frame: NDArray[np.uint8]) -> bool:
@@ -57,13 +57,19 @@ class ImageStreamGui:
         should_close = bool(glfw.window_should_close(self.window))
         return should_close
 
+    type KeyCallback = Callable[[Any, int, int, int, int], None]
+    type CursorPositionCallback = Callable[[Any, float, float], None]
+    type MouseButtonCallback = Callable[[Any, int, int, int], None]
+    type ResizeCallback = Callable[[Any, int, int], None]
+    type FocusCallback = Callable[[Any, int], None]
+
     def set_callbacks(
         self,
-        key_callback: Callable | None = None,
-        cursor_position_callback: Callable | None = None,
-        mouse_button_callback: Callable | None = None,
-        resize_callback: Callable | None = None,
-        focus_callback: Callable | None = None,
+        key_callback: KeyCallback | None = None,
+        cursor_position_callback: CursorPositionCallback | None = None,
+        mouse_button_callback: MouseButtonCallback | None = None,
+        resize_callback: ResizeCallback | None = None,
+        focus_callback: FocusCallback | None = None,
     ) -> None:
         """Set GLFW callbacks. See defaults for examples
 
@@ -92,38 +98,45 @@ class ImageStreamGui:
         glfw.set_window_size_callback(self.window, self.resize_callback)
         glfw.set_window_focus_callback(self.window, self.focus_callback)
 
-    def set_cursor_mode(self, mode: int):
+    def set_cursor_mode(self, mode: int) -> None:
         """Set the cursor mode. Minecraft uses glfw.CURSOR_NORMAL (212993) and glfw.CURSOR_DISABLED (212995)"""
         glfw.set_input_mode(self.window, glfw.CURSOR, mode)
 
-    def cleanup(self):
+    def cleanup(self) -> None:
         """Clean up resources"""
         glfw.set_window_should_close(self.window, True)
         glfw.terminate()
 
     # Default Callbacks
-    def default_key_callback(self, window, key, scancode, action, mods):
+    # I think window is actually a pointer.
+    def default_key_callback(
+        self, window: Any, key: int, scancode: int, action: int, mods: int
+    ) -> None:
         """Handle keyboard input"""
         # Quit handling
         if key == glfw.KEY_Q and action == glfw.PRESS:
             glfw.set_window_should_close(self.window, True)
             return
 
-    def default_cursor_position_callback(self, window, xpos, ypos):
+    def default_cursor_position_callback(
+        self, window: Any, xpos: float, ypos: float
+    ) -> None:
         """Handle mouse movement"""
         pass
 
-    def default_mouse_button_callback(self, window, button, action, mods):
+    def default_mouse_button_callback(
+        self, window: Any, button: int, action: int, mods: int
+    ) -> None:
         """Handle mouse button events"""
         pass
 
-    def default_resize_callback(self, window, width, height):
+    def default_resize_callback(self, window: Any, width: int, height: int) -> None:
         """Handle window resize"""
         gl.glViewport(0, 0, width, height)
         # Force a redraw
         glfw.post_empty_event()
 
-    def default_focus_callback(self, window, focused):
+    def default_focus_callback(self, window: Any, focused: int) -> None:
         """Handle focus change Note: focused is 0 or 1"""
         self.is_focused = bool(focused)
 
@@ -131,7 +144,7 @@ class ImageStreamGui:
     # Internal functions
     #
 
-    def _glfw_init(self, width, height, name):
+    def _glfw_init(self, width: int, height: int, name: str) -> Any:
         # Initialize GLFW
         if not glfw.init():
             raise Exception("GLFW initialization failed")
@@ -149,13 +162,13 @@ class ImageStreamGui:
 
         return window
 
-    def _render(self, frame: NDArray[np.uint8]):
+    def _render(self, frame: NDArray[np.uint8]) -> None:
         """glfw portion of render"""
         self._auto_resize(frame)
         self._render_gl(frame)
         glfw.swap_buffers(self.window)
 
-    def _auto_resize(self, frame: NDArray[np.uint8]):
+    def _auto_resize(self, frame: NDArray[np.uint8]) -> None:
         # shape = (height, width, channels)
         height = frame.shape[0]
         width = frame.shape[1]
@@ -167,7 +180,7 @@ class ImageStreamGui:
                 self.window, int(width * self.scale), int(height * self.scale)
             )
 
-    def _render_gl(self, frame: NDArray[np.uint8]):
+    def _render_gl(self, frame: NDArray[np.uint8]) -> None:
         """opengl portion of render"""
         gl.glClearColor(0.0, 0.0, 0.0, 1.0)
         gl.glClear(gl.GL_COLOR_BUFFER_BIT)
@@ -225,24 +238,25 @@ class ImageStreamGui:
 class TestPattern:
     """Generate a stream of images. Useful for testing."""
 
-    def __init__(self, width=640, height=480, frequency=0.1):
+    def __init__(self, width: int = 640, height: int = 480, frequency: float = 0.1):
         self.width = width
         self.height = height
         self.frequency = frequency
         self.step = 0
 
-    def get_frame(self):
+    def get_frame(self) -> NDArray[np.uint8]:
         # Create image with background color
         color = self.cycle_spectrum(self.step, self.frequency)
         frame = np.full((self.height, self.width, 3), color, dtype=np.uint8)
         self.step += 1
         return frame
 
-    def sin(self, x, frequency, phase_shift):
+    def sin(self, x: int, frequency: float, phase_shift: float) -> float:
         # sin from 0 to 255. phase shift is fraction of 2*pi.
-        return 127.5 * (np.sin(frequency * x + (phase_shift * 2 * np.pi)) + 1)
+        val: float = 127.5 * (np.sin(frequency * x + (phase_shift * 2 * np.pi)) + 1)
+        return val
 
-    def cycle_spectrum(self, step, frequency=0.1):
+    def cycle_spectrum(self, step: int, frequency: float = 0.1) -> NDArray[np.uint8]:
         """
         step: current step in the cycle
         frequency: how fast to cycle through colors
@@ -254,11 +268,11 @@ class TestPattern:
 
 
 # Testing
-def main():
+def main() -> None:
     pat = TestPattern()
     gui = ImageStreamGui()
 
-    def cursor_position_callback(window, xpos, ypos):
+    def cursor_position_callback(window: Any, xpos: float, ypos: float) -> None:
         print(xpos, ypos)
 
     gui.set_callbacks(cursor_position_callback=cursor_position_callback)

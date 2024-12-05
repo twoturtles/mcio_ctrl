@@ -7,8 +7,9 @@ import argparse
 import textwrap
 import time
 import logging
+from typing import Any
 
-import glfw
+import glfw  # type: ignore
 
 import mcio_remote as mcio
 
@@ -32,7 +33,9 @@ class MCioGUI:
             mouse_button_callback=self.mouse_button_callback,
         )
 
-    def key_callback(self, window, key, scancode, action, mods):
+    def key_callback(
+        self, window: Any, key: int, scancode: int, action: int, mods: int
+    ) -> None:
         """Handle keyboard input"""
         if key == glfw.KEY_Q and action == glfw.PRESS:
             # Quit handling
@@ -46,7 +49,7 @@ class MCioGUI:
         action = mcio.network.ActionPacket(keys=[(key, action)])
         self.controller.send_action(action)
 
-    def cursor_position_callback(self, window, xpos, ypos):
+    def cursor_position_callback(self, window: Any, xpos: float, ypos: float) -> None:
         """Handle mouse movement. Only watch the mouse when we're focused."""
         if self.gui.is_focused:
             # If we're scaling the window, also scale the position so things line up
@@ -56,12 +59,14 @@ class MCioGUI:
             action = mcio.network.ActionPacket(cursor_pos=[scaled_pos])
             self.controller.send_action(action)
 
-    def mouse_button_callback(self, window, button, action, mods):
+    def mouse_button_callback(
+        self, window: Any, button: int, action: int, mods: int
+    ) -> None:
         """Handle mouse button events"""
         action = mcio.network.ActionPacket(mouse_buttons=[(button, action)])
         self.controller.send_action(action)
 
-    def show(self, observation: mcio.network.ObservationPacket):
+    def show(self, observation: mcio.network.ObservationPacket) -> None:
         """Show frame to the user"""
         if observation.frame_png:
             # Link cursor mode to Minecraft.
@@ -69,7 +74,7 @@ class MCioGUI:
             frame = observation.get_frame_with_cursor()
             self.gui.show(frame)
 
-    def run(self):
+    def run(self) -> None:
         """Main application loop"""
         frame_time = 1.0 / self.fps
         fps_track = mcio.util.TrackPerSecond("FPS")
@@ -95,13 +100,13 @@ class MCioGUI:
         LOG.info("Exiting...")
         self.cleanup()
 
-    def cleanup(self):
+    def cleanup(self) -> None:
         """Clean up resources"""
         self.controller.shutdown()
         self.gui.cleanup()
 
 
-def parse_args():
+def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description=textwrap.dedent(
             """
