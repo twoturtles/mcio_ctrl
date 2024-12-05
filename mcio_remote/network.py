@@ -6,7 +6,7 @@ import pprint
 import time
 
 import cbor2
-import glfw
+import glfw  # type: ignore
 import zmq
 import numpy as np
 from numpy.typing import NDArray

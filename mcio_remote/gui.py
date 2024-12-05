@@ -1,8 +1,8 @@
 import time
 from typing import Callable, Any
 
-import glfw
-import OpenGL.GL as gl
+import glfw  # type: ignore
+import OpenGL.GL as gl  # type: ignore
 from numpy.typing import NDArray
 
 import numpy as np

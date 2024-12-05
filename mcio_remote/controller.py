@@ -1,4 +1,5 @@
 import threading
+from typing import Protocol
 
 from . import network
 from . import util
@@ -7,7 +8,23 @@ from . import logger
 LOG = logger.LOG.get_logger(__name__)
 
 
-class ControllerSync:
+class ControllerCommon(Protocol):
+    """Protocol for the fundamental controller interface shared by sync/async implementations"""
+
+    _action_sequence_last_sent: int
+    _mcio_conn: network._Connection
+
+    def send_action(self, action: network.ActionPacket) -> None:
+        """Send action to minecraft. Automatically sets action.sequence."""
+        self._action_sequence_last_sent += 1
+        action.sequence = self._action_sequence_last_sent
+        self._mcio_conn.send_action(action)
+
+    def recv_observation(self) -> network.ObservationPacket: ...
+    def close(self) -> None: ...
+
+
+class ControllerSync(ControllerCommon):
     """
     Handles SYNC mode connections to Minecraft.
     Blocks in recv waiting for a new observation.
@@ -15,33 +32,32 @@ class ControllerSync:
 
     # XXX Implement context manager
     def __init__(self, host: str = "localhost"):
-        self.action_sequence_last_sent = 0
-
+        self._action_sequence_last_sent = 0
         # This briefly sleeps for zmq initialization.
         self._mcio_conn = network._Connection()
 
-    def send_action(self, action: network.ActionPacket) -> None:
-        """Send action to minecraft. Automatically sets action.sequence."""
-        self.action_sequence_last_sent += 1
-        action.sequence = self.action_sequence_last_sent
-        self._mcio_conn.send_action(action)
-
-    def recv_observation(self) -> network.ObservationPacket | None:
+    def recv_observation(
+        self, block: bool = True, timeout: float | None = None
+    ) -> network.ObservationPacket:
         """Receive observation. Blocks"""
-        return self._mcio_conn.recv_observation()
+        obs = self._mcio_conn.recv_observation()
+        if obs is None:
+            # This will only ever happen when zmq is shutting down
+            return network.ObservationPacket()
+        return obs
 
     def close(self) -> None:
         """Shut down the network connection"""
         self._mcio_conn.close()
 
 
-class ControllerAsync:
+class ControllerAsync(ControllerCommon):
     """
     Handles ASYNC mode connections to Minecraft
     """
 
     def __init__(self, host: str = "localhost"):
-        self.action_sequence_last_sent = 0
+        self._action_sequence_last_sent = 0
 
         self.process_counter = util.TrackPerSecond("ProcessObservationPPS")
         self.queued_counter = util.TrackPerSecond("QueuedActionsPPS")
@@ -50,7 +66,7 @@ class ControllerAsync:
         self._running = threading.Event()
         self._running.set()
 
-        self._observation_queue = util.LatestItemQueue()
+        self._observation_queue = util.LatestItemQueue[network.ObservationPacket]()
 
         # This briefly sleeps for zmq initialization.
         self._mcio_conn = network._Connection()
@@ -63,16 +79,6 @@ class ControllerAsync:
         self._observation_thread.start()
 
         LOG.info("Controller init complete")
-
-    def send_action(self, action: network.ActionPacket) -> int:
-        """
-        Send action to minecraft. Automatically sets action.sequence.
-        Returns the sequence number used
-        """
-        self.action_sequence_last_sent += 1
-        action.sequence = self.action_sequence_last_sent
-        self._mcio_conn.send_action(action)
-        return self.action_sequence_last_sent
 
     def recv_observation(
         self, block: bool = True, timeout: float | None = None
@@ -107,15 +113,12 @@ class ControllerAsync:
 
         LOG.info("ObservationThread shut down")
 
-    def shutdown(self) -> None:
-        # XXX
-        """
+    def close(self) -> None:
+        """Shut down the network connection"""
         self._running.clear()
         self._mcio_conn.close()
 
         self._observation_thread.join()
-        # Send empty action to unblock ActionThread
-        self._action_queue.put(None)
-        self._action_thread.join()
-        """
-        ...
+        # # Send empty action to unblock ActionThread
+        # self._action_queue.put(None)
+        # self._action_thread.join()

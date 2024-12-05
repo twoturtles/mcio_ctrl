@@ -4,7 +4,7 @@ import gymnasium as gym
 from gymnasium import spaces
 import numpy as np
 from numpy.typing import NDArray
-import glfw
+import glfw  # type: ignore
 
 from mcio_remote import controller, network, gui
 
@@ -44,7 +44,7 @@ type MCioAction = dict[str, Any]
 type MCioObservation = dict[str, Any]
 
 
-class MCioEnv(gym.Env):
+class MCioEnv(gym.Env[MCioObservation, MCioAction]):
     metadata = {"render_modes": ["human", "rgb_array"], "render_fps": 60}
 
     def __init__(
@@ -60,8 +60,9 @@ class MCioEnv(gym.Env):
         self.cursor_rel_bound = cursor_rel_bound
         self.mcio_mode = mcio_mode
 
-        self.last_frame: NDArray[np.uint8] = None
-        self.gui = None
+        self.last_frame: NDArray[np.uint8] | None = None
+        self.gui: gui.ImageStreamGui | None = None
+        self.ctrl: controller.ControllerCommon | None = None
         self.last_cursor_pos: tuple[int, int] = (0, 0)
         self.keys_pressed: set[str] = set()
         self.mouse_buttons_pressed: set[str] = set()
@@ -112,7 +113,7 @@ class MCioEnv(gym.Env):
     # Is there a better way to get a noop? Wrappers?
     # E.g., noop = env.unwrapped.get_noop_action() XXX Don't require unwrapped
     def get_noop_action(self) -> dict[str, Any]:
-        action = {}
+        action: MCioAction = {}
 
         action["keys"] = {}
         for name in MINECRAFT_KEYS.keys():
@@ -127,22 +128,28 @@ class MCioEnv(gym.Env):
         assert action in self.action_space
         return action
 
-    def _get_obs(self):
+    def _get_obs(self) -> MCioObservation:
+        assert self.ctrl is not None
         packet = self.ctrl.recv_observation()
+        if packet is None:
+            return {}
         return self._packet_to_observation(packet)
 
     def _send_action(
-        self, action: dict | None = None, commands: list[str] | None = None
-    ):
+        self, action: MCioAction | None = None, commands: list[str] | None = None
+    ) -> None:
         packet = self._action_to_packet(action, commands)
+        assert self.ctrl is not None
         self.ctrl.send_action(packet)
 
-    def _packet_to_observation(self, packet: network.ObservationPacket) -> dict:
+    def _packet_to_observation(
+        self, packet: network.ObservationPacket
+    ) -> MCioObservation:
         """Convert an ObservationPacket to the environment observation_space
         XXX Sets self.last_frame and self.last_cursor_pos as side-effects"""
         # Convert all fields to numpy arrays with correct dtypes
         self.last_frame = packet.get_frame_with_cursor()
-        self.last_cursor_pos = packet.player_pos
+        self.last_cursor_pos = packet.cursor_pos
         observation = {
             "frame": self.last_frame,
             "player_pos": _nf32(packet.player_pos),
@@ -154,7 +161,7 @@ class MCioEnv(gym.Env):
     # XXX I think missing keys/buttons should translate to NO_PRESS. But what is noop then?
     # Convert action space values to MCio/Minecraft values. Allow for empty/noop actions.
     def _action_to_packet(
-        self, action: dict | None = None, commands: list[str] | None = None
+        self, action: MCioAction | None = None, commands: list[str] | None = None
     ) -> network.ActionPacket:
         """Convert from the environment action_space to an ActionPacket"""
         packet = network.ActionPacket()
@@ -221,7 +228,7 @@ class MCioEnv(gym.Env):
         return pairs
 
     def _get_reset_action(self) -> dict[str, Any]:
-        action = {}
+        action: MCioAction = {}
 
         action["keys"] = {}
         for name in MINECRAFT_KEYS.keys():
@@ -239,10 +246,12 @@ class MCioEnv(gym.Env):
         assert action in self.action_space
         return action
 
-    def _get_info(self):
+    def _get_info(self) -> dict[Any, Any]:
         return {}
 
-    def reset(self, seed: int | None = None, options: dict[str, Any] | None = None):
+    def reset(
+        self, seed: int | None = None, options: dict[str, Any] | None = None
+    ) -> tuple[MCioObservation, dict[Any, Any]]:
         """valid options:
         commands: list of server commands to initialize the environment.
             E.g. teleport, time set, etc. Do not include the initial "/" in the commands.
@@ -267,7 +276,9 @@ class MCioEnv(gym.Env):
 
         return observation, info
 
-    def step(self, action: dict):
+    def step(
+        self, action: MCioAction
+    ) -> tuple[MCioObservation, int, bool, bool, dict[Any, Any]]:
         if action not in self.action_space:
             raise ValueError(f"Invalid action: {action}")
         self._send_action(action)
@@ -283,19 +294,20 @@ class MCioEnv(gym.Env):
 
         return observation, reward, terminated, truncated, info
 
-    def render(self):
+    def render(self) -> None:
         if self.render_mode == "human":
             self._render_frame_human()
         elif self.render_mode == "rgb_array":
             return self._render_frame_rgb_array()
 
-    def _render_frame_rgb_array(): ...
+    def _render_frame_rgb_array(self) -> None: ...
 
-    def _render_frame_human(self):
+    def _render_frame_human(self) -> None:
         if self.gui is None and self.render_mode == "human":
             self.gui = gui.ImageStreamGui("MCio", width=self.width, height=self.height)
         if self.last_frame is None:
             return
+        assert self.gui is not None
         self.gui.poll()
         self.gui.show(self.last_frame)
 
@@ -308,10 +320,9 @@ class MCioEnv(gym.Env):
 # Helper functions
 
 
-def _nf32(seq: Sequence | int | float) -> NDArray[np.float32]:
+def _nf32(seq: Sequence[int | float] | int | float) -> NDArray[np.float32]:
     """Convert to np.float32 arrays. Turns single values into 1D arrays."""
     if isinstance(seq, (int, float)):
         seq = [float(seq)]
-    seq = [np.float32(val) for val in seq]
-    a = np.array(seq, dtype=np.float32)
-    return a
+    arr = np.array([float(val) for val in seq], dtype=np.float32)
+    return arr
