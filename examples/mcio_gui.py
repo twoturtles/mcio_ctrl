@@ -46,8 +46,8 @@ class MCioGUI:
             return
 
         # Pass everything else to Minecraft
-        action = mcio.network.ActionPacket(keys=[(key, action)])
-        self.controller.send_action(action)
+        action_pkt = mcio.network.ActionPacket(keys=[(key, action)])
+        self.controller.send_action(action_pkt)
 
     def cursor_position_callback(self, window: Any, xpos: float, ypos: float) -> None:
         """Handle mouse movement. Only watch the mouse when we're focused."""
@@ -63,8 +63,8 @@ class MCioGUI:
         self, window: Any, button: int, action: int, mods: int
     ) -> None:
         """Handle mouse button events"""
-        action = mcio.network.ActionPacket(mouse_buttons=[(button, action)])
-        self.controller.send_action(action)
+        action_pkt = mcio.network.ActionPacket(mouse_buttons=[(button, action)])
+        self.controller.send_action(action_pkt)
 
     def show(self, observation: mcio.network.ObservationPacket) -> None:
         """Show frame to the user"""
