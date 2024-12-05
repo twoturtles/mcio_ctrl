@@ -14,3 +14,10 @@ repos:
     hooks:
       - id: black
         args: [--check, --diff]
+  - repo: local
+    hooks:
+      - id: pytest
+        name: pytest
+        entry: pytest --maxfail=3
+        language: system
+        types: [python]
