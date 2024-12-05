@@ -24,3 +24,4 @@ repos:
         entry: pytest --maxfail=3
         language: system
         types: [python]
+        pass_filenames: false

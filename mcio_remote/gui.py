@@ -238,6 +238,8 @@ class ImageStreamGui:
 class TestPattern:
     """Generate a stream of images. Useful for testing."""
 
+    __test__ = False  # tell pytest this isn't a test
+
     def __init__(self, width: int = 640, height: int = 480, frequency: float = 0.1):
         self.width = width
         self.height = height
