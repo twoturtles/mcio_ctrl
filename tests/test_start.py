@@ -5,12 +5,12 @@ from mcio_remote import network
 
 
 @pytest.fixture
-def default_mcio_env():
+def default_mcio_env() -> mcio_env.MCioEnv:
     return mcio_env.MCioEnv()
 
 
 @pytest.fixture
-def action_space_sample1():
+def action_space_sample1() -> mcio_env.MCioAction:
     return {
         "cursor_pos_rel": np.array([827.648, 22.274418], dtype=np.float32),
         "keys": {"A": 0, "D": 0, "E": 1, "L_SHIFT": 1, "S": 1, "SPACE": 1, "W": 1},
@@ -18,11 +18,15 @@ def action_space_sample1():
     }
 
 
-def test_fixture_is_valid(default_mcio_env, action_space_sample1):
+def test_fixture_is_valid(
+    default_mcio_env: mcio_env.MCioEnv, action_space_sample1: mcio_env.MCioAction
+) -> None:
     assert action_space_sample1 in default_mcio_env.action_space
 
 
-def test_action_to_packet(default_mcio_env, action_space_sample1):
+def test_action_to_packet(
+    default_mcio_env: mcio_env.MCioEnv, action_space_sample1: mcio_env.MCioAction
+) -> None:
     expected1 = network.ActionPacket(
         version=0,
         sequence=0,

@@ -102,7 +102,7 @@ class MCioGUI:
 
     def cleanup(self) -> None:
         """Clean up resources"""
-        self.controller.shutdown()
+        self.controller.close()
         self.gui.cleanup()
 
 
