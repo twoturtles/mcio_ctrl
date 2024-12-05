@@ -1,21 +1,24 @@
 repos:
-  - repo: https://github.com/pre-commit/mirrors-mypy
-    rev: v1.13.0
-    hooks:
-      - id: mypy
-        args: [--strict]
-  - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.8.1
-    hooks:
-      - id: ruff
-        args: []
-  - repo: https://github.com/psf/black
-    rev: 24.10.0
-    hooks:
-      - id: black
-        args: [--check, --diff]
   - repo: local
     hooks:
+      - id: mypy
+        name: mypy
+        entry: mypy --strict
+        language: system
+        types: [python]
+
+      - id: ruff
+        name: ruff
+        entry: ruff check --diff
+        language: system
+        types: [python]
+
+      - id: black
+        name: black
+        entry: black --check --diff
+        language: system
+        types: [python]
+
       - id: pytest
         name: pytest
         entry: pytest --maxfail=3
