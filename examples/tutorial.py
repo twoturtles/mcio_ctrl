@@ -15,8 +15,14 @@ def tutorial(steps: int) -> None:
     env = mcio_env.MCioEnv(render_mode="human")
 
     step = 0
+    setup_commands = [
+        "time set day",
+        "teleport @s 0  0 180 0",
+        "summon minecraft:sheep ~2 ~2 ~2",
+        "summon minecraft:cow ~-2 ~2 ~-2",
+    ]
     observation, info = env.reset(
-        options={"commands": ["time set day", "teleport @s 0 -60 0 180 0"]}
+        options={"commands": setup_commands}
     )
     print_step(step, None, observation)
     step += 1
