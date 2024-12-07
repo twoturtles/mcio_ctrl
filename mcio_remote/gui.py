@@ -42,17 +42,18 @@ class ImageStreamGui:
         self.frame_height = 0
         self.scale = scale
 
-    # Should this just be part of show()?
     def poll(self) -> None:
         glfw.poll_events()  # Poll for events
 
-    def show(self, frame: NDArray[np.uint8]) -> bool:
+    def show(self, frame: NDArray[np.uint8], poll: bool = True) -> bool:
         """Display the next frame
         Args:
             frame (NDArray[np.uint8]): The new frame image
         Returns:
             bool: should_close - received request to quit / close the window
         """
+        if poll:
+            self.poll()
         self._render(frame)
         should_close = bool(glfw.window_should_close(self.window))
         return should_close

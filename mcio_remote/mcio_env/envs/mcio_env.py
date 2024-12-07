@@ -308,7 +308,6 @@ class MCioEnv(gym.Env[MCioObservation, MCioAction]):
         if self.last_frame is None:
             return
         assert self.gui is not None
-        self.gui.poll()
         self.gui.show(self.last_frame)
 
     def close(self) -> None:

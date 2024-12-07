@@ -46,7 +46,6 @@ class GymLite:
     def render(self, observation: network.ObservationPacket) -> None:
         if self.render_mode == "human":
             frame = observation.get_frame_with_cursor()
-            self.gui.poll()
             self.gui.show(frame)
 
     def step(self, action: network.ActionPacket) -> network.ObservationPacket:

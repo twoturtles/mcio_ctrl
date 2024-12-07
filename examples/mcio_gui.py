@@ -80,7 +80,6 @@ class MCioGUI:
         fps_track = mcio.util.TrackPerSecond("FPS")
         while self.running:
             frame_start = time.perf_counter()
-            self.gui.poll()
             try:
                 observation = self.controller.recv_observation(block=False)
             except queue.Empty:
