@@ -1,14 +1,14 @@
 [build-system]
-requires = ["setuptools>=75.1.0"]
-build-backend = "setuptools.build_meta"
+requires = ["hatchling"]
+build-backend = "hatchling.build"
 
 [project]
 name = "mcio_remote"
-version = "0.1.0"
+dynamic = ["version"]
 description = "Python interface to connect to the MCio Minecraft mod"
 readme = "README.md"
 requires-python = ">=3.12"
-license = {text = "MIT"}
+license = "MIT"
 authors = [
     {name = "TwoTurtles"}
 ]
@@ -26,6 +26,10 @@ dependencies = [
     "pillow>=11.0.0"
 ]
 
+[project.urls]
+Source = "https://github.com/twoturtles/mcio_remote"
+Issues = "https://github.com/twoturtles/mcio_remote/issues"
+
 [project.optional-dependencies]
 dev = [
     "pre-commit>=4.0.1",
@@ -39,5 +43,35 @@ dev = [
 strict = true
 files = ["mcio_remote", "examples", "tests"]
 
-[project.urls]
-Homepage = "https://github.com/twoturtles/mcio_remote"
+# Hatch todo
+
+[tool.hatch]
+
+[tool.hatch.version]
+path = "mcio_remote/__about__.py"
+
+[tool.hatch.envs.types]
+extra-dependencies = [
+  "mypy>=1.0.0",
+]
+[tool.hatch.envs.types.scripts]
+check = "mypy --install-types --non-interactive {args:src/hatch_demo tests}"
+
+[tool.coverage.run]
+source_pkgs = ["hatch_demo", "tests"]
+branch = true
+parallel = true
+omit = [
+  "src/hatch_demo/__about__.py",
+]
+
+[tool.coverage.paths]
+hatch_demo = ["src/hatch_demo", "*/hatch-demo/src/hatch_demo"]
+tests = ["tests", "*/hatch-demo/tests"]
+
+[tool.coverage.report]
+exclude_lines = [
+  "no cov",
+  "if __name__ == .__main__.:",
+  "if TYPE_CHECKING:",
+]
