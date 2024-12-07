@@ -30,45 +30,20 @@ dependencies = [
 Source = "https://github.com/twoturtles/mcio_remote"
 Issues = "https://github.com/twoturtles/mcio_remote/issues"
 
-[project.optional-dependencies]
-dev = [
+[tool.hatch.envs.dev]
+dependencies = [
     "pre-commit>=4.0.1",
     "mypy>=1.13.0",
     "ruff>=0.8.1",
     "black>=24.10.0",
     "pytest>=8.3.4"
 ]
+scripts.check = [
+    "ruff check --diff .",
+    "black --check --diff .",
+    "mypy --strict ."
+]
+scripts.test = "pytest"
 
-# [tool.mypy]
-# strict = true
-# files = ["mcio_remote", "examples", "tests"]
-
-# Hatch todo
-
-# [tool.hatch]
-# version.path = "mcio_remote/__about__.py"
-
-# [tool.hatch.envs.types]
-# extra-dependencies = [
-#   "mypy>=1.0.0",
-# ]
-# scripts.check = "mypy --install-types --non-interactive {args:tests}"
-
-# [tool.coverage.run]
-# source_pkgs = ["hatch_demo", "tests"]
-# branch = true
-# parallel = true
-# omit = [
-#   "src/hatch_demo/__about__.py",
-# ]
-
-# [tool.coverage.paths]
-# hatch_demo = ["src/hatch_demo", "*/hatch-demo/src/hatch_demo"]
-# tests = ["tests", "*/hatch-demo/tests"]
-
-# [tool.coverage.report]
-# exclude_lines = [
-#   "no cov",
-#   "if __name__ == .__main__.:",
-#   "if TYPE_CHECKING:",
-# ]
+[tool.hatch.version]
+path = "mcio_remote/__about__.py"

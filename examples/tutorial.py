@@ -21,9 +21,7 @@ def tutorial(steps: int) -> None:
         "summon minecraft:sheep ~2 ~2 ~2",
         "summon minecraft:cow ~-2 ~2 ~-2",
     ]
-    observation, info = env.reset(
-        options={"commands": setup_commands}
-    )
+    observation, info = env.reset(options={"commands": setup_commands})
     print_step(step, None, observation)
     step += 1
     done = False
