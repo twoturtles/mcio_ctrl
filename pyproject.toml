@@ -39,39 +39,36 @@ dev = [
     "pytest>=8.3.4"
 ]
 
-[tool.mypy]
-strict = true
-files = ["mcio_remote", "examples", "tests"]
+# [tool.mypy]
+# strict = true
+# files = ["mcio_remote", "examples", "tests"]
 
 # Hatch todo
 
-[tool.hatch]
+# [tool.hatch]
+# version.path = "mcio_remote/__about__.py"
 
-[tool.hatch.version]
-path = "mcio_remote/__about__.py"
+# [tool.hatch.envs.types]
+# extra-dependencies = [
+#   "mypy>=1.0.0",
+# ]
+# scripts.check = "mypy --install-types --non-interactive {args:tests}"
 
-[tool.hatch.envs.types]
-extra-dependencies = [
-  "mypy>=1.0.0",
-]
-[tool.hatch.envs.types.scripts]
-check = "mypy --install-types --non-interactive {args:src/hatch_demo tests}"
+# [tool.coverage.run]
+# source_pkgs = ["hatch_demo", "tests"]
+# branch = true
+# parallel = true
+# omit = [
+#   "src/hatch_demo/__about__.py",
+# ]
 
-[tool.coverage.run]
-source_pkgs = ["hatch_demo", "tests"]
-branch = true
-parallel = true
-omit = [
-  "src/hatch_demo/__about__.py",
-]
+# [tool.coverage.paths]
+# hatch_demo = ["src/hatch_demo", "*/hatch-demo/src/hatch_demo"]
+# tests = ["tests", "*/hatch-demo/tests"]
 
-[tool.coverage.paths]
-hatch_demo = ["src/hatch_demo", "*/hatch-demo/src/hatch_demo"]
-tests = ["tests", "*/hatch-demo/tests"]
-
-[tool.coverage.report]
-exclude_lines = [
-  "no cov",
-  "if __name__ == .__main__.:",
-  "if TYPE_CHECKING:",
-]
+# [tool.coverage.report]
+# exclude_lines = [
+#   "no cov",
+#   "if __name__ == .__main__.:",
+#   "if TYPE_CHECKING:",
+# ]
