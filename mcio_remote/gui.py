@@ -185,6 +185,7 @@ class ImageStreamGui:
         """opengl portion of render"""
         gl.glClearColor(0.0, 0.0, 0.0, 1.0)
         gl.glClear(gl.GL_COLOR_BUFFER_BIT)
+        gl.glPixelStorei(gl.GL_UNPACK_ALIGNMENT, 1)
 
         # Prepare frame for opengl
         frame = np.flipud(np.array(frame))
