@@ -29,6 +29,7 @@ dependencies = [
 [project.urls]
 Source = "https://github.com/twoturtles/mcio_remote"
 Issues = "https://github.com/twoturtles/mcio_remote/issues"
+Changelog = "https://github.com/twoturtles/mcio_remote/blob/main/CHANGELOG.md"
 
 [tool.hatch.envs.dev]
 dependencies = [
