@@ -1,6 +1,6 @@
 # Code for communicating with the MCio mod
 from dataclasses import dataclass, asdict, field
-from typing import Optional
+from typing import Optional, Final
 import io
 import pprint
 import time
@@ -14,10 +14,10 @@ from PIL import Image, ImageDraw
 
 from . import util
 from . import logger
-from .__about__ import MCIO_PROTOCOL_VERSION
 
 LOG = logger.LOG.get_logger(__name__)
 
+MCIO_PROTOCOL_VERSION: Final[int] = 0
 
 DEFAULT_HOST = "localhost"
 DEFAULT_ACTION_PORT = 4001  # 4ction
