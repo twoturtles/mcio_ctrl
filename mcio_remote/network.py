@@ -14,6 +14,7 @@ from PIL import Image, ImageDraw
 
 from . import util
 from . import logger
+from .__about__ import MCIO_PROTOCOL_VERSION
 
 LOG = logger.LOG.get_logger(__name__)
 
@@ -23,8 +24,6 @@ DEFAULT_ACTION_PORT = 4001  # 4ction
 DEFAULT_OBSERVATION_PORT = 8001  # 8bservation
 DEFAULT_ACTION_ADDR = f"tcp://{DEFAULT_HOST}:{DEFAULT_ACTION_PORT}"
 DEFAULT_OBSERVATION_ADDR = f"tcp://{DEFAULT_HOST}:{DEFAULT_OBSERVATION_PORT}"
-
-MCIO_PROTOCOL_VERSION = 0
 
 
 @dataclass
