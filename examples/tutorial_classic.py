@@ -9,6 +9,7 @@ This version doesn't use types to allow the use of gym.make(),
 import argparse
 import textwrap
 import pprint
+import sys
 
 import gymnasium as gym
 
@@ -19,6 +20,8 @@ from mcio_remote.mcio_env.envs import mcio_env
 
 def tutorial_classic(steps):
     env = gym.make("mcio_env/MCioEnv-v0", render_mode="human")
+    if steps == 0:
+        steps = sys.maxsize  # Go forever
     step = 0
     observation, info = env.reset(
         options={"commands": ["time set day", "teleport @s 0 -60 0 180 0"]}

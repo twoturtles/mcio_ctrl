@@ -5,6 +5,7 @@ XXX Requires that Minecraft is started first (will fix)
 import argparse
 import textwrap
 import pprint
+import sys
 
 from mcio_remote.mcio_env.envs import mcio_env
 
@@ -14,6 +15,8 @@ def tutorial(steps: int) -> None:
     # env = gym.make("mcio_env/MCioEnv-v0", render_mode="human")
     env = mcio_env.MCioEnv(render_mode="human")
 
+    if steps == 0:
+        steps = sys.maxsize  # Go forever
     step = 0
     setup_commands = [
         "time set day",
