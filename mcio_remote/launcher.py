@@ -4,8 +4,10 @@ import argparse
 import subprocess
 import uuid
 from pathlib import Path
+import os
 import pprint
-from typing import Any, Final
+import typing
+from typing import Any, Final, Literal
 
 from tqdm import tqdm
 
@@ -16,6 +18,9 @@ DEFAULT_MINECRAFT_VERSION: Final[str] = "1.21.3"
 DEFAULT_MINECRAFT_USER: Final[str] = "MCio"
 DEFAULT_WINDOW_WIDTH: Final[int] = 854
 DEFAULT_WINDOW_HEIGHT: Final[int] = 480
+
+MCIO_MODE = Literal["off", "async", "sync"]
+
 
 # TODO
 # install fabric / api
@@ -34,12 +39,14 @@ class Launcher:
         world: str | None = None,
         width: int = DEFAULT_WINDOW_WIDTH,
         height: int = DEFAULT_WINDOW_HEIGHT,
+        mcio_mode: MCIO_MODE = "off",
     ) -> None:
         mc_dir = mc_dir or DEFAULT_MINECRAFT_DIR
         self.mc_dir = Path(mc_dir).expanduser()
         self.mc_username = mc_username
         self.mc_version = mc_version
         self.mc_uuid = uuid.uuid5(uuid.NAMESPACE_URL, self.mc_username)
+        self.mcio_mode = mcio_mode
 
         options = mll.types.MinecraftOptions(
             username=mc_username,
@@ -70,7 +77,20 @@ class Launcher:
         opts.save()
 
     def launch(self) -> None:
-        subprocess.run(self.mc_cmd)
+        env = self._get_env()
+        # For some reason Minecraft logs end up in cwd, so set it to mc_dir
+        subprocess.run(self.mc_cmd, env=env, cwd=self.mc_dir)
+
+    def get_command(self) -> list[str]:
+        """For testing, return the command that will be run"""
+        cmd = [f"MCIO_MODE={self.mcio_mode}"]
+        cmd += launcher.mc_cmd
+        return cmd
+
+    def _get_env(self) -> dict[str, str]:
+        env = os.environ.copy()
+        env["MCIO_MODE"] = self.mcio_mode
+        return env
 
     def _update_option_argument(
         self, command_list: list[str], option: str, new_argument: str
@@ -170,7 +190,7 @@ def parse_args() -> argparse.Namespace:
     )
 
     # Modes
-    subparsers = parser.add_subparsers(dest="mode", required=True)
+    subparsers = parser.add_subparsers(dest="cmd_mode", required=True)
     install_parser = subparsers.add_parser("install", help="Install Minecraft")
     launch_parser = subparsers.add_parser("launch", help="Launch Minecraft")
     command_parser = subparsers.add_parser("command", help="Show launch command")
@@ -212,6 +232,14 @@ def parse_args() -> argparse.Namespace:
             default=DEFAULT_WINDOW_HEIGHT,
             help=f"Window height (default: {DEFAULT_WINDOW_HEIGHT})",
         )
+        subparser.add_argument(
+            "--mcio_mode",
+            "-m",
+            type=str,
+            choices=typing.get_args(MCIO_MODE),
+            default="off",
+            help=f"MCIO mode: {typing.get_args(MCIO_MODE)}",
+        )
 
     # Command options
     command_parser.add_argument(
@@ -234,14 +262,15 @@ if __name__ == "__main__":
         world=args.world,
         width=args.width,
         height=args.height,
+        mcio_mode=args.mcio_mode,
     )
 
-    if args.mode == "install":
+    if args.cmd_mode == "install":
         launcher.install()
-    elif args.mode == "launch":
+    elif args.cmd_mode == "launch":
         launcher.launch()
-    elif args.mode == "command":
-        cmd = launcher.mc_cmd
+    elif args.cmd_mode == "command":
+        cmd = launcher.get_command()
         if args.format == "str":
             print(" ".join(cmd))
         else:
