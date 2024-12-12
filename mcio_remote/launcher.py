@@ -3,7 +3,6 @@
 import argparse
 import subprocess
 import uuid
-import pprint
 from pathlib import Path
 from typing import Any
 
@@ -19,16 +18,13 @@ class Launcher:
         mc_dir: Path | str | None = None,
         mc_username: str = "MCio",
         mc_version: str = "1.21.3",
-        install: bool = True,
+        do_install: bool = True,
     ) -> None:
         mc_dir = mc_dir or "~/.mcio/minecraft"
         mc_dir = Path(mc_dir).expanduser()
 
-        if install:
-            progress = Progress()
-            mll.install.install_minecraft_version(
-                mc_version, mc_dir, callback=progress.get_callbacks()
-            )
+        if do_install:
+            install(mc_version, mc_dir)
 
         mc_uuid = uuid.uuid5(uuid.NAMESPACE_URL, mc_username)
         options = mll.types.MinecraftOptions(
@@ -36,7 +32,6 @@ class Launcher:
         )
         mc_cmd = mll.command.get_minecraft_command(mc_version, mc_dir, options)
         mc_cmd = self._update_option_argument(mc_cmd, "--userType", "legacy")
-        pprint.pprint(mc_cmd)
         subprocess.run(mc_cmd)
 
     def _update_option_argument(
@@ -53,6 +48,16 @@ class Launcher:
         except IndexError:
             print(f"Unexpected end of list after option {option}")
             raise
+
+
+def install(mc_version: str = "1.21.3", mc_dir: Path | str | None = None) -> None:
+    mc_dir = mc_dir or "~/.mcio/minecraft"
+    mc_dir = Path(mc_dir).expanduser()
+
+    progress = Progress()
+    mll.install.install_minecraft_version(
+        mc_version, mc_dir, callback=progress.get_callbacks()
+    )
 
 
 class Progress:
