@@ -17,6 +17,12 @@ DEFAULT_MINECRAFT_USER: Final[str] = "MCio"
 DEFAULT_WINDOW_WIDTH: Final[int] = 854
 DEFAULT_WINDOW_HEIGHT: Final[int] = 480
 
+# TODO
+# install fabric / api
+# install mcio
+# multiple instances
+# create world: name, seed, mode, difficulty, ...
+
 
 class Launcher:
 
@@ -25,6 +31,7 @@ class Launcher:
         mc_dir: Path | str | None = None,
         mc_username: str = DEFAULT_MINECRAFT_USER,
         mc_version: str = DEFAULT_MINECRAFT_VERSION,
+        world: str | None = None,
         width: int = DEFAULT_WINDOW_WIDTH,
         height: int = DEFAULT_WINDOW_HEIGHT,
     ) -> None:
@@ -42,6 +49,8 @@ class Launcher:
             resolutionWidth=str(width),
             resolutionHeight=str(height),
         )
+        if world:
+            options["quickPlaySingleplayer"] = world
         self.mc_cmd = mll.command.get_minecraft_command(
             self.mc_version, self.mc_dir, options
         )
@@ -188,6 +197,7 @@ def parse_args() -> argparse.Namespace:
             default=DEFAULT_MINECRAFT_USER,
             help=f"Player name (default: {DEFAULT_MINECRAFT_USER})",
         )
+        subparser.add_argument("--world", "-w", type=str, help="World name")
         subparser.add_argument(
             "--width",
             "-W",
@@ -221,6 +231,7 @@ if __name__ == "__main__":
         mc_dir=args.minecraft_dir,
         mc_username=args.username,
         mc_version=args.version,
+        world=args.world,
         width=args.width,
         height=args.height,
     )
