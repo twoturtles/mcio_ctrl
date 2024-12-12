@@ -54,13 +54,20 @@ def install(mc_version: str = "1.21.3", mc_dir: Path | str | None = None) -> Non
     mc_dir = mc_dir or "~/.mcio/minecraft"
     mc_dir = Path(mc_dir).expanduser()
 
-    progress = Progress()
+    progress = _InstallProgress()
     mll.install.install_minecraft_version(
         mc_version, mc_dir, callback=progress.get_callbacks()
     )
+    progress.close()
+
+    # Disable narrator
+    opts = OptionsTxt(mc_dir / "options.txt")
+    opts["narrator"] = "0"
+    opts.save()
 
 
-class Progress:
+class _InstallProgress:
+    """Progress bar for Minecraft installer"""
 
     def __init__(self, desc_width: int = 40) -> None:
         self.pbar: tqdm[Any] | None = None
@@ -79,6 +86,7 @@ class Progress:
             self.pbar.close()
 
     def _set_max(self, total: int) -> None:
+        """The installer calls set_max multiple times. Create a new bar each time."""
         if self.pbar:
             self.pbar.close()
         self.pbar = tqdm(total=total)
@@ -93,6 +101,45 @@ class Progress:
         if self.pbar:
             self.pbar.update(current - self.current)
             self.current = current
+
+
+class OptionsTxt:
+    """Load/Save options.txt. Keeps everything as strings."""
+
+    def __init__(self, options_path: Path | str) -> None:
+        self.path = Path(options_path).expanduser()
+        self.options = self._load(self.path)
+
+    def save(self) -> None:
+        """Save options back to file"""
+        with self.path.open("w") as f:
+            for key, value in self.options.items():
+                f.write(f"{key}:{value}\n")
+
+    def __getitem__(self, key: str) -> str:
+        return self.options[key]
+
+    def __setitem__(self, key: str, value: str) -> None:
+        self.options[key] = value
+
+    def _load(self, options_path: Path) -> dict[str, str]:
+        """Load options from file"""
+        if not self.path.exists():
+            return {}
+
+        with self.path.open("r") as f:
+            txt = f.read()
+        lines = txt.strip().split()
+        options = {}
+        for line in lines:
+            line = line.strip()
+            if len(line) == 0 or line.startswith("#"):
+                continue
+            key, value = line.split(":", 1)
+            key = key.strip()
+            value = value.strip()
+            options[key] = value
+        return options
 
 
 def parse_args() -> argparse.Namespace:
