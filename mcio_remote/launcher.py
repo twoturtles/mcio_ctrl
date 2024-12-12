@@ -4,11 +4,15 @@ import argparse
 import subprocess
 import uuid
 from pathlib import Path
-from typing import Any
+from typing import Any, Final
 
 from tqdm import tqdm
 
 import minecraft_launcher_lib as mll
+
+DEFAULT_MINECRAFT_DIR: Final[str] = "~/.mcio/minecraft"
+DEFAULT_MINECRAFT_VERSION: Final[str] = "1.21.3"
+DEFAULT_MINECRAFT_USER: Final[str] = "MCio"
 
 
 class Launcher:
@@ -16,11 +20,11 @@ class Launcher:
     def __init__(
         self,
         mc_dir: Path | str | None = None,
-        mc_username: str = "MCio",
-        mc_version: str = "1.21.3",
+        mc_username: str = DEFAULT_MINECRAFT_USER,
+        mc_version: str = DEFAULT_MINECRAFT_VERSION,
         do_install: bool = True,
     ) -> None:
-        mc_dir = mc_dir or "~/.mcio/minecraft"
+        mc_dir = mc_dir or DEFAULT_MINECRAFT_DIR
         mc_dir = Path(mc_dir).expanduser()
 
         if do_install:
@@ -50,8 +54,10 @@ class Launcher:
             raise
 
 
-def install(mc_version: str = "1.21.3", mc_dir: Path | str | None = None) -> None:
-    mc_dir = mc_dir or "~/.mcio/minecraft"
+def install(
+    mc_version: str = DEFAULT_MINECRAFT_VERSION, mc_dir: Path | str | None = None
+) -> None:
+    mc_dir = mc_dir or DEFAULT_MINECRAFT_DIR
     mc_dir = Path(mc_dir).expanduser()
 
     progress = _InstallProgress()
@@ -143,10 +149,58 @@ class OptionsTxt:
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(
+        description="Minecraft Instance Manager and Launcher"
+    )
+
+    # Command mode
+    parser.add_argument(
+        "mode",
+        choices=["install", "launch"],
+        help="Mode of operation: install Minecraft or launch the game",
+    )
+
+    # Optional arguments
+    parser.add_argument(
+        "--minecraft-dir",
+        "-d",
+        type=str,
+        help=f"Minecraft directory (default: {DEFAULT_MINECRAFT_DIR})",
+    )
+    parser.add_argument(
+        "--version",
+        "-v",
+        type=str,
+        default=DEFAULT_MINECRAFT_VERSION,
+        help=f"Minecraft version to install/launch (default: {DEFAULT_MINECRAFT_VERSION})",
+    )
+    parser.add_argument(
+        "--username",
+        "-u",
+        type=str,
+        default=DEFAULT_MINECRAFT_USER,
+        help=f"Player name (default: {DEFAULT_MINECRAFT_USER})",
+    )
+    parser.add_argument(
+        "--install",
+        "-i",
+        action="store_true",
+        default=False,
+        help="Install Minecraft before launching (only applies to launch mode)",
+    )
+
     return parser.parse_args()
 
 
 if __name__ == "__main__":
     args = parse_args()
-    launcher = Launcher()
+
+    if args.mode == "install":
+        install(mc_version=args.version, mc_dir=args.minecraft_dir)
+    else:  # launch
+        launcher = Launcher(
+            mc_dir=args.minecraft_dir,
+            mc_username=args.username,
+            mc_version=args.version,
+            do_install=args.install,  # Use the install flag
+        )
