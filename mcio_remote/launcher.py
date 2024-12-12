@@ -4,6 +4,7 @@ import argparse
 import subprocess
 import uuid
 from pathlib import Path
+import pprint
 from typing import Any, Final
 
 from tqdm import tqdm
@@ -13,6 +14,8 @@ import minecraft_launcher_lib as mll
 DEFAULT_MINECRAFT_DIR: Final[str] = "~/.mcio/minecraft"
 DEFAULT_MINECRAFT_VERSION: Final[str] = "1.21.3"
 DEFAULT_MINECRAFT_USER: Final[str] = "MCio"
+DEFAULT_WINDOW_WIDTH: Final[int] = 854
+DEFAULT_WINDOW_HEIGHT: Final[int] = 480
 
 
 class Launcher:
@@ -22,21 +25,43 @@ class Launcher:
         mc_dir: Path | str | None = None,
         mc_username: str = DEFAULT_MINECRAFT_USER,
         mc_version: str = DEFAULT_MINECRAFT_VERSION,
-        do_install: bool = True,
+        width: int = DEFAULT_WINDOW_WIDTH,
+        height: int = DEFAULT_WINDOW_HEIGHT,
     ) -> None:
         mc_dir = mc_dir or DEFAULT_MINECRAFT_DIR
-        mc_dir = Path(mc_dir).expanduser()
+        self.mc_dir = Path(mc_dir).expanduser()
+        self.mc_username = mc_username
+        self.mc_version = mc_version
+        self.mc_uuid = uuid.uuid5(uuid.NAMESPACE_URL, self.mc_username)
 
-        if do_install:
-            install(mc_version, mc_dir)
-
-        mc_uuid = uuid.uuid5(uuid.NAMESPACE_URL, mc_username)
         options = mll.types.MinecraftOptions(
-            username=mc_username, uuid=str(mc_uuid), token="MCioDev"
+            username=mc_username,
+            uuid=str(self.mc_uuid),
+            token="MCioDev",
+            customResolution=True,
+            resolutionWidth=str(width),
+            resolutionHeight=str(height),
         )
-        mc_cmd = mll.command.get_minecraft_command(mc_version, mc_dir, options)
-        mc_cmd = self._update_option_argument(mc_cmd, "--userType", "legacy")
-        subprocess.run(mc_cmd)
+        self.mc_cmd = mll.command.get_minecraft_command(
+            self.mc_version, self.mc_dir, options
+        )
+        self.mc_cmd = self._update_option_argument(self.mc_cmd, "--userType", "legacy")
+
+    def install(self) -> None:
+        progress = _InstallProgress()
+        # XXX This installs java (from microsoft)
+        mll.install.install_minecraft_version(
+            self.mc_version, self.mc_dir, callback=progress.get_callbacks()
+        )
+        progress.close()
+
+        # Disable narrator
+        opts = OptionsTxt(self.mc_dir / "options.txt")
+        opts["narrator"] = "0"
+        opts.save()
+
+    def launch(self) -> None:
+        subprocess.run(self.mc_cmd)
 
     def _update_option_argument(
         self, command_list: list[str], option: str, new_argument: str
@@ -52,24 +77,6 @@ class Launcher:
         except IndexError:
             print(f"Unexpected end of list after option {option}")
             raise
-
-
-def install(
-    mc_version: str = DEFAULT_MINECRAFT_VERSION, mc_dir: Path | str | None = None
-) -> None:
-    mc_dir = mc_dir or DEFAULT_MINECRAFT_DIR
-    mc_dir = Path(mc_dir).expanduser()
-
-    progress = _InstallProgress()
-    mll.install.install_minecraft_version(
-        mc_version, mc_dir, callback=progress.get_callbacks()
-    )
-    progress.close()
-
-    # Disable narrator
-    opts = OptionsTxt(mc_dir / "options.txt")
-    opts["narrator"] = "0"
-    opts.save()
 
 
 class _InstallProgress:
@@ -153,40 +160,56 @@ def parse_args() -> argparse.Namespace:
         description="Minecraft Instance Manager and Launcher"
     )
 
-    # Command mode
-    parser.add_argument(
-        "mode",
-        choices=["install", "launch"],
-        help="Mode of operation: install Minecraft or launch the game",
-    )
+    # Modes
+    subparsers = parser.add_subparsers(dest="mode", required=True)
+    install_parser = subparsers.add_parser("install", help="Install Minecraft")
+    launch_parser = subparsers.add_parser("launch", help="Launch Minecraft")
+    command_parser = subparsers.add_parser("command", help="Show launch command")
 
-    # Optional arguments
-    parser.add_argument(
-        "--minecraft-dir",
-        "-d",
-        type=str,
-        help=f"Minecraft directory (default: {DEFAULT_MINECRAFT_DIR})",
-    )
-    parser.add_argument(
-        "--version",
-        "-v",
-        type=str,
-        default=DEFAULT_MINECRAFT_VERSION,
-        help=f"Minecraft version to install/launch (default: {DEFAULT_MINECRAFT_VERSION})",
-    )
-    parser.add_argument(
-        "--username",
-        "-u",
-        type=str,
-        default=DEFAULT_MINECRAFT_USER,
-        help=f"Player name (default: {DEFAULT_MINECRAFT_USER})",
-    )
-    parser.add_argument(
-        "--install",
-        "-i",
-        action="store_true",
-        default=False,
-        help="Install Minecraft before launching (only applies to launch mode)",
+    # Common arguments
+    for subparser in [install_parser, launch_parser, command_parser]:
+        subparser.add_argument(
+            "--minecraft-dir",
+            "-d",
+            type=str,
+            help=f"Minecraft directory (default: {DEFAULT_MINECRAFT_DIR})",
+        )
+        subparser.add_argument(
+            "--version",
+            "-v",
+            type=str,
+            default=DEFAULT_MINECRAFT_VERSION,
+            help=f"Minecraft version to install/launch (default: {DEFAULT_MINECRAFT_VERSION})",
+        )
+        subparser.add_argument(
+            "--username",
+            "-u",
+            type=str,
+            default=DEFAULT_MINECRAFT_USER,
+            help=f"Player name (default: {DEFAULT_MINECRAFT_USER})",
+        )
+        subparser.add_argument(
+            "--width",
+            "-W",
+            type=int,
+            default=DEFAULT_WINDOW_WIDTH,
+            help=f"Window width (default: {DEFAULT_WINDOW_WIDTH})",
+        )
+        subparser.add_argument(
+            "--height",
+            "-H",
+            type=int,
+            default=DEFAULT_WINDOW_HEIGHT,
+            help=f"Window height (default: {DEFAULT_WINDOW_HEIGHT})",
+        )
+
+    # Command options
+    command_parser.add_argument(
+        "-f",
+        "--format",
+        choices=["list", "str"],
+        default="list",
+        help="Output format (default: list)",
     )
 
     return parser.parse_args()
@@ -194,13 +217,21 @@ def parse_args() -> argparse.Namespace:
 
 if __name__ == "__main__":
     args = parse_args()
+    launcher = Launcher(
+        mc_dir=args.minecraft_dir,
+        mc_username=args.username,
+        mc_version=args.version,
+        width=args.width,
+        height=args.height,
+    )
 
     if args.mode == "install":
-        install(mc_version=args.version, mc_dir=args.minecraft_dir)
-    else:  # launch
-        launcher = Launcher(
-            mc_dir=args.minecraft_dir,
-            mc_username=args.username,
-            mc_version=args.version,
-            do_install=args.install,  # Use the install flag
-        )
+        launcher.install()
+    elif args.mode == "launch":
+        launcher.launch()
+    elif args.mode == "command":
+        cmd = launcher.mc_cmd
+        if args.format == "str":
+            print(" ".join(cmd))
+        else:
+            pprint.pprint(cmd)
