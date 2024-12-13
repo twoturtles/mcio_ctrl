@@ -10,6 +10,7 @@ import typing
 from typing import Any, Final, Literal
 
 from tqdm import tqdm
+import requests
 
 import minecraft_launcher_lib as mll
 
@@ -48,6 +49,7 @@ class Launcher:
         self.mc_uuid = uuid.uuid5(uuid.NAMESPACE_URL, self.mc_username)
         self.mcio_mode = mcio_mode
 
+        # Store options
         options = mll.types.MinecraftOptions(
             username=mc_username,
             uuid=str(self.mc_uuid),
@@ -58,34 +60,86 @@ class Launcher:
         )
         if world:
             options["quickPlaySingleplayer"] = world
-        self.mc_cmd = mll.command.get_minecraft_command(
-            self.mc_version, self.mc_dir, options
-        )
-        self.mc_cmd = self._update_option_argument(self.mc_cmd, "--userType", "legacy")
+        self.mll_options = options
 
     def install(self) -> None:
-        progress = _InstallProgress()
-        # XXX This installs java (from microsoft)
-        mll.install.install_minecraft_version(
-            self.mc_version, self.mc_dir, callback=progress.get_callbacks()
-        )
-        progress.close()
+        # print('Installing Minecraft...')
+        # progress = _InstallProgress()
+        # mll.install.install_minecraft_version(
+        #     self.mc_version, self.mc_dir, callback=progress.get_callbacks()
+        # )
+        # progress.close()
+
+        # print('Installing Fabric...')
+        # progress = _InstallProgress()
+        # mll.fabric.install_fabric(
+        #     self.mc_version, self.mc_dir, callback=progress.get_callbacks()
+        # )
+        # progress.close()
+
+        # XXX https://codeberg.org/JakobDev/minecraft-launcher-lib/issues/143
+        err_path = self.mc_dir / "libraries/org/ow2/asm/asm/9.3/asm-9.3.jar"
+        err_path.unlink()
 
         # Disable narrator
         opts = OptionsTxt(self.mc_dir / "options.txt")
         opts["narrator"] = "0"
         opts.save()
 
+        # Install mods
+
     def launch(self) -> None:
         env = self._get_env()
+        cmd = self.get_command()
         # For some reason Minecraft logs end up in cwd, so set it to mc_dir
-        subprocess.run(self.mc_cmd, env=env, cwd=self.mc_dir)
+        subprocess.run(cmd, env=env, cwd=self.mc_dir)
 
     def get_command(self) -> list[str]:
+        mc_cmd = mll.command.get_minecraft_command(
+            self.mc_version, self.mc_dir, self.mll_options
+        )
+        mc_cmd = self._update_option_argument(mc_cmd, "--userType", "legacy")
+        return mc_cmd
+
+    def get_show_command(self) -> list[str]:
         """For testing, return the command that will be run"""
         cmd = [f"MCIO_MODE={self.mcio_mode}"]
-        cmd += launcher.mc_cmd
+        cmd += self.get_command()
         return cmd
+
+    def show(self) -> None:
+        for info in mll.utils.get_installed_versions(self.mc_dir):
+            pprint.pprint(info)
+
+    def _install_mod(
+        self, mod_id: str, mc_dir: Path, mc_ver: str, version_type: str = "release"
+    ) -> None:
+        mod_info_url = f'https://api.modrinth.com/v2/project/{mod_id}/version?game_versions=["{mc_ver}"]'
+        response = requests.get(mod_info_url)
+        response.raise_for_status()
+        info_list: list[Any] = response.json()
+
+        found: dict[str, Any] | None = None
+        for vers_info in info_list:
+            if vers_info["version_type"] == version_type:
+                found = vers_info
+                break
+
+        if not found:
+            raise ValueError(
+                f"No {version_type} version found for {mod_id} supporting Minecraft {mc_ver}"
+            )
+        # Is the jar always the first in the "files" list?
+        jar_info = found["files"][0]
+        response = requests.get(jar_info["url"])
+        response.raise_for_status()
+        filename = jar_info["filename"]
+
+        mods_dir = mc_dir / "mods"
+        mods_dir.mkdir(exist_ok=True)
+        print(f"Installing {filename}")
+        with open(mods_dir / filename, "wb") as f:
+            f.write(response.content)
 
     def _get_env(self) -> dict[str, str]:
         env = os.environ.copy()
@@ -194,9 +248,12 @@ def parse_args() -> argparse.Namespace:
     install_parser = subparsers.add_parser("install", help="Install Minecraft")
     launch_parser = subparsers.add_parser("launch", help="Launch Minecraft")
     command_parser = subparsers.add_parser("command", help="Show launch command")
+    show_parser = subparsers.add_parser(
+        "show", help="Show information about what is installed"
+    )
 
     # Common arguments
-    for subparser in [install_parser, launch_parser, command_parser]:
+    for subparser in [install_parser, launch_parser, command_parser, show_parser]:
         subparser.add_argument(
             "--minecraft-dir",
             "-d",
@@ -270,8 +327,12 @@ if __name__ == "__main__":
     elif args.cmd_mode == "launch":
         launcher.launch()
     elif args.cmd_mode == "command":
-        cmd = launcher.get_command()
+        cmd = launcher.get_show_command()
         if args.format == "str":
             print(" ".join(cmd))
         else:
             pprint.pprint(cmd)
+    elif args.cmd_mode == "show":
+        launcher.show()
+    else:
+        print(f"Unknown mode: {args.cmd_mode}")

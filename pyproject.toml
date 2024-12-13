@@ -25,7 +25,8 @@ dependencies = [
     "gymnasium>=1.0.0",
     "pillow>=11.0.0",
     "minecraft-launcher-lib>=6.5",
-    "tqdm>=4.67.1"
+    "tqdm>=4.67.1",
+    "requests>=2.32.3"
 ]
 
 [project.urls]
