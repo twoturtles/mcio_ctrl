@@ -63,19 +63,19 @@ class Launcher:
         self.mll_options = options
 
     def install(self) -> None:
-        # print('Installing Minecraft...')
-        # progress = _InstallProgress()
-        # mll.install.install_minecraft_version(
-        #     self.mc_version, self.mc_dir, callback=progress.get_callbacks()
-        # )
-        # progress.close()
+        print("Installing Minecraft...")
+        progress = _InstallProgress()
+        mll.install.install_minecraft_version(
+            self.mc_version, self.mc_dir, callback=progress.get_callbacks()
+        )
+        progress.close()
 
-        # print('Installing Fabric...')
-        # progress = _InstallProgress()
-        # mll.fabric.install_fabric(
-        #     self.mc_version, self.mc_dir, callback=progress.get_callbacks()
-        # )
-        # progress.close()
+        print("Installing Fabric...")
+        progress = _InstallProgress()
+        mll.fabric.install_fabric(
+            self.mc_version, self.mc_dir, callback=progress.get_callbacks()
+        )
+        progress.close()
 
         # XXX https://codeberg.org/JakobDev/minecraft-launcher-lib/issues/143
         err_path = self.mc_dir / "libraries/org/ow2/asm/asm/9.3/asm-9.3.jar"
