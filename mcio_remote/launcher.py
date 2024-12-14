@@ -22,10 +22,9 @@ DEFAULT_WINDOW_HEIGHT: Final[int] = 480
 
 MCIO_MODE = Literal["off", "async", "sync"]
 
+REQUIRED_MODS: list[str] = ["fabric-api", "mcio"]
 
 # TODO
-# install fabric / api
-# install mcio
 # multiple instances
 # create world: name, seed, mode, difficulty, ...
 
@@ -40,7 +39,7 @@ class Launcher:
         world: str | None = None,
         width: int = DEFAULT_WINDOW_WIDTH,
         height: int = DEFAULT_WINDOW_HEIGHT,
-        mcio_mode: MCIO_MODE = "off",
+        mcio_mode: MCIO_MODE = "async",
     ) -> None:
         mc_dir = mc_dir or DEFAULT_MINECRAFT_DIR
         self.mc_dir = Path(mc_dir).expanduser()
@@ -87,6 +86,8 @@ class Launcher:
         opts.save()
 
         # Install mods
+        for mod in REQUIRED_MODS:
+            self._install_mod(mod, self.mc_dir, self.mc_version)
 
     def launch(self) -> None:
         env = self._get_env()
@@ -294,8 +295,8 @@ def parse_args() -> argparse.Namespace:
             "-m",
             type=str,
             choices=typing.get_args(MCIO_MODE),
-            default="off",
-            help=f"MCIO mode: {typing.get_args(MCIO_MODE)}",
+            default="async",
+            help="MCIO mode: (default: async)",
         )
 
     # Command options
