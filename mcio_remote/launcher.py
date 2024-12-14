@@ -30,6 +30,7 @@ REQUIRED_MODS: list[str] = ["fabric-api", "mcio"]
 
 
 class Launcher:
+    """Launch Minecraft"""
 
     def __init__(
         self,
@@ -61,34 +62,6 @@ class Launcher:
             options["quickPlaySingleplayer"] = world
         self.mll_options = options
 
-    def install(self) -> None:
-        print("Installing Minecraft...")
-        progress = _InstallProgress()
-        mll.install.install_minecraft_version(
-            self.mc_version, self.mc_dir, callback=progress.get_callbacks()
-        )
-        progress.close()
-
-        print("Installing Fabric...")
-        progress = _InstallProgress()
-        mll.fabric.install_fabric(
-            self.mc_version, self.mc_dir, callback=progress.get_callbacks()
-        )
-        progress.close()
-
-        # XXX https://codeberg.org/JakobDev/minecraft-launcher-lib/issues/143
-        err_path = self.mc_dir / "libraries/org/ow2/asm/asm/9.3/asm-9.3.jar"
-        err_path.unlink()
-
-        # Disable narrator
-        opts = OptionsTxt(self.mc_dir / "options.txt")
-        opts["narrator"] = "0"
-        opts.save()
-
-        # Install mods
-        for mod in REQUIRED_MODS:
-            self._install_mod(mod, self.mc_dir, self.mc_version)
-
     def launch(self) -> None:
         env = self._get_env()
         cmd = self.get_command()
@@ -108,9 +81,67 @@ class Launcher:
         cmd += self.get_command()
         return cmd
 
-    def show(self) -> None:
-        for info in mll.utils.get_installed_versions(self.mc_dir):
-            pprint.pprint(info)
+    def _get_env(self) -> dict[str, str]:
+        env = os.environ.copy()
+        env["MCIO_MODE"] = self.mcio_mode
+        return env
+
+    def _update_option_argument(
+        self, command_list: list[str], option: str, new_argument: str
+    ) -> list[str]:
+        try:
+            new_list = command_list.copy()
+            option_index = new_list.index(option)
+            new_list[option_index + 1] = new_argument
+            return new_list
+        except ValueError:
+            print(f"Option {option} not found in command list")
+            raise
+        except IndexError:
+            print(f"Unexpected end of list after option {option}")
+            raise
+
+
+class Installer:
+    """Install Minecraft along with Fabric and MCio"""
+
+    def __init__(
+        self,
+        mc_dir: Path | str | None = None,
+        mc_version: str = DEFAULT_MINECRAFT_VERSION,
+    ) -> None:
+        mc_dir = mc_dir or DEFAULT_MINECRAFT_DIR
+        self.mc_dir = Path(mc_dir).expanduser()
+        self.mc_version = mc_version
+
+    def install(self) -> None:
+        print("Installing Minecraft...")
+        progress = _InstallProgress()
+        mll.install.install_minecraft_version(
+            self.mc_version, self.mc_dir, callback=progress.get_callbacks()
+        )
+        progress.close()
+
+        print("\nInstalling Fabric...")
+        progress = _InstallProgress()
+        mll.fabric.install_fabric(
+            self.mc_version, self.mc_dir, callback=progress.get_callbacks()
+        )
+        progress.close()
+
+        # Install mods
+        print()
+        for mod in REQUIRED_MODS:
+            self._install_mod(mod, self.mc_dir, self.mc_version)
+
+        # XXX https://codeberg.org/JakobDev/minecraft-launcher-lib/issues/143
+        err_path = self.mc_dir / "libraries/org/ow2/asm/asm/9.3/asm-9.3.jar"
+        err_path.unlink()
+
+        # Disable narrator
+        opts = OptionsTxt(self.mc_dir / "options.txt")
+        opts["narrator"] = "0"
+        opts.save()
 
     def _install_mod(
         self, mod_id: str, mc_dir: Path, mc_ver: str, version_type: str = "release"
@@ -141,26 +172,6 @@ class Launcher:
         print(f"Installing {filename}")
         with open(mods_dir / filename, "wb") as f:
             f.write(response.content)
-
-    def _get_env(self) -> dict[str, str]:
-        env = os.environ.copy()
-        env["MCIO_MODE"] = self.mcio_mode
-        return env
-
-    def _update_option_argument(
-        self, command_list: list[str], option: str, new_argument: str
-    ) -> list[str]:
-        try:
-            new_list = command_list.copy()
-            option_index = new_list.index(option)
-            new_list[option_index + 1] = new_argument
-            return new_list
-        except ValueError:
-            print(f"Option {option} not found in command list")
-            raise
-        except IndexError:
-            print(f"Unexpected end of list after option {option}")
-            raise
 
 
 class _InstallProgress:
@@ -248,49 +259,59 @@ def parse_args() -> argparse.Namespace:
     subparsers = parser.add_subparsers(dest="cmd_mode", required=True)
     install_parser = subparsers.add_parser("install", help="Install Minecraft")
     launch_parser = subparsers.add_parser("launch", help="Launch Minecraft")
-    command_parser = subparsers.add_parser("command", help="Show launch command")
     show_parser = subparsers.add_parser(
         "show", help="Show information about what is installed"
     )
 
-    # Common arguments
-    for subparser in [install_parser, launch_parser, command_parser, show_parser]:
-        subparser.add_argument(
+    def _add_minecraft_dir_arg(parser: argparse.ArgumentParser) -> None:
+        parser.add_argument(
             "--minecraft-dir",
             "-d",
             type=str,
             help=f"Minecraft directory (default: {DEFAULT_MINECRAFT_DIR})",
         )
-        subparser.add_argument(
+
+    def _add_minecraft_ver_arg(parser: argparse.ArgumentParser) -> None:
+        parser.add_argument(
             "--version",
             "-v",
             type=str,
             default=DEFAULT_MINECRAFT_VERSION,
             help=f"Minecraft version to install/launch (default: {DEFAULT_MINECRAFT_VERSION})",
         )
-        subparser.add_argument(
+
+    def _add_username_arg(parser: argparse.ArgumentParser) -> None:
+        parser.add_argument(
             "--username",
             "-u",
             type=str,
             default=DEFAULT_MINECRAFT_USER,
             help=f"Player name (default: {DEFAULT_MINECRAFT_USER})",
         )
-        subparser.add_argument("--world", "-w", type=str, help="World name")
-        subparser.add_argument(
+
+    def _add_world_arg(parser: argparse.ArgumentParser) -> None:
+        parser.add_argument("--world", "-w", type=str, help="World name")
+
+    def _add_width_arg(parser: argparse.ArgumentParser) -> None:
+        parser.add_argument(
             "--width",
             "-W",
             type=int,
             default=DEFAULT_WINDOW_WIDTH,
             help=f"Window width (default: {DEFAULT_WINDOW_WIDTH})",
         )
-        subparser.add_argument(
+
+    def _add_height_arg(parser: argparse.ArgumentParser) -> None:
+        parser.add_argument(
             "--height",
             "-H",
             type=int,
             default=DEFAULT_WINDOW_HEIGHT,
             help=f"Window height (default: {DEFAULT_WINDOW_HEIGHT})",
         )
-        subparser.add_argument(
+
+    def _add_mcio_mode_arg(parser: argparse.ArgumentParser) -> None:
+        parser.add_argument(
             "--mcio_mode",
             "-m",
             type=str,
@@ -299,41 +320,68 @@ def parse_args() -> argparse.Namespace:
             help="MCIO mode: (default: async)",
         )
 
-    # Command options
-    command_parser.add_argument(
-        "-f",
-        "--format",
-        choices=["list", "str"],
-        default="list",
-        help="Output format (default: list)",
+    # Install arguments
+    _ptmp = install_parser
+    _add_minecraft_dir_arg(_ptmp)
+    _add_minecraft_ver_arg(_ptmp)
+
+    # Launch args
+    _ptmp = launch_parser
+    _add_minecraft_dir_arg(_ptmp)
+    _add_minecraft_ver_arg(_ptmp)
+    _add_mcio_mode_arg(_ptmp)
+    _add_world_arg(_ptmp)
+    _add_width_arg(_ptmp)
+    _add_height_arg(_ptmp)
+    _add_username_arg(_ptmp)
+    group = launch_parser.add_mutually_exclusive_group()
+    group.add_argument(
+        "--list",
+        action="store_true",
+        default=False,
+        help="Don't run the command; print it as a list",
     )
+    group.add_argument(
+        "--str",
+        action="store_true",
+        default=False,
+        help="Don't run the command, print it as a string",
+    )
+
+    # Show args
+    _ptmp = show_parser
+    _add_minecraft_dir_arg(_ptmp)
 
     return parser.parse_args()
 
 
 if __name__ == "__main__":
     args = parse_args()
-    launcher = Launcher(
-        mc_dir=args.minecraft_dir,
-        mc_username=args.username,
-        mc_version=args.version,
-        world=args.world,
-        width=args.width,
-        height=args.height,
-        mcio_mode=args.mcio_mode,
-    )
 
     if args.cmd_mode == "install":
-        launcher.install()
+        installer = Installer(args.minecraft_dir, args.version)
+        installer.install()
     elif args.cmd_mode == "launch":
-        launcher.launch()
-    elif args.cmd_mode == "command":
-        cmd = launcher.get_show_command()
-        if args.format == "str":
+        launcher = Launcher(
+            mc_dir=args.minecraft_dir,
+            mc_username=args.username,
+            mc_version=args.version,
+            world=args.world,
+            width=args.width,
+            height=args.height,
+            mcio_mode=args.mcio_mode,
+        )
+        if args.list:
+            cmd = launcher.get_show_command()
+            pprint.pprint(cmd)
+        elif args.str:
+            cmd = launcher.get_show_command()
             print(" ".join(cmd))
         else:
-            pprint.pprint(cmd)
+            launcher.launch()
     elif args.cmd_mode == "show":
-        launcher.show()
+        # TODO
+        for info in mll.utils.get_installed_versions(args.mc_dir):
+            pprint.pprint(info)
     else:
         print(f"Unknown mode: {args.cmd_mode}")
