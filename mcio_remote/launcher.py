@@ -255,102 +255,120 @@ def parse_args() -> argparse.Namespace:
         description="Minecraft Instance Manager and Launcher"
     )
 
-    # Modes
+    # Subparsers for different modes
     subparsers = parser.add_subparsers(dest="cmd_mode", required=True)
+
+    # Utility to add common arguments
+    def add_arguments(
+        parser: argparse.ArgumentParser, args: list[dict[str, Any]]
+    ) -> None:
+        for arg in args:
+            parser.add_argument(*arg["flags"], **arg["kwargs"])
+
+    # Common arguments
+    minecraft_dir_arg = {
+        "flags": ["--minecraft-dir", "-d"],
+        "kwargs": {
+            "type": str,
+            "help": f"Minecraft directory (default: {DEFAULT_MINECRAFT_DIR})",
+        },
+    }
+
+    minecraft_ver_arg = {
+        "flags": ["--version", "-v"],
+        "kwargs": {
+            "type": str,
+            "default": DEFAULT_MINECRAFT_VERSION,
+            "help": f"Minecraft version to install/launch (default: {DEFAULT_MINECRAFT_VERSION})",
+        },
+    }
+
+    username_arg = {
+        "flags": ["--username", "-u"],
+        "kwargs": {
+            "type": str,
+            "default": DEFAULT_MINECRAFT_USER,
+            "help": f"Player name (default: {DEFAULT_MINECRAFT_USER})",
+        },
+    }
+
+    world_arg = {
+        "flags": ["--world", "-w"],
+        "kwargs": {
+            "type": str,
+            "help": "World name",
+        },
+    }
+
+    width_arg = {
+        "flags": ["--width", "-W"],
+        "kwargs": {
+            "type": int,
+            "default": DEFAULT_WINDOW_WIDTH,
+            "help": f"Window width (default: {DEFAULT_WINDOW_WIDTH})",
+        },
+    }
+
+    height_arg = {
+        "flags": ["--height", "-H"],
+        "kwargs": {
+            "type": int,
+            "default": DEFAULT_WINDOW_HEIGHT,
+            "help": f"Window height (default: {DEFAULT_WINDOW_HEIGHT})",
+        },
+    }
+
+    mcio_mode_arg = {
+        "flags": ["--mcio_mode", "-m"],
+        "kwargs": {
+            "type": str,
+            "choices": typing.get_args(MCIO_MODE),
+            "default": "async",
+            "help": "MCIO mode: (default: async)",
+        },
+    }
+
+    ##
+    # Install subparser
     install_parser = subparsers.add_parser("install", help="Install Minecraft")
+    add_arguments(install_parser, [minecraft_dir_arg, minecraft_ver_arg])
+
+    ##
+    # Launch subparser
     launch_parser = subparsers.add_parser("launch", help="Launch Minecraft")
-    show_parser = subparsers.add_parser(
-        "show", help="Show information about what is installed"
+    add_arguments(
+        launch_parser,
+        [
+            minecraft_dir_arg,
+            minecraft_ver_arg,
+            mcio_mode_arg,
+            world_arg,
+            width_arg,
+            height_arg,
+            username_arg,
+        ],
     )
 
-    def _add_minecraft_dir_arg(parser: argparse.ArgumentParser) -> None:
-        parser.add_argument(
-            "--minecraft-dir",
-            "-d",
-            type=str,
-            help=f"Minecraft directory (default: {DEFAULT_MINECRAFT_DIR})",
-        )
-
-    def _add_minecraft_ver_arg(parser: argparse.ArgumentParser) -> None:
-        parser.add_argument(
-            "--version",
-            "-v",
-            type=str,
-            default=DEFAULT_MINECRAFT_VERSION,
-            help=f"Minecraft version to install/launch (default: {DEFAULT_MINECRAFT_VERSION})",
-        )
-
-    def _add_username_arg(parser: argparse.ArgumentParser) -> None:
-        parser.add_argument(
-            "--username",
-            "-u",
-            type=str,
-            default=DEFAULT_MINECRAFT_USER,
-            help=f"Player name (default: {DEFAULT_MINECRAFT_USER})",
-        )
-
-    def _add_world_arg(parser: argparse.ArgumentParser) -> None:
-        parser.add_argument("--world", "-w", type=str, help="World name")
-
-    def _add_width_arg(parser: argparse.ArgumentParser) -> None:
-        parser.add_argument(
-            "--width",
-            "-W",
-            type=int,
-            default=DEFAULT_WINDOW_WIDTH,
-            help=f"Window width (default: {DEFAULT_WINDOW_WIDTH})",
-        )
-
-    def _add_height_arg(parser: argparse.ArgumentParser) -> None:
-        parser.add_argument(
-            "--height",
-            "-H",
-            type=int,
-            default=DEFAULT_WINDOW_HEIGHT,
-            help=f"Window height (default: {DEFAULT_WINDOW_HEIGHT})",
-        )
-
-    def _add_mcio_mode_arg(parser: argparse.ArgumentParser) -> None:
-        parser.add_argument(
-            "--mcio_mode",
-            "-m",
-            type=str,
-            choices=typing.get_args(MCIO_MODE),
-            default="async",
-            help="MCIO mode: (default: async)",
-        )
-
-    # Install arguments
-    _ptmp = install_parser
-    _add_minecraft_dir_arg(_ptmp)
-    _add_minecraft_ver_arg(_ptmp)
-
-    # Launch args
-    _ptmp = launch_parser
-    _add_minecraft_dir_arg(_ptmp)
-    _add_minecraft_ver_arg(_ptmp)
-    _add_mcio_mode_arg(_ptmp)
-    _add_world_arg(_ptmp)
-    _add_width_arg(_ptmp)
-    _add_height_arg(_ptmp)
-    _add_username_arg(_ptmp)
-    group = launch_parser.add_mutually_exclusive_group()
-    group.add_argument(
+    launch_group = launch_parser.add_mutually_exclusive_group()
+    launch_group.add_argument(
         "--list",
         action="store_true",
         default=False,
         help="Don't run the command; print it as a list",
     )
-    group.add_argument(
+    launch_group.add_argument(
         "--str",
         action="store_true",
         default=False,
-        help="Don't run the command, print it as a string",
+        help="Don't run the command; print it as a string",
     )
 
-    # Show args
-    _ptmp = show_parser
-    _add_minecraft_dir_arg(_ptmp)
+    ##
+    # Show subparser
+    show_parser = subparsers.add_parser(
+        "show", help="Show information about what is installed"
+    )
+    add_arguments(show_parser, [minecraft_dir_arg])
 
     return parser.parse_args()
 
