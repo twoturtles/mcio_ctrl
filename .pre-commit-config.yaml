@@ -9,7 +9,7 @@ repos:
 
       - id: ruff
         name: ruff
-        entry: ruff check --diff
+        entry: ruff check
         language: system
         types: [python]
 
