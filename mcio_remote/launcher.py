@@ -2,19 +2,28 @@
 
 import argparse
 import subprocess
+from dataclasses import dataclass, asdict, field
 import uuid
 from pathlib import Path
 import os
 import pprint
 import typing
-from typing import Any, Final, Literal
+from typing import Any, Final, Literal, Optional, TypeAlias
 
 from tqdm import tqdm
 import requests
+from ruamel.yaml import YAML
 
 import minecraft_launcher_lib as mll
 
-DEFAULT_MINECRAFT_DIR: Final[str] = "~/.mcio/minecraft"
+from . import logger
+
+LOG = logger.LOG.get_logger(__name__)
+
+DEFAULT_MCIO_DIR: Final[Path] = Path("~/.mcio/").expanduser()
+INSTANCES_SUBDIR: Final[str] = "instances"
+CONFIG_FILENAME: str = "mcio.yaml"
+
 DEFAULT_MINECRAFT_VERSION: Final[str] = "1.21.3"
 DEFAULT_MINECRAFT_USER: Final[str] = "MCio"
 DEFAULT_WINDOW_WIDTH: Final[int] = 854
@@ -34,20 +43,27 @@ class Launcher:
 
     def __init__(
         self,
-        mc_dir: Path | str | None = None,
-        mc_username: str = DEFAULT_MINECRAFT_USER,
-        mc_version: str = DEFAULT_MINECRAFT_VERSION,
+        instance_id: str,
+        mcio_dir: Path | str | None = None,
         world: str | None = None,
         width: int = DEFAULT_WINDOW_WIDTH,
         height: int = DEFAULT_WINDOW_HEIGHT,
         mcio_mode: MCIO_MODE = "async",
+        mc_username: str = DEFAULT_MINECRAFT_USER,
     ) -> None:
-        mc_dir = mc_dir or DEFAULT_MINECRAFT_DIR
-        self.mc_dir = Path(mc_dir).expanduser()
-        self.mc_username = mc_username
-        self.mc_version = mc_version
-        self.mc_uuid = uuid.uuid5(uuid.NAMESPACE_URL, self.mc_username)
+        self.instance_id = instance_id
+        mcio_dir = mcio_dir or DEFAULT_MCIO_DIR
+        self.mcio_dir = Path(mcio_dir).expanduser()
         self.mcio_mode = mcio_mode
+        self.mc_dir = get_minecraft_dir(self.mcio_dir, self.instance_id)
+        self.mc_username = mc_username
+        self.mc_uuid = uuid.uuid5(uuid.NAMESPACE_URL, self.mc_username)
+
+        cm = ConfigManager(self.mcio_dir)
+        instance_config = cm.config.instances.get(self.instance_id)
+        if instance_config is None:
+            raise ValueError(f"Missing instance_id in {cm.config_file}")
+        self.mc_version = instance_config.version
 
         # Store options
         options = mll.types.MinecraftOptions(
@@ -107,12 +123,21 @@ class Installer:
 
     def __init__(
         self,
-        mc_dir: Path | str | None = None,
+        instance_id: str,
+        mcio_dir: Path | str | None = None,
         mc_version: str = DEFAULT_MINECRAFT_VERSION,
     ) -> None:
-        mc_dir = mc_dir or DEFAULT_MINECRAFT_DIR
-        self.mc_dir = Path(mc_dir).expanduser()
+        self.instance_id = instance_id
+        mcio_dir = mcio_dir or DEFAULT_MCIO_DIR
+        self.mcio_dir = Path(mcio_dir).expanduser()
         self.mc_version = mc_version
+        self.mc_dir = get_minecraft_dir(self.mcio_dir, self.instance_id)
+
+        self.cfg_mgr = ConfigManager(self.mcio_dir)
+        if self.cfg_mgr.config.instances.get(self.instance_id) is not None:
+            raise ValueError(
+                f"Instance {self.instance_id} already exists in {self.cfg_mgr.config_file}"
+            )
 
     def install(self) -> None:
         print("Installing Minecraft...")
@@ -142,6 +167,9 @@ class Installer:
         opts = OptionsTxt(self.mc_dir / "options.txt")
         opts["narrator"] = "0"
         opts.save()
+
+        self.cfg_mgr.config.instances[self.instance_id] = Instance(self.mc_version)
+        self.cfg_mgr.save()
 
     def _install_mod(
         self, mod_id: str, mc_dir: Path, mc_ver: str, version_type: str = "release"
@@ -250,6 +278,60 @@ class OptionsTxt:
         return options
 
 
+def get_minecraft_dir(mcio_dir: Path, instance_id: str) -> Path:
+    return mcio_dir / INSTANCES_SUBDIR / instance_id
+
+
+##
+# Configuration
+
+InstanceID: TypeAlias = str
+
+
+@dataclass
+class Instance:
+    version: str = ""
+
+
+@dataclass
+class Config:
+    instances: dict[InstanceID, Instance] = field(default_factory=dict)
+
+    @classmethod
+    def from_dict(cls, config_dict: dict[str, Any]) -> Optional["Config"]:
+        try:
+            rv = cls(**config_dict)
+        except Exception as e:
+            # This means the dict doesn't match ConfigFile
+            LOG.error(f"Failed to parse config file: {e}")
+            return None
+        return rv
+
+    def to_dict(self) -> dict[str, Any]:
+        return asdict(self)
+
+
+class ConfigManager:
+    def __init__(self, mcio_dir: Path | str) -> None:
+        mcio_dir = Path(mcio_dir).expanduser()
+        self.config_file = mcio_dir / CONFIG_FILENAME
+        self.yaml = YAML(typ="rt")
+        self.config: Config = Config()
+
+    def load(self) -> None:
+        if self.config_file.exists():
+            with open(self.config_file) as f:
+                # load() returns None if the file has no data.
+                cfg_dict = self.yaml.load(f) or {}
+                self.config = Config.from_dict(cfg_dict) or Config()
+        else:
+            self.config = Config()
+
+    def save(self) -> None:
+        with open(self.config_file, "w") as f:
+            self.yaml.dump(self.config.to_dict(), f)
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Minecraft Instance Manager and Launcher"
@@ -266,11 +348,11 @@ def parse_args() -> argparse.Namespace:
             parser.add_argument(*arg["flags"], **arg["kwargs"])
 
     # Common arguments
-    minecraft_dir_arg = {
-        "flags": ["--minecraft-dir", "-d"],
+    mcio_dir_arg = {
+        "flags": ["--mcio-dir", "-d"],
         "kwargs": {
             "type": str,
-            "help": f"Minecraft directory (default: {DEFAULT_MINECRAFT_DIR})",
+            "help": f"MCio data directory (default: {DEFAULT_MCIO_DIR})",
         },
     }
 
@@ -279,7 +361,7 @@ def parse_args() -> argparse.Namespace:
         "kwargs": {
             "type": str,
             "default": DEFAULT_MINECRAFT_VERSION,
-            "help": f"Minecraft version to install/launch (default: {DEFAULT_MINECRAFT_VERSION})",
+            "help": f"Minecraft version to install (default: {DEFAULT_MINECRAFT_VERSION})",
         },
     }
 
@@ -331,15 +413,21 @@ def parse_args() -> argparse.Namespace:
     ##
     # Install subparser
     install_parser = subparsers.add_parser("install", help="Install Minecraft")
-    add_arguments(install_parser, [minecraft_dir_arg, minecraft_ver_arg])
+    install_parser.add_argument(
+        "instance_id", type=str, help="ID/Name of the Minecraft instance"
+    )
+    add_arguments(install_parser, [mcio_dir_arg])
 
     ##
     # Launch subparser
     launch_parser = subparsers.add_parser("launch", help="Launch Minecraft")
+    launch_parser.add_argument(
+        "instance_id", type=str, help="ID/Name of the Minecraft instance"
+    )
     add_arguments(
         launch_parser,
         [
-            minecraft_dir_arg,
+            mcio_dir_arg,
             minecraft_ver_arg,
             mcio_mode_arg,
             world_arg,
@@ -368,7 +456,7 @@ def parse_args() -> argparse.Namespace:
     show_parser = subparsers.add_parser(
         "show", help="Show information about what is installed"
     )
-    add_arguments(show_parser, [minecraft_dir_arg])
+    add_arguments(show_parser, [mcio_dir_arg])
 
     return parser.parse_args()
 
@@ -377,13 +465,13 @@ if __name__ == "__main__":
     args = parse_args()
 
     if args.cmd_mode == "install":
-        installer = Installer(args.minecraft_dir, args.version)
+        installer = Installer(args.instance_id, args.mcio_dir, args.version)
         installer.install()
     elif args.cmd_mode == "launch":
         launcher = Launcher(
-            mc_dir=args.minecraft_dir,
+            args.instance_id,
+            mcio_dir=args.mcio_dir,
             mc_username=args.username,
-            mc_version=args.version,
             world=args.world,
             width=args.width,
             height=args.height,
@@ -399,7 +487,7 @@ if __name__ == "__main__":
             launcher.launch()
     elif args.cmd_mode == "show":
         # TODO
-        for info in mll.utils.get_installed_versions(args.mc_dir):
+        for info in mll.utils.get_installed_versions(args.mcio_dir):
             pprint.pprint(info)
     else:
         print(f"Unknown mode: {args.cmd_mode}")
