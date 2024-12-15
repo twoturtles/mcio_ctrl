@@ -92,6 +92,27 @@ class ControllerAsync(ControllerCommon):
         observation = self._observation_queue.get(block=block, timeout=timeout)
         return observation
 
+    def send_and_recv_match(
+        self, action: network.ActionPacket
+    ) -> network.ObservationPacket:
+        """Send action to minecraft. Automatically sets action.sequence.
+        This will ensure the next observation you receive came after this action.
+        Since we're running in async mode, observations may be in flight that occurred
+        before Minecraft processed this action.
+        """
+        self.send_action(action)
+        wait_seq = self._action_sequence_last_sent
+        while True:
+            observation = self._observation_queue.get()
+            obs_action_seq = observation.last_action_sequence
+            if obs_action_seq >= wait_seq:
+                break
+            LOG.debug(
+                f"SKIPPING obs={observation.sequence} last_action={obs_action_seq} < waiting={wait_seq}"
+            )
+            # print(f"SKIPPING obs={observation.sequence} last_action={obs_action_seq} < waiting={wait_seq}")
+        return observation
+
     def _observation_thread_fn(self) -> None:
         """Loops. Receives observation packets from minecraft and places on observation_queue"""
         LOG.info("ObservationThread start")
