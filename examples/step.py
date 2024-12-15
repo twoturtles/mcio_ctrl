@@ -13,15 +13,16 @@ import mcio_remote as mcio
 def step(n_steps: int, wait: bool = False) -> None:
     env = mcio.gym_lite.GymLite("Hello", render_mode="human", mcio_mode="sync")
     observation = env.reset(commands=["time set day", "teleport @s 0 -60 0 180 0"])
-    print(f"Step 1 (reset): {observation}")
+    print(f"RESET: {observation}")
     if n_steps == 0 or wait:
         n_steps = sys.maxsize  # Go forever
     for i in range(1, n_steps):
         if wait:
             input("Step> ")
         action = mcio.network.ActionPacket()
+        print(f"ACTION {i+1} {action}")
         observation = env.step(action)
-        print(f"Step {i+1}: {observation}")
+        print(f"OBS {i+1}: {observation}")
 
     env.close()
 
