@@ -93,19 +93,30 @@ class ControllerAsync(ControllerCommon):
         return observation
 
     def send_and_recv_match(
-        self, action: network.ActionPacket
+        self, action: network.ActionPacket, max_skip: int | None = 5
     ) -> network.ObservationPacket:
         """Send action to minecraft. Automatically sets action.sequence.
         This will ensure the next observation you receive came after this action.
         Since we're running in async mode, observations may be in flight that occurred
         before Minecraft processed this action.
+        max_skip is the maximum number of observations to skip before giving up.
+        Because the observations are stored in a LatestItemQueue, there shouldn't be
+        many to skip - only observations that were in flight after the action was sent, but
+        before Minecraft processed it. Generally we should only hit max_skip if something went
+        wrong, like the action was dropped. This could happen, for example, when the agent
+        starts before Minecraft.
         """
         self.send_action(action)
         wait_seq = self._action_sequence_last_sent
+        n_skip = 0
         while True:
             observation = self._observation_queue.get()
             obs_action_seq = observation.last_action_sequence
             if obs_action_seq >= wait_seq:
+                break
+            n_skip += 1
+            if max_skip is not None and n_skip >= max_skip:
+                LOG.warning("Max-Skip")
                 break
             LOG.debug(
                 f"SKIPPING obs={observation.sequence} last_action={obs_action_seq} < waiting={wait_seq}"
