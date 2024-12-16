@@ -10,8 +10,8 @@ from typing import Any, Final, Literal, Optional, TypeAlias
 from tqdm import tqdm
 import requests
 from ruamel.yaml import YAML
-
 import minecraft_launcher_lib as mll
+import dacite
 
 from . import logger
 
@@ -132,12 +132,10 @@ class Installer:
 
         self.cfg_mgr = ConfigManager(self.mcio_dir)
         if self.cfg_mgr.config.instances.get(self.instance_id) is not None:
-            raise ValueError(
-                f"Instance {self.instance_id} already exists in {self.cfg_mgr.config_file}"
-            )
+            print(f"Warning: Instance {self.instance_id} already exists in {self.cfg_mgr.config_file}")
 
     def install(self) -> None:
-        print("Installing Minecraft...")
+        print(f"Installing Minecraft in {self.mc_dir}...")
         progress = _InstallProgress()
         mll.install.install_minecraft_version(
             self.mc_version, self.mc_dir, callback=progress.get_callbacks()
@@ -146,10 +144,15 @@ class Installer:
 
         print("\nInstalling Fabric...")
         progress = _InstallProgress()
+        # XXX This doesn't check that the loader is compatible with the minecraft version
+        fabric_ver = mll.fabric.get_latest_loader_version()
         mll.fabric.install_fabric(
-            self.mc_version, self.mc_dir, callback=progress.get_callbacks()
+            self.mc_version, self.mc_dir, loader_version=fabric_ver, callback=progress.get_callbacks()
         )
         progress.close()
+        # This is the format mll uses to generate the version string.
+        # Would prefer to get this automatically.
+        fabric_minecraft_version = f"fabric-loader-{fabric_ver}-{self.mc_version}"
 
         # Install mods
         print()
@@ -165,8 +168,9 @@ class Installer:
         opts["narrator"] = "0"
         opts.save()
 
-        self.cfg_mgr.config.instances[self.instance_id] = Instance(self.mc_version)
+        self.cfg_mgr.config.instances[self.instance_id] = Instance(fabric_minecraft_version)
         self.cfg_mgr.save()
+        print("Success!")
 
     def _install_mod(
         self, mod_id: str, mc_dir: Path, mc_ver: str, version_type: str = "release"
@@ -275,8 +279,10 @@ class OptionsTxt:
         return options
 
 
+def get_instances_dir(mcio_dir: Path) -> Path:
+    return mcio_dir / INSTANCES_SUBDIR
 def get_minecraft_dir(mcio_dir: Path, instance_id: str) -> Path:
-    return mcio_dir / INSTANCES_SUBDIR / instance_id
+    return get_instances_dir(mcio_dir) / instance_id
 
 
 ##
@@ -297,7 +303,7 @@ class Config:
     @classmethod
     def from_dict(cls, config_dict: dict[str, Any]) -> Optional["Config"]:
         try:
-            rv = cls(**config_dict)
+            rv = dacite.from_dict(data_class=cls, data=config_dict)
         except Exception as e:
             # This means the dict doesn't match ConfigFile
             LOG.error(f"Failed to parse config file: {e}")
@@ -314,6 +320,7 @@ class ConfigManager:
         self.config_file = mcio_dir / CONFIG_FILENAME
         self.yaml = YAML(typ="rt")
         self.config: Config = Config()
+        self.load()
 
     def load(self) -> None:
         if self.config_file.exists():
@@ -327,3 +334,11 @@ class ConfigManager:
     def save(self) -> None:
         with open(self.config_file, "w") as f:
             self.yaml.dump(self.config.to_dict(), f)
+
+
+def show(mcio_dir: Path | str) -> None:
+    mcio_dir = Path(mcio_dir).expanduser()
+    cm = ConfigManager(mcio_dir=mcio_dir)
+    for inst_id, inst_info in cm.config.instances.items():
+        for info in mll.utils.get_installed_versions(get_instances_dir(mcio_dir) / inst_id):
+            print(info)

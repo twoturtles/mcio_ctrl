@@ -17,18 +17,25 @@ def parse_args() -> argparse.Namespace:
         dest="command_mode", metavar="command-mode", required=True
     )
 
+    def _add_mcio_dir_arg(parser: argparse.ArgumentParser) -> None:
+        parser.add_argument(
+            "--mcio-dir",
+            "-d",
+            type=str,
+            default=launcher.DEFAULT_MCIO_DIR,
+            help=f"MCio data directory (default: {launcher.DEFAULT_MCIO_DIR})",
+        )
+
     ##
     # Install subparser
     install_parser = subparsers.add_parser("install", help="Install Minecraft")
     install_parser.add_argument(
-        "instance_id", type=str, help="ID/Name of the Minecraft instance"
-    )
-    install_parser.add_argument(
-        "--mcio-dir",
-        "-d",
+        "instance_id",
+        metavar="instance-id",
         type=str,
-        help=f"MCio data directory (default: {launcher.DEFAULT_MCIO_DIR})",
+        help="ID/Name of the Minecraft instance",
     )
+    _add_mcio_dir_arg(install_parser)
     install_parser.add_argument(
         "--version",
         "-v",
@@ -41,22 +48,21 @@ def parse_args() -> argparse.Namespace:
     # Launch subparser
     launch_parser = subparsers.add_parser("launch", help="Launch Minecraft")
     launch_parser.add_argument(
-        "instance_id", type=str, help="ID/Name of the Minecraft instance"
+        "instance_id",
+        metavar="instance-id",
+        type=str,
+        help="ID/Name of the Minecraft instance",
     )
     launch_parser.add_argument(
         "--mcio_mode",
         "-m",
+        metavar="mcio-mode",
         type=str,
         choices=typing.get_args(launcher.MCIO_MODE),
         default="async",
         help="MCio mode: (default: async)",
     )
-    launch_parser.add_argument(
-        "--mcio-dir",
-        "-d",
-        type=str,
-        help=f"MCio data directory (default: {launcher.DEFAULT_MCIO_DIR})",
-    )
+    _add_mcio_dir_arg(launch_parser)
     launch_parser.add_argument("--world", "-w", type=str, help="World name")
     launch_parser.add_argument(
         "--width",
@@ -99,12 +105,7 @@ def parse_args() -> argparse.Namespace:
     show_parser = subparsers.add_parser(
         "show", help="Show information about what is installed"
     )
-    show_parser.add_argument(
-        "--mcio-dir",
-        "-d",
-        type=str,
-        help=f"MCio data directory (default: {launcher.DEFAULT_MCIO_DIR})",
-    )
+    _add_mcio_dir_arg(show_parser)
 
     return parser.parse_args()
 
@@ -112,10 +113,10 @@ def parse_args() -> argparse.Namespace:
 def main() -> None:
     args = parse_args()
 
-    if args.cmd_mode == "install":
+    if args.command_mode == "install":
         installer = launcher.Installer(args.instance_id, args.mcio_dir, args.version)
         installer.install()
-    elif args.cmd_mode == "launch":
+    elif args.command_mode == "launch":
         launch = launcher.Launcher(
             args.instance_id,
             mcio_dir=args.mcio_dir,
@@ -133,12 +134,11 @@ def main() -> None:
             print(" ".join(cmd))
         else:
             launch.launch()
-    elif args.cmd_mode == "show":
-        # TODO
-        for info in mll.utils.get_installed_versions(args.mcio_dir):
-            pprint.pprint(info)
+    elif args.command_mode == "show":
+        print(args)
+        launcher.show(mcio_dir=args.mcio_dir)
     else:
-        print(f"Unknown mode: {args.cmd_mode}")
+        print(f"Unknown mode: {args.command_mode}")
 
 
 if __name__ == "__main__":
