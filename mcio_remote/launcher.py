@@ -40,7 +40,7 @@ class Launcher:
 
     def __init__(
         self,
-        instance_id: str,
+        instance_id: "InstanceID",
         mcio_dir: Path | str | None = None,
         world: str | None = None,
         width: int = DEFAULT_WINDOW_WIDTH,
@@ -120,7 +120,7 @@ class Installer:
 
     def __init__(
         self,
-        instance_id: str,
+        instance_id: "InstanceID",
         mcio_dir: Path | str | None = None,
         mc_version: str = DEFAULT_MINECRAFT_VERSION,
     ) -> None:
@@ -279,12 +279,6 @@ class OptionsTxt:
         return options
 
 
-def get_instances_dir(mcio_dir: Path) -> Path:
-    return mcio_dir / INSTANCES_SUBDIR
-def get_minecraft_dir(mcio_dir: Path, instance_id: str) -> Path:
-    return get_instances_dir(mcio_dir) / instance_id
-
-
 ##
 # Configuration
 
@@ -336,9 +330,27 @@ class ConfigManager:
             self.yaml.dump(self.config.to_dict(), f)
 
 
+##
+# Utility functions
+
+def get_instances_dir(mcio_dir: Path) -> Path:
+    return mcio_dir / INSTANCES_SUBDIR
+def get_minecraft_dir(mcio_dir: Path, instance_id: "InstanceID") -> Path:
+    return get_instances_dir(mcio_dir) / instance_id
+
+
+def get_world_list(mcio_dir: Path | str, instance_id: InstanceID) -> list[str]:
+    mcio_dir = Path(mcio_dir).expanduser()
+    mc_dir = get_minecraft_dir(mcio_dir, instance_id)
+    world_dir = mc_dir / "saves"
+    world_names = [x.name for x in world_dir.iterdir() if x.is_dir()]
+    return world_names
+
 def show(mcio_dir: Path | str) -> None:
     mcio_dir = Path(mcio_dir).expanduser()
     cm = ConfigManager(mcio_dir=mcio_dir)
+    print(f"Available Instances in {mcio_dir}:")
     for inst_id, inst_info in cm.config.instances.items():
-        for info in mll.utils.get_installed_versions(get_instances_dir(mcio_dir) / inst_id):
-            print(info)
+        print(f"  Instance ID: {inst_id})")
+        world_list = get_world_list(mcio_dir, inst_id)
+        print(f"    Worlds: {", ".join(world_list)}")

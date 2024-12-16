@@ -135,7 +135,6 @@ def main() -> None:
         else:
             launch.launch()
     elif args.command_mode == "show":
-        print(args)
         launcher.show(mcio_dir=args.mcio_dir)
     else:
         print(f"Unknown mode: {args.command_mode}")
