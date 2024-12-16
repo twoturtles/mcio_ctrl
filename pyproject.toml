@@ -35,6 +35,9 @@ Source = "https://github.com/twoturtles/mcio_remote"
 Issues = "https://github.com/twoturtles/mcio_remote/issues"
 Changelog = "https://github.com/twoturtles/mcio_remote/blob/main/CHANGELOG.md"
 
+[project.scripts]
+mcio-launcher = "mcio_remote.scripts.mcio_launcher:main"
+
 [tool.hatch.envs.dev]
 dependencies = [
     "pre-commit>=4.0.1",
