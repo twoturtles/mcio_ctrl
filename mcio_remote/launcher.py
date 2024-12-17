@@ -51,7 +51,7 @@ class Launcher:
         mcio_dir = mcio_dir or DEFAULT_MCIO_DIR
         self.mcio_dir = Path(mcio_dir).expanduser()
         self.mcio_mode = mcio_mode
-        self.mc_dir = get_minecraft_dir(self.mcio_dir, self.instance_id)
+        self.istance_dir = get_instance_dir(self.mcio_dir, self.instance_id)
         self.mc_username = mc_username
         self.mc_uuid = uuid.uuid5(uuid.NAMESPACE_URL, self.mc_username)
 
@@ -77,12 +77,12 @@ class Launcher:
     def launch(self) -> None:
         env = self._get_env()
         cmd = self.get_command()
-        # For some reason Minecraft logs end up in cwd, so set it to mc_dir
-        subprocess.run(cmd, env=env, cwd=self.mc_dir)
+        # For some reason Minecraft logs end up in cwd, so set it to istance_dir
+        subprocess.run(cmd, env=env, cwd=self.istance_dir)
 
     def get_command(self) -> list[str]:
         mc_cmd = mll.command.get_minecraft_command(
-            self.mc_version, self.mc_dir, self.mll_options
+            self.mc_version, self.istance_dir, self.mll_options
         )
         mc_cmd = self._update_option_argument(mc_cmd, "--userType", "legacy")
         return mc_cmd
@@ -127,7 +127,7 @@ class Installer:
         mcio_dir = mcio_dir or DEFAULT_MCIO_DIR
         self.mcio_dir = Path(mcio_dir).expanduser()
         self.mc_version = mc_version
-        self.mc_dir = get_minecraft_dir(self.mcio_dir, self.instance_id)
+        self.istance_dir = get_instance_dir(self.mcio_dir, self.instance_id)
 
         self.cfg_mgr = ConfigManager(self.mcio_dir)
         if self.cfg_mgr.config.instances.get(self.instance_id) is not None:
@@ -136,10 +136,10 @@ class Installer:
             )
 
     def install(self) -> None:
-        print(f"Installing Minecraft in {self.mc_dir}...")
+        print(f"Installing Minecraft in {self.istance_dir}...")
         progress = _InstallProgress()
         mll.install.install_minecraft_version(
-            self.mc_version, self.mc_dir, callback=progress.get_callbacks()
+            self.mc_version, self.istance_dir, callback=progress.get_callbacks()
         )
         progress.close()
 
@@ -149,7 +149,7 @@ class Installer:
         fabric_ver = mll.fabric.get_latest_loader_version()
         mll.fabric.install_fabric(
             self.mc_version,
-            self.mc_dir,
+            self.istance_dir,
             loader_version=fabric_ver,
             callback=progress.get_callbacks(),
         )
@@ -161,19 +161,19 @@ class Installer:
         # Install mods
         print()
         for mod in REQUIRED_MODS:
-            self._install_mod(mod, self.mc_dir, self.mc_version)
+            self._install_mod(mod, self.istance_dir, self.mc_version)
 
         # XXX https://codeberg.org/JakobDev/minecraft-launcher-lib/issues/143
-        err_path = self.mc_dir / "libraries/org/ow2/asm/asm/9.3/asm-9.3.jar"
+        err_path = self.istance_dir / "libraries/org/ow2/asm/asm/9.3/asm-9.3.jar"
         err_path.unlink()
 
         # Download the server to use for world generation
         print("Installing server.jar")
-        server = Server(self.mc_dir)
+        server = Server(self.istance_dir)
         server.install_server(self.mc_version)
 
         # Disable narrator
-        opts = OptionsTxt(self.mc_dir / "options.txt")
+        opts = OptionsTxt(self.istance_dir / "options.txt")
         opts["narrator"] = "0"
         opts.save()
 
@@ -184,7 +184,7 @@ class Installer:
         print("Success!")
 
     def _install_mod(
-        self, mod_id: str, mc_dir: Path, mc_ver: str, version_type: str = "release"
+        self, mod_id: str, istance_dir: Path, mc_ver: str, version_type: str = "release"
     ) -> None:
         mod_info_url = f'https://api.modrinth.com/v2/project/{mod_id}/version?game_versions=["{mc_ver}"]'
         response = requests.get(mod_info_url)
@@ -207,7 +207,7 @@ class Installer:
         response.raise_for_status()
         filename = jar_info["filename"]
 
-        mods_dir = mc_dir / "mods"
+        mods_dir = istance_dir / "mods"
         mods_dir.mkdir(parents=True, exist_ok=True)
         print(f"Installing {filename}")
         with open(mods_dir / filename, "wb") as f:
@@ -304,9 +304,9 @@ class Server:
 
     SERVER_SUBDIR = "server"
 
-    def __init__(self, mc_dir: Path) -> None:
-        self.mc_dir = mc_dir
-        self.server_dir = self.mc_dir / self.SERVER_SUBDIR
+    def __init__(self, istance_dir: Path) -> None:
+        self.istance_dir = istance_dir
+        self.server_dir = self.istance_dir / self.SERVER_SUBDIR
         self.server_dir.mkdir(parents=True, exist_ok=True)
         self._process: subprocess.Popen[str] | None = None
 
@@ -372,7 +372,9 @@ class Server:
     def get_start_command(self) -> list[str]:
         """Get the shell command to start the server."""
         # XXX What should java version be?
-        java_cmd = mll.runtime.get_executable_path("java-runtime-delta", self.mc_dir)
+        java_cmd = mll.runtime.get_executable_path(
+            "java-runtime-delta", self.istance_dir
+        )
         if java_cmd is None:
             raise ValueError("Error getting java command")
         cmd = [java_cmd]
@@ -406,6 +408,7 @@ class WorldGen:
         self.instance_id = instance_id
         mcio_dir = mcio_dir or DEFAULT_MCIO_DIR
         self.mcio_dir = Path(mcio_dir).expanduser()
+        self.istance_dir = get_instance_dir(self.mcio_dir, self.instance_id)
 
     def generate(
         self,
@@ -422,11 +425,10 @@ class WorldGen:
             seed = random.randint(0, sys.maxsize)
         seed = str(seed)
 
-        self.mc_dir = get_minecraft_dir(self.mcio_dir, self.instance_id)
-        self.server = Server(self.mc_dir)
+        server = Server(self.istance_dir)
 
         # Clear the world dir before generation
-        world_dir = self.server.server_dir / "world"
+        world_dir = server.server_dir / "world"
         if world_dir.exists():
             shutil.rmtree(world_dir)
 
@@ -437,13 +439,11 @@ class WorldGen:
             "level-seed": seed,
         }
         server_properties = default_properties | server_properties
-        self.server.set_server_properties(
-            server_properties, clear=reset_server_properties
-        )
+        server.set_server_properties(server_properties, clear=reset_server_properties)
         # After stop the world dir should be ready
         print("Starting world generation...")
-        self.server.run()
-        self.server.stop()
+        server.run()
+        server.stop()
         print("Done")
 
 
@@ -506,14 +506,14 @@ def get_instances_dir(mcio_dir: Path) -> Path:
     return mcio_dir / INSTANCES_SUBDIR
 
 
-def get_minecraft_dir(mcio_dir: Path, instance_id: "InstanceID") -> Path:
+def get_instance_dir(mcio_dir: Path, instance_id: "InstanceID") -> Path:
     return get_instances_dir(mcio_dir) / instance_id
 
 
 def get_world_list(mcio_dir: Path | str, instance_id: InstanceID) -> list[str]:
     mcio_dir = Path(mcio_dir).expanduser()
-    mc_dir = get_minecraft_dir(mcio_dir, instance_id)
-    world_dir = mc_dir / "saves"
+    istance_dir = get_instance_dir(mcio_dir, instance_id)
+    world_dir = istance_dir / "saves"
     world_names = [x.name for x in world_dir.iterdir() if x.is_dir()]
     return world_names
 
