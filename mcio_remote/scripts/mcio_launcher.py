@@ -2,8 +2,6 @@ import argparse
 import pprint
 import typing
 
-import minecraft_launcher_lib as mll
-
 from mcio_remote import launcher
 
 

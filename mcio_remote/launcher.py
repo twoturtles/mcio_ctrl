@@ -132,7 +132,9 @@ class Installer:
 
         self.cfg_mgr = ConfigManager(self.mcio_dir)
         if self.cfg_mgr.config.instances.get(self.instance_id) is not None:
-            print(f"Warning: Instance {self.instance_id} already exists in {self.cfg_mgr.config_file}")
+            print(
+                f"Warning: Instance {self.instance_id} already exists in {self.cfg_mgr.config_file}"
+            )
 
     def install(self) -> None:
         print(f"Installing Minecraft in {self.mc_dir}...")
@@ -147,7 +149,10 @@ class Installer:
         # XXX This doesn't check that the loader is compatible with the minecraft version
         fabric_ver = mll.fabric.get_latest_loader_version()
         mll.fabric.install_fabric(
-            self.mc_version, self.mc_dir, loader_version=fabric_ver, callback=progress.get_callbacks()
+            self.mc_version,
+            self.mc_dir,
+            loader_version=fabric_ver,
+            callback=progress.get_callbacks(),
         )
         progress.close()
         # This is the format mll uses to generate the version string.
@@ -163,12 +168,18 @@ class Installer:
         err_path = self.mc_dir / "libraries/org/ow2/asm/asm/9.3/asm-9.3.jar"
         err_path.unlink()
 
+        # Download the server to use for world generation
+        print("Installing server.jar")
+        download_server(self.mc_dir, self.mc_version)
+
         # Disable narrator
         opts = OptionsTxt(self.mc_dir / "options.txt")
         opts["narrator"] = "0"
         opts.save()
 
-        self.cfg_mgr.config.instances[self.instance_id] = Instance(fabric_minecraft_version)
+        self.cfg_mgr.config.instances[self.instance_id] = Instance(
+            fabric_minecraft_version
+        )
         self.cfg_mgr.save()
         print("Success!")
 
@@ -333,8 +344,11 @@ class ConfigManager:
 ##
 # Utility functions
 
+
 def get_instances_dir(mcio_dir: Path) -> Path:
     return mcio_dir / INSTANCES_SUBDIR
+
+
 def get_minecraft_dir(mcio_dir: Path, instance_id: "InstanceID") -> Path:
     return get_instances_dir(mcio_dir) / instance_id
 
@@ -346,6 +360,7 @@ def get_world_list(mcio_dir: Path | str, instance_id: InstanceID) -> list[str]:
     world_names = [x.name for x in world_dir.iterdir() if x.is_dir()]
     return world_names
 
+
 def show(mcio_dir: Path | str) -> None:
     mcio_dir = Path(mcio_dir).expanduser()
     cm = ConfigManager(mcio_dir=mcio_dir)
@@ -354,3 +369,55 @@ def show(mcio_dir: Path | str) -> None:
         print(f"  Instance ID: {inst_id})")
         world_list = get_world_list(mcio_dir, inst_id)
         print(f"    Worlds: {", ".join(world_list)}")
+
+
+def get_version_manifest() -> dict[Any, Any]:
+    versions_url = "https://launchermeta.mojang.com/mc/game/version_manifest_v2.json"
+    response = requests.get(versions_url)
+    response.raise_for_status()
+    manifest: dict[Any, Any] = response.json()
+    return manifest
+
+
+def get_version_info(mc_version: str) -> dict[str, Any]:
+    """Example:
+    {
+      "id": "1.21.4",
+      "type": "release",
+      "url": "https://piston-meta.mojang.com/v1/packages/a3bcba436caa849622fd7e1e5b89489ed6c9ac63/1.21.4.json",
+      "time": "2024-12-03T10:24:48+00:00",
+      "releaseTime": "2024-12-03T10:12:57+00:00",
+      "sha1": "a3bcba436caa849622fd7e1e5b89489ed6c9ac63",
+      "complianceLevel": 1
+    },
+    """
+    manifest = get_version_manifest()
+    ver_list = manifest["versions"]
+    ver_info: dict[str, Any]
+    for ver_info in ver_list:
+        if ver_info["id"] == mc_version:
+            return ver_info
+    raise ValueError(f"Version not found: {mc_version}")
+
+
+def get_version_details(mc_version: str) -> dict[str, Any]:
+    ver_info = get_version_info(mc_version)
+    ver_details_url = ver_info["url"]
+
+    response = requests.get(ver_details_url)
+    response.raise_for_status()
+    ver_details: dict[str, Any] = response.json()
+    return ver_details
+
+
+def download_server(mc_dir: Path, mc_version: str) -> None:
+    info = get_version_details(mc_version)
+    server_url = info["downloads"]["server"]["url"]
+
+    response = requests.get(server_url)
+    response.raise_for_status()
+
+    server_dir = mc_dir / "server"
+    server_dir.mkdir(exist_ok=True)
+    with open(server_dir / "server.jar", "wb") as f:
+        f.write(response.content)
