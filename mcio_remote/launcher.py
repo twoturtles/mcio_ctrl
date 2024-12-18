@@ -9,6 +9,7 @@ import random
 import sys
 import shutil
 from typing import Any, Final, Literal, Optional, TypeAlias
+import types
 
 from tqdm import tqdm
 import requests
@@ -55,11 +56,11 @@ class Launcher:
         self.mc_username = mc_username
         self.mc_uuid = uuid.uuid5(uuid.NAMESPACE_URL, self.mc_username)
 
-        cm = ConfigManager(self.mcio_dir)
-        instance_config = cm.config.instances.get(self.instance_id)
+        with ConfigManager(self.mcio_dir) as cm:
+            instance_config = cm.config.instances.get(self.instance_id)
         if instance_config is None:
             raise ValueError(f"Missing instance_id in {cm.config_file}")
-        self.mc_version = instance_config.version
+        self.launch_version = instance_config.launch_version
 
         # Store options
         options = mll.types.MinecraftOptions(
@@ -82,7 +83,7 @@ class Launcher:
 
     def get_command(self) -> list[str]:
         mc_cmd = mll.command.get_minecraft_command(
-            self.mc_version, self.istance_dir, self.mll_options
+            self.launch_version, self.istance_dir, self.mll_options
         )
         mc_cmd = self._update_option_argument(mc_cmd, "--userType", "legacy")
         return mc_cmd
@@ -129,11 +130,11 @@ class Installer:
         self.mc_version = mc_version
         self.istance_dir = get_instance_dir(self.mcio_dir, self.instance_id)
 
-        self.cfg_mgr = ConfigManager(self.mcio_dir)
-        if self.cfg_mgr.config.instances.get(self.instance_id) is not None:
-            print(
-                f"Warning: Instance {self.instance_id} already exists in {self.cfg_mgr.config_file}"
-            )
+        with ConfigManager(self.mcio_dir) as cfg_mgr:
+            if cfg_mgr.config.instances.get(self.instance_id) is not None:
+                print(
+                    f"Warning: Instance {self.instance_id} already exists in {cfg_mgr.config_file}"
+                )
 
     def install(self) -> None:
         print(f"Installing Minecraft in {self.istance_dir}...")
@@ -155,7 +156,7 @@ class Installer:
         )
         progress.close()
         # This is the format mll uses to generate the version string.
-        # Would prefer to get this automatically.
+        # XXX Would prefer to get this automatically.
         fabric_minecraft_version = f"fabric-loader-{fabric_ver}-{self.mc_version}"
 
         # Install mods
@@ -173,14 +174,14 @@ class Installer:
         server.install_server(self.mc_version)
 
         # Disable narrator
-        opts = OptionsTxt(self.istance_dir / "options.txt")
-        opts["narrator"] = "0"
-        opts.save()
+        with OptionsTxt(self.istance_dir / "options.txt", save=True) as opts:
+            opts["narrator"] = "0"
 
-        self.cfg_mgr.config.instances[self.instance_id] = Instance(
-            fabric_minecraft_version
-        )
-        self.cfg_mgr.save()
+        with ConfigManager(self.mcio_dir, save=True) as cfg_mgr:
+            cfg_mgr.config.instances[self.instance_id] = Instance(
+                launch_version=fabric_minecraft_version,
+                minecraft_version=self.mc_version,
+            )
         print("Success!")
 
     def _install_mod(
@@ -257,14 +258,39 @@ class OptionsTxt:
     """
 
     def __init__(
-        self, options_path: Path | str, separator: Literal[":", "="] = ":"
+        self,
+        options_path: Path | str,
+        separator: Literal[":", "="] = ":",
+        save: bool = False,
     ) -> None:
+        """Set save to true to save automatically on exiting"""
+        self.save_on_exit = save
         self.path = Path(options_path).expanduser()
         self.sep = separator
-        self.options = self._load()
+        self.options: dict[str, str] | None = None
+
+    def load(self) -> None:
+        """Load options from file."""
+        if not self.path.exists():
+            # XXX Should we let the user know instead of creating an empty options?
+            self.options = {}
+
+        with self.path.open("r") as f:
+            txt = f.read()
+        lines = txt.strip().split("\n")
+        self.options = {}
+        for line in lines:
+            line = line.strip()
+            if len(line) == 0 or line.startswith("#"):
+                continue
+            key, value = line.split(self.sep, 1)
+            key = key.strip()
+            value = value.strip()
+            self.options[key] = value
 
     def save(self) -> None:
         """Save options back to file"""
+        assert self.options is not None
         with self.path.open("w") as f:
             for key, value in self.options.items():
                 f.write(f"{key}{self.sep}{value}\n")
@@ -274,29 +300,28 @@ class OptionsTxt:
         self.options = {}
 
     def __getitem__(self, key: str) -> str:
+        assert self.options is not None
         return self.options[key]
 
     def __setitem__(self, key: str, value: str) -> None:
+        assert self.options is not None
         self.options[key] = value
 
-    def _load(self) -> dict[str, str]:
-        """Load options from file. Returns as dict."""
-        if not self.path.exists():
-            return {}
+    def __enter__(self) -> "OptionsTxt":
+        self.load()
+        return self
 
-        with self.path.open("r") as f:
-            txt = f.read()
-        lines = txt.strip().split("\n")
-        options = {}
-        for line in lines:
-            line = line.strip()
-            if len(line) == 0 or line.startswith("#"):
-                continue
-            key, value = line.split(self.sep, 1)
-            key = key.strip()
-            value = value.strip()
-            options[key] = value
-        return options
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_value: BaseException | None,
+        traceback: types.TracebackType | None,
+    ) -> bool | None:
+        if exc_type is None:
+            # Clean exit
+            if self.save_on_exit:
+                self.save()
+        return None
 
 
 class Server:
@@ -326,16 +351,13 @@ class Server:
     ) -> None:
         if clear:
             self.clear_server_properties()
-        opts = self._load_properties()
-
-        for key, value in properties.items():
-            opts[key] = value
-        opts.save()
+        with self._load_properties(save=True) as props:
+            for key, value in properties.items():
+                props[key] = value
 
     def clear_server_properties(self) -> None:
-        opts = self._load_properties()
-        opts.clear()
-        opts.save()
+        with self._load_properties(save=True) as props:
+            props.clear()
 
     def set_server_property(self, key: str, value: str) -> None:
         self.set_server_properties({key: value})
@@ -386,8 +408,10 @@ class Server:
         with open(self.server_dir / "eula.txt", "w") as f:
             f.write("eula=true\n")
 
-    def _load_properties(self) -> OptionsTxt:
-        return OptionsTxt(self.server_dir / "server.properties", separator="=")
+    def _load_properties(self, save: bool = False) -> OptionsTxt:
+        return OptionsTxt(
+            self.server_dir / "server.properties", separator="=", save=save
+        )
 
 
 class WorldGen:
@@ -397,16 +421,13 @@ class WorldGen:
     """
 
     WORLD_SUBDIR: Final[str] = "world"
+    WORLD_STORAGE: Final[str] = "world_storage"
 
     def __init__(
         self,
         instance_id: "InstanceID",
         mcio_dir: Path | str | None = None,
     ) -> None:
-        """
-        You can set gamemode, difficult, and level-seed via function arguments or server_properties.
-        Values in server_properties will override function arguments.
-        """
         self.instance_id = instance_id
         mcio_dir = mcio_dir or DEFAULT_MCIO_DIR
         self.mcio_dir = Path(mcio_dir).expanduser()
@@ -414,6 +435,7 @@ class WorldGen:
 
     def generate(
         self,
+        world_name: str,
         gamemode: Literal[
             "survival", "creative", "adventure", "spectator"
         ] = "survival",
@@ -422,7 +444,12 @@ class WorldGen:
         reset_server_properties: bool = False,
         server_properties: dict[str, str] | None = None,
     ) -> None:
-        """This assumes the server has already been installed"""
+        """
+        This assumes the server has already been installed. Installer does this automatically.
+
+        You can set gamemode, difficulty, and level-seed via function arguments or server_properties.
+        Values in server_properties will override function arguments.
+        """
         if seed is None:
             seed = random.randint(0, sys.maxsize)
         seed = str(seed)
@@ -433,6 +460,7 @@ class WorldGen:
         world_dir = server.server_dir / self.WORLD_SUBDIR
         _rmrf(world_dir)
 
+        # Use server to create world
         server_properties = server_properties or {}
         default_properties = {
             "gamemode": gamemode,
@@ -446,10 +474,12 @@ class WorldGen:
         server.run()
         server.stop()
 
+        # Copy world to world_storage
+
         print("\nDone")
 
-    # def copy_world(self, dst_world_name: str) -> None:
-    #     saves_dir = get_saves_dir(self.istance_dir)
+    def copy_world(self, dst_world_name: str) -> None:
+        saves_dir = get_saves_dir(self.istance_dir)
 
 
 ##
@@ -460,7 +490,8 @@ InstanceID: TypeAlias = str
 
 @dataclass
 class Instance:
-    version: str = ""
+    launch_version: str = ""
+    minecraft_version: str = ""
 
 
 @dataclass
@@ -482,12 +513,13 @@ class Config:
 
 
 class ConfigManager:
-    def __init__(self, mcio_dir: Path | str) -> None:
+    def __init__(self, mcio_dir: Path | str, save: bool = False) -> None:
+        """Set save to true to save automatically on exiting"""
+        self.save_on_exit = save
         mcio_dir = Path(mcio_dir).expanduser()
         self.config_file = mcio_dir / CONFIG_FILENAME
         self.yaml = YAML(typ="rt")
         self.config: Config = Config()
-        self.load()
 
     def load(self) -> None:
         if self.config_file.exists():
@@ -501,6 +533,22 @@ class ConfigManager:
     def save(self) -> None:
         with open(self.config_file, "w") as f:
             self.yaml.dump(self.config.to_dict(), f)
+
+    def __enter__(self) -> "ConfigManager":
+        self.load()
+        return self
+
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_value: BaseException | None,
+        traceback: types.TracebackType | None,
+    ) -> bool | None:
+        if exc_type is None:
+            # Clean exit
+            if self.save_on_exit:
+                self.save()
+        return None
 
 
 ##
@@ -530,12 +578,12 @@ def get_world_list(mcio_dir: Path | str, instance_id: InstanceID) -> list[str]:
 
 def show(mcio_dir: Path | str) -> None:
     mcio_dir = Path(mcio_dir).expanduser()
-    cm = ConfigManager(mcio_dir=mcio_dir)
     print(f"Available Instances in {mcio_dir}:")
-    for inst_id, inst_info in cm.config.instances.items():
-        print(f"  Instance ID: {inst_id})")
-        world_list = get_world_list(mcio_dir, inst_id)
-        print(f"    Worlds: {", ".join(world_list)}")
+    with ConfigManager(mcio_dir=mcio_dir) as cm:
+        for inst_id, inst_info in cm.config.instances.items():
+            print(f"  Instance ID: {inst_id})")
+            world_list = get_world_list(mcio_dir, inst_id)
+            print(f"    Worlds: {", ".join(world_list)}")
 
 
 def get_version_manifest() -> dict[Any, Any]:

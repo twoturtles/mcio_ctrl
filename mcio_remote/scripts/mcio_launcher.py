@@ -56,7 +56,7 @@ def parse_args() -> argparse.Namespace:
         "-m",
         metavar="mcio-mode",
         type=str,
-        choices=typing.get_args(launcher.MCIO_MODE),
+        choices=typing.get_args(launcher.McioMode),
         default="async",
         help="MCio mode: (default: async)",
     )
