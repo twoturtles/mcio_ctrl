@@ -8,22 +8,20 @@ import os
 import random
 import sys
 import shutil
-from typing import Any, Final, Literal, Optional, TypeAlias
+from typing import Any, Final, Literal
 import types
 
 from tqdm import tqdm
 import requests
-from ruamel.yaml import YAML
 import minecraft_launcher_lib as mll
-import dacite
 
 from . import logger
+from . import config
 
 LOG = logger.LOG.get_logger(__name__)
 
 DEFAULT_MCIO_DIR: Final[Path] = Path("~/.mcio/").expanduser()
 INSTANCES_SUBDIR: Final[str] = "instances"
-CONFIG_FILENAME: Final[str] = "mcio.yaml"
 
 DEFAULT_MINECRAFT_VERSION: Final[str] = "1.21.3"
 DEFAULT_MINECRAFT_USER: Final[str] = "MCio"
@@ -40,7 +38,7 @@ class Launcher:
 
     def __init__(
         self,
-        instance_id: "InstanceID",
+        instance_id: "config.InstanceID",
         mcio_dir: Path | str | None = None,
         world: str | None = None,
         width: int = DEFAULT_WINDOW_WIDTH,
@@ -56,7 +54,7 @@ class Launcher:
         self.mc_username = mc_username
         self.mc_uuid = uuid.uuid5(uuid.NAMESPACE_URL, self.mc_username)
 
-        with ConfigManager(self.mcio_dir) as cm:
+        with config.ConfigManager(self.mcio_dir) as cm:
             instance_config = cm.config.instances.get(self.instance_id)
         if instance_config is None:
             raise ValueError(f"Missing instance_id in {cm.config_file}")
@@ -120,7 +118,7 @@ class Installer:
 
     def __init__(
         self,
-        instance_id: "InstanceID",
+        instance_id: "config.InstanceID",
         mcio_dir: Path | str | None = None,
         mc_version: str = DEFAULT_MINECRAFT_VERSION,
     ) -> None:
@@ -130,7 +128,7 @@ class Installer:
         self.mc_version = mc_version
         self.istance_dir = get_instance_dir(self.mcio_dir, self.instance_id)
 
-        with ConfigManager(self.mcio_dir) as cfg_mgr:
+        with config.ConfigManager(self.mcio_dir) as cfg_mgr:
             if cfg_mgr.config.instances.get(self.instance_id) is not None:
                 print(
                     f"Warning: Instance {self.instance_id} already exists in {cfg_mgr.config_file}"
@@ -177,8 +175,8 @@ class Installer:
         with OptionsTxt(self.istance_dir / "options.txt", save=True) as opts:
             opts["narrator"] = "0"
 
-        with ConfigManager(self.mcio_dir, save=True) as cfg_mgr:
-            cfg_mgr.config.instances[self.instance_id] = InstanceConfig(
+        with config.ConfigManager(self.mcio_dir, save=True) as cfg_mgr:
+            cfg_mgr.config.instances[self.instance_id] = config.InstanceConfig(
                 id=self.instance_id,
                 launch_version=fabric_minecraft_version,
                 minecraft_version=self.mc_version,
@@ -426,7 +424,7 @@ class WorldGen:
 
     def __init__(
         self,
-        instance_id: "InstanceID",
+        instance_id: "config.InstanceID",
         mcio_dir: Path | str | None = None,
     ) -> None:
         self.instance_id = instance_id
@@ -480,88 +478,8 @@ class WorldGen:
 
         print("\nDone")
 
-    # def copy_world(self, dst_world_name: str) -> None:
+    # def copy_world(self, dst_world_name: WorldName) -> None:
     #     saves_dir = get_saves_dir(self.istance_dir)
-
-
-##
-# Configuration
-
-CONFIG_VERSION: Final[int] = 0
-InstanceID: TypeAlias = str
-WorldName: TypeAlias = str
-
-
-@dataclass
-class InstanceConfig:
-    id: InstanceID = ""
-    launch_version: str = ""
-    minecraft_version: str = ""
-
-
-@dataclass
-class WorldConfig:
-    name: str = ""
-    minecraft_version: str = ""
-
-
-@dataclass
-class Config:
-    config_version: int = CONFIG_VERSION  # XXX Eventually check this
-    instances: dict[InstanceID, InstanceConfig] = field(default_factory=dict)
-    world_storage: dict[WorldName, WorldConfig] = field(default_factory=dict)
-
-    @classmethod
-    def from_dict(cls, config_dict: dict[str, Any]) -> Optional["Config"]:
-        try:
-            rv = dacite.from_dict(data_class=cls, data=config_dict)
-        except Exception as e:
-            # This means the dict doesn't match ConfigFile
-            LOG.error(f"Failed to parse config file: {e}")
-            return None
-        return rv
-
-    def to_dict(self) -> dict[str, Any]:
-        return asdict(self)
-
-
-class ConfigManager:
-    def __init__(self, mcio_dir: Path | str, save: bool = False) -> None:
-        """Set save to true to save automatically on exiting"""
-        self.save_on_exit = save
-        mcio_dir = Path(mcio_dir).expanduser()
-        self.config_file = mcio_dir / CONFIG_FILENAME
-        self.yaml = YAML(typ="rt")
-        self.config: Config = Config()
-
-    def load(self) -> None:
-        if self.config_file.exists():
-            with open(self.config_file) as f:
-                # load() returns None if the file has no data.
-                cfg_dict = self.yaml.load(f) or {}
-                self.config = Config.from_dict(cfg_dict) or Config()
-        else:
-            self.config = Config()
-
-    def save(self) -> None:
-        with open(self.config_file, "w") as f:
-            self.yaml.dump(self.config.to_dict(), f)
-
-    def __enter__(self) -> "ConfigManager":
-        self.load()
-        return self
-
-    def __exit__(
-        self,
-        exc_type: type[BaseException] | None,
-        exc_value: BaseException | None,
-        traceback: types.TracebackType | None,
-    ) -> bool | None:
-        if exc_type is None:
-            # Clean exit
-            if self.save_on_exit:
-                self.save()
-        return None
 
 
 ##
@@ -572,7 +490,7 @@ def get_instances_dir(mcio_dir: Path) -> Path:
     return mcio_dir / INSTANCES_SUBDIR
 
 
-def get_instance_dir(mcio_dir: Path, instance_id: "InstanceID") -> Path:
+def get_instance_dir(mcio_dir: Path, instance_id: "config.InstanceID") -> Path:
     return get_instances_dir(mcio_dir) / instance_id
 
 
@@ -581,7 +499,7 @@ def get_saves_dir(instance_dir: Path) -> Path:
     return instance_dir / SAVES_SUBDIR
 
 
-def get_world_list(mcio_dir: Path | str, instance_id: InstanceID) -> list[str]:
+def get_world_list(mcio_dir: Path | str, instance_id: config.InstanceID) -> list[str]:
     mcio_dir = Path(mcio_dir).expanduser()
     instance_dir = get_instance_dir(mcio_dir, instance_id)
     world_dir = get_saves_dir(instance_dir)
@@ -592,7 +510,7 @@ def get_world_list(mcio_dir: Path | str, instance_id: InstanceID) -> list[str]:
 def show(mcio_dir: Path | str) -> None:
     mcio_dir = Path(mcio_dir).expanduser()
     print(f"Available Instances in {mcio_dir}:")
-    with ConfigManager(mcio_dir=mcio_dir) as cm:
+    with config.ConfigManager(mcio_dir=mcio_dir) as cm:
         for inst_id, inst_info in cm.config.instances.items():
             print(f"  Instance ID: {inst_id})")
             world_list = get_world_list(mcio_dir, inst_id)
