@@ -22,16 +22,16 @@ LOG = logger.LOG.get_logger(__name__)
 
 DEFAULT_MCIO_DIR: Final[Path] = Path("~/.mcio/").expanduser()
 INSTANCES_SUBDIR: Final[str] = "instances"
-CONFIG_FILENAME: str = "mcio.yaml"
+CONFIG_FILENAME: Final[str] = "mcio.yaml"
 
 DEFAULT_MINECRAFT_VERSION: Final[str] = "1.21.3"
 DEFAULT_MINECRAFT_USER: Final[str] = "MCio"
 DEFAULT_WINDOW_WIDTH: Final[int] = 854
 DEFAULT_WINDOW_HEIGHT: Final[int] = 480
 
-MCIO_MODE = Literal["off", "async", "sync"]
+McioMode = Literal["off", "async", "sync"]
 
-REQUIRED_MODS: list[str] = ["fabric-api", "mcio"]
+REQUIRED_MODS: Final[tuple[str, ...]] = ("fabric-api", "mcio")
 
 
 class Launcher:
@@ -44,7 +44,7 @@ class Launcher:
         world: str | None = None,
         width: int = DEFAULT_WINDOW_WIDTH,
         height: int = DEFAULT_WINDOW_HEIGHT,
-        mcio_mode: MCIO_MODE = "async",
+        mcio_mode: McioMode = "async",
         mc_username: str = DEFAULT_MINECRAFT_USER,
     ) -> None:
         self.instance_id = instance_id
@@ -302,7 +302,7 @@ class OptionsTxt:
 class Server:
     """Install / interface with Minecraft server."""
 
-    SERVER_SUBDIR = "server"
+    SERVER_SUBDIR: Final[str] = "server"
 
     def __init__(self, istance_dir: Path) -> None:
         self.istance_dir = istance_dir
@@ -396,6 +396,8 @@ class WorldGen:
     https://minecraft.fandom.com/wiki/Server.properties
     """
 
+    WORLD_SUBDIR: Final[str] = "world"
+
     def __init__(
         self,
         instance_id: "InstanceID",
@@ -428,9 +430,8 @@ class WorldGen:
         server = Server(self.istance_dir)
 
         # Clear the world dir before generation
-        world_dir = server.server_dir / "world"
-        if world_dir.exists():
-            shutil.rmtree(world_dir)
+        world_dir = server.server_dir / self.WORLD_SUBDIR
+        _rmrf(world_dir)
 
         server_properties = server_properties or {}
         default_properties = {
@@ -441,10 +442,14 @@ class WorldGen:
         server_properties = default_properties | server_properties
         server.set_server_properties(server_properties, clear=reset_server_properties)
         # After stop the world dir should be ready
-        print("Starting world generation...")
+        print("Starting world generation...\n")
         server.run()
         server.stop()
-        print("Done")
+
+        print("\nDone")
+
+    # def copy_world(self, dst_world_name: str) -> None:
+    #     saves_dir = get_saves_dir(self.istance_dir)
 
 
 ##
@@ -510,10 +515,15 @@ def get_instance_dir(mcio_dir: Path, instance_id: "InstanceID") -> Path:
     return get_instances_dir(mcio_dir) / instance_id
 
 
+def get_saves_dir(instance_dir: Path) -> Path:
+    SAVES_SUBDIR = "saves"
+    return instance_dir / SAVES_SUBDIR
+
+
 def get_world_list(mcio_dir: Path | str, instance_id: InstanceID) -> list[str]:
     mcio_dir = Path(mcio_dir).expanduser()
-    istance_dir = get_instance_dir(mcio_dir, instance_id)
-    world_dir = istance_dir / "saves"
+    instance_dir = get_instance_dir(mcio_dir, instance_id)
+    world_dir = get_saves_dir(instance_dir)
     world_names = [x.name for x in world_dir.iterdir() if x.is_dir()]
     return world_names
 
@@ -565,3 +575,12 @@ def get_version_details(mc_version: str) -> dict[str, Any]:
     response.raise_for_status()
     ver_details: dict[str, Any] = response.json()
     return ver_details
+
+
+def _rmrf(path: Path) -> None:
+    if not path.exists():
+        return
+    if path.is_dir():
+        shutil.rmtree(path)
+    else:
+        path.unlink()
