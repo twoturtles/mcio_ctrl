@@ -1,7 +1,6 @@
 """Interface for managing and launching Minecraft instances"""
 
 import subprocess
-from dataclasses import dataclass, asdict, field
 import uuid
 from pathlib import Path
 import os
@@ -413,11 +412,7 @@ class Server:
         )
 
 
-class WorldGen:
-    """
-    Use this interface for generating worlds (vs. using the Server directly)
-    https://minecraft.fandom.com/wiki/Server.properties
-    """
+class World:
 
     WORLD_SUBDIR: Final[str] = "world"
     WORLD_STORAGE: Final[str] = "world_storage"
@@ -444,6 +439,9 @@ class WorldGen:
         server_properties: dict[str, str] | None = None,
     ) -> None:
         """
+        Use this interface for generating worlds (vs. using the Server directly)
+        https://minecraft.fandom.com/wiki/Server.properties
+
         This assumes the server has already been installed, which should
         be true. Installer does this automatically.
 
@@ -475,11 +473,15 @@ class WorldGen:
         server.stop()
 
         # Copy world to world_storage
+        _copy_dir(world_dir, self.mcio_dir / self.WORLD_STORAGE / world_name)
+
+        with config.ConfigManager(self.mcio_dir, save=True) as cm:
+            mc_ver = cm.config.instances[self.instance_id].minecraft_version
+            cm.config.world_storage[world_name] = config.WorldConfig(
+                name=world_name, minecraft_version=mc_ver
+            )
 
         print("\nDone")
-
-    # def copy_world(self, dst_world_name: WorldName) -> None:
-    #     saves_dir = get_saves_dir(self.istance_dir)
 
 
 ##
@@ -563,3 +565,13 @@ def _rmrf(path: Path) -> None:
         shutil.rmtree(path)
     else:
         path.unlink()
+
+
+def _copy_dir(src: Path, dst: Path) -> None:
+    if dst.exists():
+        raise ValueError(f"Destination exists: {dst}")
+    if not src.exists():
+        raise ValueError(f"Source missing: {src}")
+    if not src.is_dir():
+        raise ValueError(f"Source is not a directory: {src}")
+    shutil.copytree(src, dst)

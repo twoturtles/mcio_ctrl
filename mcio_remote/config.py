@@ -10,11 +10,10 @@ from . import logger
 
 LOG = logger.LOG.get_logger(__name__)
 
-CONFIG_FILENAME: Final[str] = "mcio.yaml"
-
 ##
 # Configuration
 
+CONFIG_FILENAME: Final[str] = "mcio.yaml"
 CONFIG_VERSION: Final[int] = 0
 InstanceID: TypeAlias = str
 WorldName: TypeAlias = str
@@ -29,8 +28,8 @@ class InstanceConfig:
 
 @dataclass
 class WorldConfig:
-    name: str = ""
-    minecraft_version: str = ""
+    name: WorldName = ""
+    minecraft_version: str = ""  # Save the version that created this world
 
 
 @dataclass
