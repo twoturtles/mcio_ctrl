@@ -178,7 +178,8 @@ class Installer:
             opts["narrator"] = "0"
 
         with ConfigManager(self.mcio_dir, save=True) as cfg_mgr:
-            cfg_mgr.config.instances[self.instance_id] = Instance(
+            cfg_mgr.config.instances[self.instance_id] = InstanceConfig(
+                id=self.instance_id,
                 launch_version=fabric_minecraft_version,
                 minecraft_version=self.mc_version,
             )
@@ -445,10 +446,11 @@ class WorldGen:
         server_properties: dict[str, str] | None = None,
     ) -> None:
         """
-        This assumes the server has already been installed. Installer does this automatically.
+        This assumes the server has already been installed, which should
+        be true. Installer does this automatically.
 
-        You can set gamemode, difficulty, and level-seed via function arguments or server_properties.
-        Values in server_properties will override function arguments.
+        You can set gamemode, difficulty, and level-seed via function arguments
+        or server_properties. Values in server_properties will override function arguments.
         """
         if seed is None:
             seed = random.randint(0, sys.maxsize)
@@ -478,25 +480,36 @@ class WorldGen:
 
         print("\nDone")
 
-    def copy_world(self, dst_world_name: str) -> None:
-        saves_dir = get_saves_dir(self.istance_dir)
+    # def copy_world(self, dst_world_name: str) -> None:
+    #     saves_dir = get_saves_dir(self.istance_dir)
 
 
 ##
 # Configuration
 
+CONFIG_VERSION: Final[int] = 0
 InstanceID: TypeAlias = str
+WorldName: TypeAlias = str
 
 
 @dataclass
-class Instance:
+class InstanceConfig:
+    id: InstanceID = ""
     launch_version: str = ""
     minecraft_version: str = ""
 
 
 @dataclass
+class WorldConfig:
+    name: str = ""
+    minecraft_version: str = ""
+
+
+@dataclass
 class Config:
-    instances: dict[InstanceID, Instance] = field(default_factory=dict)
+    config_version: int = CONFIG_VERSION  # XXX Eventually check this
+    instances: dict[InstanceID, InstanceConfig] = field(default_factory=dict)
+    world_storage: dict[WorldName, WorldConfig] = field(default_factory=dict)
 
     @classmethod
     def from_dict(cls, config_dict: dict[str, Any]) -> Optional["Config"]:
