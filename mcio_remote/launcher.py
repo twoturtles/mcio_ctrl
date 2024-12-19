@@ -27,9 +27,9 @@ DEFAULT_MINECRAFT_USER: Final[str] = "MCio"
 DEFAULT_WINDOW_WIDTH: Final[int] = 854
 DEFAULT_WINDOW_HEIGHT: Final[int] = 480
 
-McioMode = Literal["off", "async", "sync"]
-
 REQUIRED_MODS: Final[tuple[str, ...]] = ("fabric-api", "mcio")
+
+McioMode = Literal["off", "async", "sync"]
 
 
 class Launcher:
@@ -37,9 +37,9 @@ class Launcher:
 
     def __init__(
         self,
-        instance_id: "config.InstanceID",
+        instance_id: config.InstanceID,
         mcio_dir: Path | str | None = None,
-        world: str | None = None,
+        world_name: config.WorldName | None = None,
         width: int = DEFAULT_WINDOW_WIDTH,
         height: int = DEFAULT_WINDOW_HEIGHT,
         mcio_mode: McioMode = "async",
@@ -49,7 +49,7 @@ class Launcher:
         mcio_dir = mcio_dir or DEFAULT_MCIO_DIR
         self.mcio_dir = Path(mcio_dir).expanduser()
         self.mcio_mode = mcio_mode
-        self.istance_dir = get_instance_dir(self.mcio_dir, self.instance_id)
+        self.instance_dir = get_instance_dir(self.mcio_dir, self.instance_id)
         self.mc_username = mc_username
         self.mc_uuid = uuid.uuid5(uuid.NAMESPACE_URL, self.mc_username)
 
@@ -68,19 +68,19 @@ class Launcher:
             resolutionWidth=str(width),
             resolutionHeight=str(height),
         )
-        if world:
-            options["quickPlaySingleplayer"] = world
+        if world_name is not None:
+            options["quickPlaySingleplayer"] = world_name
         self.mll_options = options
 
     def launch(self) -> None:
         env = self._get_env()
         cmd = self.get_command()
-        # For some reason Minecraft logs end up in cwd, so set it to istance_dir
-        subprocess.run(cmd, env=env, cwd=self.istance_dir)
+        # For some reason Minecraft logs end up in cwd, so set it to instance_dir
+        subprocess.run(cmd, env=env, cwd=self.instance_dir)
 
     def get_command(self) -> list[str]:
         mc_cmd = mll.command.get_minecraft_command(
-            self.launch_version, self.istance_dir, self.mll_options
+            self.launch_version, self.instance_dir, self.mll_options
         )
         mc_cmd = self._update_option_argument(mc_cmd, "--userType", "legacy")
         return mc_cmd
@@ -125,7 +125,7 @@ class Installer:
         mcio_dir = mcio_dir or DEFAULT_MCIO_DIR
         self.mcio_dir = Path(mcio_dir).expanduser()
         self.mc_version = mc_version
-        self.istance_dir = get_instance_dir(self.mcio_dir, self.instance_id)
+        self.instance_dir = get_instance_dir(self.mcio_dir, self.instance_id)
 
         with config.ConfigManager(self.mcio_dir) as cfg_mgr:
             if cfg_mgr.config.instances.get(self.instance_id) is not None:
@@ -134,10 +134,10 @@ class Installer:
                 )
 
     def install(self) -> None:
-        print(f"Installing Minecraft in {self.istance_dir}...")
+        print(f"Installing Minecraft in {self.instance_dir}...")
         progress = _InstallProgress()
         mll.install.install_minecraft_version(
-            self.mc_version, self.istance_dir, callback=progress.get_callbacks()
+            self.mc_version, self.instance_dir, callback=progress.get_callbacks()
         )
         progress.close()
 
@@ -147,7 +147,7 @@ class Installer:
         fabric_ver = mll.fabric.get_latest_loader_version()
         mll.fabric.install_fabric(
             self.mc_version,
-            self.istance_dir,
+            self.instance_dir,
             loader_version=fabric_ver,
             callback=progress.get_callbacks(),
         )
@@ -159,19 +159,19 @@ class Installer:
         # Install mods
         print()
         for mod in REQUIRED_MODS:
-            self._install_mod(mod, self.istance_dir, self.mc_version)
+            self._install_mod(mod, self.instance_dir, self.mc_version)
 
         # XXX https://codeberg.org/JakobDev/minecraft-launcher-lib/issues/143
-        err_path = self.istance_dir / "libraries/org/ow2/asm/asm/9.3/asm-9.3.jar"
+        err_path = self.instance_dir / "libraries/org/ow2/asm/asm/9.3/asm-9.3.jar"
         err_path.unlink()
 
         # Download the server to use for world generation
         print("Installing server.jar")
-        server = Server(self.istance_dir)
+        server = Server(self.instance_dir)
         server.install_server(self.mc_version)
 
         # Disable narrator
-        with OptionsTxt(self.istance_dir / "options.txt", save=True) as opts:
+        with OptionsTxt(self.instance_dir / "options.txt", save=True) as opts:
             opts["narrator"] = "0"
 
         with config.ConfigManager(self.mcio_dir, save=True) as cfg_mgr:
@@ -183,7 +183,11 @@ class Installer:
         print("Success!")
 
     def _install_mod(
-        self, mod_id: str, istance_dir: Path, mc_ver: str, version_type: str = "release"
+        self,
+        mod_id: str,
+        instance_dir: Path,
+        mc_ver: str,
+        version_type: str = "release",
     ) -> None:
         mod_info_url = f'https://api.modrinth.com/v2/project/{mod_id}/version?game_versions=["{mc_ver}"]'
         response = requests.get(mod_info_url)
@@ -206,7 +210,7 @@ class Installer:
         response.raise_for_status()
         filename = jar_info["filename"]
 
-        mods_dir = istance_dir / "mods"
+        mods_dir = instance_dir / "mods"
         mods_dir.mkdir(parents=True, exist_ok=True)
         print(f"Installing {filename}")
         with open(mods_dir / filename, "wb") as f:
@@ -327,9 +331,9 @@ class Server:
 
     SERVER_SUBDIR: Final[str] = "server"
 
-    def __init__(self, istance_dir: Path) -> None:
-        self.istance_dir = istance_dir
-        self.server_dir = self.istance_dir / self.SERVER_SUBDIR
+    def __init__(self, instance_dir: Path) -> None:
+        self.instance_dir = instance_dir
+        self.server_dir = self.instance_dir / self.SERVER_SUBDIR
         self.server_dir.mkdir(parents=True, exist_ok=True)
         self._process: subprocess.Popen[str] | None = None
 
@@ -393,7 +397,7 @@ class Server:
         """Get the shell command to start the server."""
         # XXX What should java version be?
         java_cmd = mll.runtime.get_executable_path(
-            "java-runtime-delta", self.istance_dir
+            "java-runtime-delta", self.instance_dir
         )
         if java_cmd is None:
             raise ValueError("Error getting java command")
@@ -412,24 +416,25 @@ class Server:
         )
 
 
+# XXX Move server installation to World. Keep per mc version
 class World:
 
-    WORLD_SUBDIR: Final[str] = "world"
+    SERVER_WORLD_SUBDIR: Final[str] = "world"
+    INSTANCE_WORLDS_SUBDIR: Final[str] = "saves"
     WORLD_STORAGE: Final[str] = "world_storage"
 
     def __init__(
         self,
-        instance_id: "config.InstanceID",
         mcio_dir: Path | str | None = None,
     ) -> None:
-        self.instance_id = instance_id
         mcio_dir = mcio_dir or DEFAULT_MCIO_DIR
         self.mcio_dir = Path(mcio_dir).expanduser()
-        self.istance_dir = get_instance_dir(self.mcio_dir, self.instance_id)
+        self.storage_dir = self.mcio_dir / self.WORLD_STORAGE
 
     def generate(
         self,
-        world_name: str,
+        world_name: config.WorldName,
+        instance_id: "config.InstanceID",  # XXX Used for generation
         gamemode: Literal[
             "survival", "creative", "adventure", "spectator"
         ] = "survival",
@@ -452,10 +457,11 @@ class World:
             seed = random.randint(0, sys.maxsize)
         seed = str(seed)
 
-        server = Server(self.istance_dir)
+        instance_dir = get_instance_dir(self.mcio_dir, instance_id)
+        server = Server(instance_dir)
 
         # Clear the world dir before generation
-        world_dir = server.server_dir / self.WORLD_SUBDIR
+        world_dir = server.server_dir / self.SERVER_WORLD_SUBDIR
         _rmrf(world_dir)
 
         # Use server to create world
@@ -472,16 +478,46 @@ class World:
         server.run()
         server.stop()
 
-        # Copy world to world_storage
-        _copy_dir(world_dir, self.mcio_dir / self.WORLD_STORAGE / world_name)
+        # Copy world to storage
+        _copy_dir(world_dir, self.storage_dir / world_name)
 
         with config.ConfigManager(self.mcio_dir, save=True) as cm:
-            mc_ver = cm.config.instances[self.instance_id].minecraft_version
+            mc_ver = cm.config.instances[instance_id].minecraft_version
             cm.config.world_storage[world_name] = config.WorldConfig(
                 name=world_name, minecraft_version=mc_ver
             )
 
         print("\nDone")
+
+    def copy_from_storage(
+        self,
+        src_name: config.WorldName,
+        dst_instance_id: config.InstanceID,
+        dst_name: config.WorldName | None = None,
+        overwrite: bool = False,
+    ) -> None:
+        dst_name = dst_name or src_name
+        dst_instance_dir = get_instance_dir(self.mcio_dir, dst_instance_id)
+        _copy_dir(
+            self.storage_dir / src_name,
+            dst_instance_dir / dst_name,
+            overwrite=overwrite,
+        )
+
+    def copy_to_storage(
+        self,
+        src_instance_id: config.InstanceID,
+        src_name: config.WorldName,
+        dst_name: config.WorldName | None = None,
+        overwrite: bool = False,
+    ) -> None:
+        dst_name = dst_name or src_name
+        src_instance_dir = get_instance_dir(self.mcio_dir, src_instance_id)
+        _copy_dir(
+            src_instance_dir / src_name,
+            self.storage_dir / dst_name,
+            overwrite=overwrite,
+        )
 
 
 ##
@@ -501,6 +537,7 @@ def get_saves_dir(instance_dir: Path) -> Path:
     return instance_dir / SAVES_SUBDIR
 
 
+# XXX Replace with World usage
 def get_world_list(mcio_dir: Path | str, instance_id: config.InstanceID) -> list[str]:
     mcio_dir = Path(mcio_dir).expanduser()
     instance_dir = get_instance_dir(mcio_dir, instance_id)
@@ -567,11 +604,14 @@ def _rmrf(path: Path) -> None:
         path.unlink()
 
 
-def _copy_dir(src: Path, dst: Path) -> None:
-    if dst.exists():
-        raise ValueError(f"Destination exists: {dst}")
+def _copy_dir(src: Path, dst: Path, overwrite: bool = False) -> None:
     if not src.exists():
-        raise ValueError(f"Source missing: {src}")
+        raise ValueError(f"Source is missing: {src}")
     if not src.is_dir():
         raise ValueError(f"Source is not a directory: {src}")
+    if dst.exists():
+        if overwrite:
+            _rmrf(dst)
+        else:
+            raise ValueError(f"Destination exists: {dst}")
     shutil.copytree(src, dst)
