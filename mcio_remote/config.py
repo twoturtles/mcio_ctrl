@@ -11,6 +11,13 @@ from . import logger
 LOG = logger.LOG.get_logger(__name__)
 
 ##
+# Global defines
+
+DEFAULT_MCIO_DIR: Final[Path] = Path("~/.mcio/").expanduser()
+DEFAULT_MINECRAFT_VERSION: Final[str] = "1.21.3"
+
+
+##
 # Configuration
 
 CONFIG_FILENAME: Final[str] = "mcio.yaml"

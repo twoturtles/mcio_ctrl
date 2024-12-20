@@ -1,6 +1,13 @@
 import time
 import queue
-from typing import TypeVar
+from pathlib import Path
+from typing import TypeVar, Any, Literal
+import shutil
+import requests
+import types
+
+from tqdm import tqdm
+import minecraft_launcher_lib as mll
 
 from . import logger
 
@@ -58,3 +65,180 @@ class TrackPerSecond:
             LOG.info(f"{self.name}: {per_sec:.1f}")
             self.item_count = 0
             self.start = end
+
+
+class OptionsTxt:
+    """Load/Save options.txt. Keeps everything as strings.
+    To work with server.properties instead, set separator to "="
+    """
+
+    def __init__(
+        self,
+        options_path: Path | str,
+        separator: Literal[":", "="] = ":",
+        save: bool = False,
+    ) -> None:
+        """Set save to true to save automatically on exiting"""
+        self.save_on_exit = save
+        self.path = Path(options_path).expanduser()
+        self.sep = separator
+        self.options: dict[str, str] | None = None
+
+    def load(self) -> None:
+        """Load options from file."""
+        if not self.path.exists():
+            # XXX Should we let the user know instead of creating an empty options?
+            self.options = {}
+            return
+
+        with self.path.open("r") as f:
+            txt = f.read()
+        lines = txt.strip().split("\n")
+        self.options = {}
+        for line in lines:
+            line = line.strip()
+            if len(line) == 0 or line.startswith("#"):
+                continue
+            key, value = line.split(self.sep, 1)
+            key = key.strip()
+            value = value.strip()
+            self.options[key] = value
+
+    def save(self) -> None:
+        """Save options back to file"""
+        assert self.options is not None
+        with self.path.open("w") as f:
+            for key, value in self.options.items():
+                f.write(f"{key}{self.sep}{value}\n")
+
+    def clear(self) -> None:
+        """Clear the file"""
+        self.options = {}
+
+    def __getitem__(self, key: str) -> str:
+        assert self.options is not None
+        return self.options[key]
+
+    def __setitem__(self, key: str, value: str) -> None:
+        assert self.options is not None
+        self.options[key] = value
+
+    def __enter__(self) -> "OptionsTxt":
+        self.load()
+        return self
+
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_value: BaseException | None,
+        traceback: types.TracebackType | None,
+    ) -> bool | None:
+        if exc_type is None:
+            # Clean exit
+            if self.save_on_exit:
+                self.save()
+        return None
+
+
+class InstallProgress:
+    """Progress bar for minecraft_launcher_lib installer"""
+
+    def __init__(self, desc_width: int = 40) -> None:
+        self.pbar: tqdm[Any] | None = None
+        self.desc_width = desc_width
+        self.current = 0
+
+    def get_callbacks(self) -> mll.types.CallbackDict:
+        return mll.types.CallbackDict(
+            setStatus=self._set_status,
+            setProgress=self._set_progress,
+            setMax=self._set_max,
+        )
+
+    def close(self) -> None:
+        if self.pbar:
+            self.pbar.close()
+
+    def _set_max(self, total: int) -> None:
+        """The installer calls set_max multiple times. Create a new bar each time."""
+        if self.pbar:
+            self.pbar.close()
+        self.pbar = tqdm(total=total)
+        self.current = 0
+
+    def _set_status(self, status: str) -> None:
+        if self.pbar:
+            status = status[: self.desc_width].ljust(self.desc_width)
+            self.pbar.set_description(status)
+
+    def _set_progress(self, current: int) -> None:
+        if self.pbar:
+            self.pbar.update(current - self.current)
+            self.current = current
+
+
+##
+# Mojang web API utils
+def mojang_get_version_manifest() -> dict[Any, Any]:
+    versions_url = "https://launchermeta.mojang.com/mc/game/version_manifest_v2.json"
+    response = requests.get(versions_url)
+    response.raise_for_status()
+    manifest: dict[Any, Any] = response.json()
+    return manifest
+
+
+def mojang_get_version_info(mc_version: str) -> dict[str, Any]:
+    """Example:
+    {
+      "id": "1.21.4",
+      "type": "release",
+      "url": "https://piston-meta.mojang.com/v1/packages/a3bcba436caa849622fd7e1e5b89489ed6c9ac63/1.21.4.json",
+      "time": "2024-12-03T10:24:48+00:00",
+      "releaseTime": "2024-12-03T10:12:57+00:00",
+      "sha1": "a3bcba436caa849622fd7e1e5b89489ed6c9ac63",
+      "complianceLevel": 1
+    },
+    """
+    manifest = mojang_get_version_manifest()
+    ver_list = manifest["versions"]
+    ver_info: dict[str, Any]
+    for ver_info in ver_list:
+        if ver_info["id"] == mc_version:
+            return ver_info
+    raise ValueError(f"Version not found: {mc_version}")
+
+
+def mojang_get_version_details(mc_version: str) -> dict[str, Any]:
+    ver_info = mojang_get_version_info(mc_version)
+    ver_details_url = ver_info["url"]
+
+    response = requests.get(ver_details_url)
+    response.raise_for_status()
+    ver_details: dict[str, Any] = response.json()
+    return ver_details
+
+
+##
+# Misc utils
+
+
+def rmrf(path: Path) -> None:
+    if not path.exists():
+        return
+    if path.is_dir():
+        shutil.rmtree(path)
+    else:
+        path.unlink()
+
+
+def copy_dir(src: Path, dst: Path, overwrite: bool = False) -> None:
+    if not src.exists():
+        raise ValueError(f"Source is missing: {src}")
+    if not src.is_dir():
+        raise ValueError(f"Source is not a directory: {src}")
+    if dst.exists():
+        if overwrite:
+            rmrf(dst)
+        else:
+            raise ValueError(f"Destination exists: {dst}")
+    shutil.copytree(src, dst)

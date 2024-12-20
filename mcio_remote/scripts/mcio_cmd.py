@@ -2,7 +2,9 @@ import argparse
 import pprint
 import typing
 
-from mcio_remote import launcher
+from mcio_remote import instance
+from mcio_remote import config
+from mcio_remote import world
 
 
 def parse_args() -> argparse.Namespace:
@@ -18,8 +20,8 @@ def parse_args() -> argparse.Namespace:
             "--mcio-dir",
             "-d",
             type=str,
-            default=launcher.DEFAULT_MCIO_DIR,
-            help=f"MCio data directory (default: {launcher.DEFAULT_MCIO_DIR})",
+            default=config.DEFAULT_MCIO_DIR,
+            help=f"MCio data directory (default: {config.DEFAULT_MCIO_DIR})",
         )
 
     ##
@@ -36,8 +38,8 @@ def parse_args() -> argparse.Namespace:
         "--version",
         "-v",
         type=str,
-        default=launcher.DEFAULT_MINECRAFT_VERSION,
-        help=f"Minecraft version to install (default: {launcher.DEFAULT_MINECRAFT_VERSION})",
+        default=config.DEFAULT_MINECRAFT_VERSION,
+        help=f"Minecraft version to install (default: {config.DEFAULT_MINECRAFT_VERSION})",
     )
 
     ##
@@ -54,7 +56,7 @@ def parse_args() -> argparse.Namespace:
         "-m",
         metavar="mcio-mode",
         type=str,
-        choices=typing.get_args(launcher.McioMode),
+        choices=typing.get_args(instance.McioMode),
         default="async",
         help="MCio mode: (default: async)",
     )
@@ -64,22 +66,22 @@ def parse_args() -> argparse.Namespace:
         "--width",
         "-W",
         type=int,
-        default=launcher.DEFAULT_WINDOW_WIDTH,
-        help=f"Window width (default: {launcher.DEFAULT_WINDOW_WIDTH})",
+        default=instance.DEFAULT_WINDOW_WIDTH,
+        help=f"Window width (default: {instance.DEFAULT_WINDOW_WIDTH})",
     )
     launch_parser.add_argument(
         "--height",
         "-H",
         type=int,
-        default=launcher.DEFAULT_WINDOW_HEIGHT,
-        help=f"Window height (default: {launcher.DEFAULT_WINDOW_HEIGHT})",
+        default=instance.DEFAULT_WINDOW_HEIGHT,
+        help=f"Window height (default: {instance.DEFAULT_WINDOW_HEIGHT})",
     )
     launch_parser.add_argument(
         "--username",
         "-u",
         type=str,
-        default=launcher.DEFAULT_MINECRAFT_USER,
-        help=f"Player name (default: {launcher.DEFAULT_MINECRAFT_USER})",
+        default=instance.DEFAULT_MINECRAFT_USER,
+        help=f"Player name (default: {instance.DEFAULT_MINECRAFT_USER})",
     )
 
     launch_group = launch_parser.add_mutually_exclusive_group()
@@ -110,8 +112,8 @@ def parse_args() -> argparse.Namespace:
         "--version",
         "-v",
         type=str,
-        default=launcher.DEFAULT_MINECRAFT_VERSION,
-        help=f"World's Minecraft version (default: {launcher.DEFAULT_MINECRAFT_VERSION})",
+        default=config.DEFAULT_MINECRAFT_VERSION,
+        help=f"World's Minecraft version (default: {config.DEFAULT_MINECRAFT_VERSION})",
     )
     world_parser.add_argument(
         "--seed",
@@ -134,10 +136,10 @@ def main() -> None:
     args = parse_args()
 
     if args.command == "install":
-        installer = launcher.Installer(args.instance_id, args.mcio_dir, args.version)
+        installer = instance.Installer(args.instance_id, args.mcio_dir, args.version)
         installer.install()
     elif args.command == "launch":
-        launch = launcher.Launcher(
+        launch = instance.Launcher(
             args.instance_id,
             mcio_dir=args.mcio_dir,
             mc_username=args.username,
@@ -155,10 +157,10 @@ def main() -> None:
         else:
             launch.launch()
     elif args.command == "world":
-        world = launcher.World(mcio_dir=args.mcio_dir)
-        world.generate(args.world_name, args.version, seed=args.seed)
+        wrld = world.World(mcio_dir=args.mcio_dir)
+        wrld.generate(args.world_name, args.version, seed=args.seed)
     elif args.command == "show":
-        launcher.show(mcio_dir=args.mcio_dir)
+        instance.show(mcio_dir=args.mcio_dir)
     else:
         print(f"Unknown mode: {args.command_mode}")
 
