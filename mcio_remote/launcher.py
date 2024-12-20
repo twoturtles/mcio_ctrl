@@ -148,7 +148,7 @@ class Installer:
         )
         assert jvm_info is not None
         # jvm_info = {'name': 'java-runtime-delta', 'javaMajorVersion': 21}
-        jvm_path = mll.runtime.get_executable_path(jvm_info["name"], self.instance_dir)
+        java_cmd = mll.runtime.get_executable_path(jvm_info["name"], self.instance_dir)
         progress = _InstallProgress()
         # XXX This doesn't check that the loader is compatible with the minecraft version
         fabric_ver = mll.fabric.get_latest_loader_version()
@@ -157,7 +157,7 @@ class Installer:
             self.instance_dir,
             loader_version=fabric_ver,
             callback=progress.get_callbacks(),
-            java=jvm_path,
+            java=java_cmd,
         )
         progress.close()
         # This is the format mll uses to generate the version string.
@@ -172,11 +172,6 @@ class Installer:
         # XXX https://codeberg.org/JakobDev/minecraft-launcher-lib/issues/143
         err_path = self.instance_dir / "libraries/org/ow2/asm/asm/9.3/asm-9.3.jar"
         err_path.unlink()
-
-        # Download the server to use for world generation
-        print()
-        server = Server(mcio_dir=self.mcio_dir, mc_version=self.mc_version)
-        server.install_server()
 
         # Disable narrator
         with OptionsTxt(self.instance_dir / "options.txt", save=True) as opts:
@@ -339,6 +334,7 @@ class Server:
     """Install / interface with Minecraft server."""
 
     SERVERS_SUBDIR: Final[str] = "servers"
+    SERVER_WORLD_SUBDIR: Final[str] = "world"
 
     def __init__(
         self,
@@ -352,6 +348,7 @@ class Server:
         self.servers_dir.mkdir(parents=True, exist_ok=True)
 
         self.server_version_dir = self.servers_dir / self.mc_version
+        self.server_world_dir = self.server_version_dir / self.SERVER_WORLD_SUBDIR
 
         self._process: subprocess.Popen[str] | None = None
 
@@ -407,7 +404,6 @@ class Server:
         """This will generate the world. Make sure server.properties are set first."""
         assert self._process is None
         cmd = self.get_start_command()
-        print(cmd)
         self._process = subprocess.Popen(
             cmd,
             cwd=self.server_version_dir,
@@ -439,7 +435,7 @@ class Server:
             server_config = cm.config.servers[self.mc_version]
 
         java_cmd = mll.runtime.get_executable_path(
-            server_config.jvm_version, self.server_version_dir
+            server_config.jvm_version, self.server_version_dir.resolve()
         )
         if java_cmd is None:
             raise ValueError("Error getting java command")
@@ -447,6 +443,12 @@ class Server:
         # Args from https://www.minecraft.net/en-us/download/server
         server_args = "-Xmx1024M -Xms1024M -jar server.jar nogui".split()
         return cmd + server_args
+
+    def reset(self) -> None:
+        """Clear world and properties to prepare for new generation"""
+        # Clear the world dir before generation
+        _rmrf(self.server_world_dir)
+        self.clear_server_properties()
 
     def _write_eula(self) -> None:
         with open(self.server_version_dir / "eula.txt", "w") as f:
@@ -458,10 +460,8 @@ class Server:
         )
 
 
-# XXX Move server installation to World. Keep per mc version
 class World:
 
-    SERVER_WORLD_SUBDIR: Final[str] = "world"
     INSTANCE_WORLDS_SUBDIR: Final[str] = "saves"
     WORLD_STORAGE: Final[str] = "world_storage"
 
@@ -495,18 +495,22 @@ class World:
         You can set gamemode, difficulty, and level-seed via function arguments
         or server_properties. Values in server_properties will override function arguments.
         """
+        dst_dir = self.storage_dir / world_name
+        if dst_dir.exists():
+            print(f"World generation failed: world already exists: {dst_dir}")
+            raise ValueError(f"World already exists: {dst_dir}")
+
         if seed is None:
             seed = random.randint(0, sys.maxsize)
         seed = str(seed)
 
-        instance_dir = get_instance_dir(self.mcio_dir, instance_id)
-        server = Server(instance_dir)
-
-        # Clear the world dir before generation
-        world_dir = server.servers_dir / self.SERVER_WORLD_SUBDIR
-        _rmrf(world_dir)
-
         # Use server to create world
+        server = Server(mcio_dir=self.mcio_dir, mc_version=mc_version)
+        # Install server if necessary
+        server.install_server()
+        server.reset()
+
+        # Merge properties
         server_properties = server_properties or {}
         default_properties = {
             "gamemode": gamemode,
@@ -515,23 +519,23 @@ class World:
         }
         server_properties = default_properties | server_properties
         server.set_server_properties(server_properties, clear=reset_server_properties)
+
         # After stop the world dir should be ready
         print("Starting world generation...\n")
         server.run()
         server.stop()
 
         # Copy world to storage
-        _copy_dir(world_dir, self.storage_dir / world_name)
+        _copy_dir(server.server_world_dir, dst_dir)
 
         with config.ConfigManager(self.mcio_dir, save=True) as cm:
-            mc_ver = cm.config.instances[instance_id].minecraft_version
             cm.config.world_storage[world_name] = config.WorldConfig(
-                name=world_name, minecraft_version=mc_ver
+                name=world_name, minecraft_version=mc_version
             )
 
-        print("\nDone")
+        print(f"\nDone: World saved to storage: {dst_dir}")
 
-    def copy_from_storage(
+    def copy_from_storage_to_instance(
         self,
         src_name: config.WorldName,
         dst_instance_id: config.InstanceID,
@@ -546,7 +550,7 @@ class World:
             overwrite=overwrite,
         )
 
-    def copy_to_storage(
+    def copy_from_instance_to_storage(
         self,
         src_instance_id: config.InstanceID,
         src_name: config.WorldName,
@@ -588,6 +592,7 @@ def get_world_list(mcio_dir: Path | str, instance_id: config.InstanceID) -> list
     return world_names
 
 
+# XXX Fix
 def show(mcio_dir: Path | str) -> None:
     mcio_dir = Path(mcio_dir).expanduser()
     print(f"Available Instances in {mcio_dir}:")
