@@ -17,19 +17,26 @@ CONFIG_FILENAME: Final[str] = "mcio.yaml"
 CONFIG_VERSION: Final[int] = 0
 InstanceID: TypeAlias = str
 WorldName: TypeAlias = str
+MinecraftVersion: TypeAlias = str
 
 
 @dataclass
 class InstanceConfig:
     id: InstanceID = ""
-    launch_version: str = ""
-    minecraft_version: str = ""
+    launch_version: MinecraftVersion = ""
+    minecraft_version: MinecraftVersion = ""
 
 
 @dataclass
 class WorldConfig:
     name: WorldName = ""
-    minecraft_version: str = ""  # Save the version that created this world
+    minecraft_version: MinecraftVersion = ""  # Save the version that created this world
+
+
+@dataclass
+class ServerConfig:
+    minecraft_version: MinecraftVersion = ""
+    jvm_version: str = ""
 
 
 @dataclass
@@ -37,6 +44,7 @@ class Config:
     config_version: int = CONFIG_VERSION  # XXX Eventually check this
     instances: dict[InstanceID, InstanceConfig] = field(default_factory=dict)
     world_storage: dict[WorldName, WorldConfig] = field(default_factory=dict)
+    servers: dict[MinecraftVersion, ServerConfig] = field(default_factory=dict)
 
     @classmethod
     def from_dict(cls, config_dict: dict[str, Any]) -> Optional["Config"]:

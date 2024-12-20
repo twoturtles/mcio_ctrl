@@ -342,8 +342,8 @@ class Server:
 
     def __init__(
         self,
-        mcio_dir: Path,
-        mc_version: str = DEFAULT_MINECRAFT_VERSION,
+        mcio_dir: Path = DEFAULT_MCIO_DIR,
+        mc_version: config.MinecraftVersion = DEFAULT_MINECRAFT_VERSION,
     ) -> None:
         self.mcio_dir = mcio_dir
         self.mc_version = mc_version
@@ -352,14 +352,20 @@ class Server:
         self.servers_dir.mkdir(parents=True, exist_ok=True)
 
         self.server_version_dir = self.servers_dir / self.mc_version
-        self.server_version_dir.mkdir(parents=True, exist_ok=True)
 
         self._process: subprocess.Popen[str] | None = None
 
     def install_server(self) -> None:
+        if self.server_version_dir.exists():
+            # Consider the dir existing as already installed
+            print(f"Server version {self.mc_version} already installed")
+            return
+        self.server_version_dir.mkdir(parents=True, exist_ok=True)
+
         print("Installing server...")
         info = get_version_details(self.mc_version)
         server_url = info["downloads"]["server"]["url"]
+        server_jvm_version = info["javaVersion"]["component"]
 
         response = requests.get(server_url)
         response.raise_for_status()
@@ -371,22 +377,27 @@ class Server:
         print("Install server java runtime")
         progress = _InstallProgress()
         mll.runtime.install_jvm_runtime(
-            info["javaVersion"]["component"],
+            server_jvm_version,
             self.server_version_dir,
             callback=progress.get_callbacks(),
         )
+
+        with config.ConfigManager(self.mcio_dir, save=True) as cm:
+            cm.config.servers[self.mc_version] = config.ServerConfig(
+                self.mc_version, server_jvm_version
+            )
 
     def set_server_properties(
         self, properties: dict[str, str], clear: bool = False
     ) -> None:
         if clear:
             self.clear_server_properties()
-        with self._load_properties(save=True) as props:
+        with self._open_properties(save=True) as props:
             for key, value in properties.items():
                 props[key] = value
 
     def clear_server_properties(self) -> None:
-        with self._load_properties(save=True) as props:
+        with self._open_properties(save=True) as props:
             props.clear()
 
     def set_server_property(self, key: str, value: str) -> None:
@@ -396,9 +407,10 @@ class Server:
         """This will generate the world. Make sure server.properties are set first."""
         assert self._process is None
         cmd = self.get_start_command()
+        print(cmd)
         self._process = subprocess.Popen(
             cmd,
-            cwd=self.servers_dir,
+            cwd=self.server_version_dir,
             stdin=subprocess.PIPE,
             # stdout=subprocess.PIPE,
             # stderr=subprocess.PIPE,
@@ -423,9 +435,11 @@ class Server:
 
     def get_start_command(self) -> list[str]:
         """Get the shell command to start the server."""
-        # XXX What should java version be?
+        with config.ConfigManager(self.mcio_dir) as cm:
+            server_config = cm.config.servers[self.mc_version]
+
         java_cmd = mll.runtime.get_executable_path(
-            "java-runtime-delta", self.server_version_dir
+            server_config.jvm_version, self.server_version_dir
         )
         if java_cmd is None:
             raise ValueError("Error getting java command")
@@ -435,12 +449,12 @@ class Server:
         return cmd + server_args
 
     def _write_eula(self) -> None:
-        with open(self.servers_dir / "eula.txt", "w") as f:
+        with open(self.server_version_dir / "eula.txt", "w") as f:
             f.write("eula=true\n")
 
-    def _load_properties(self, save: bool = False) -> OptionsTxt:
+    def _open_properties(self, save: bool = False) -> OptionsTxt:
         return OptionsTxt(
-            self.servers_dir / "server.properties", separator="=", save=save
+            self.server_version_dir / "server.properties", separator="=", save=save
         )
 
 
@@ -462,7 +476,7 @@ class World:
     def generate(
         self,
         world_name: config.WorldName,
-        instance_id: "config.InstanceID",  # XXX Used for generation
+        mc_version: config.MinecraftVersion,
         gamemode: Literal[
             "survival", "creative", "adventure", "spectator"
         ] = "survival",
