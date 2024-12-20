@@ -444,11 +444,9 @@ class Server:
         server_args = "-Xmx1024M -Xms1024M -jar server.jar nogui".split()
         return cmd + server_args
 
-    def reset(self) -> None:
-        """Clear world and properties to prepare for new generation"""
-        # Clear the world dir before generation
+    def delete_world_dir(self) -> None:
+        """Clear world to prepare for new generation"""
         _rmrf(self.server_world_dir)
-        self.clear_server_properties()
 
     def _write_eula(self) -> None:
         with open(self.server_version_dir / "eula.txt", "w") as f:
@@ -508,7 +506,7 @@ class World:
         server = Server(mcio_dir=self.mcio_dir, mc_version=mc_version)
         # Install server if necessary
         server.install_server()
-        server.reset()
+        server.delete_world_dir()
 
         # Merge properties
         server_properties = server_properties or {}
@@ -530,7 +528,7 @@ class World:
 
         with config.ConfigManager(self.mcio_dir, save=True) as cm:
             cm.config.world_storage[world_name] = config.WorldConfig(
-                name=world_name, minecraft_version=mc_version
+                name=world_name, minecraft_version=mc_version, seed=seed
             )
 
         print(f"\nDone: World saved to storage: {dst_dir}")

@@ -99,6 +99,30 @@ def parse_args() -> argparse.Namespace:
     )
 
     ##
+    # World subparser
+    world_parser = subparsers.add_parser("world", help="World management")
+    world_parser.add_argument(
+        "world_name",
+        metavar="world-name",
+        type=str,
+        help="Name of the world",
+    )
+    _add_mcio_dir_arg(world_parser)
+    world_parser.add_argument(
+        "--version",
+        "-v",
+        type=str,
+        default=launcher.DEFAULT_MINECRAFT_VERSION,
+        help=f"World's Minecraft version (default: {launcher.DEFAULT_MINECRAFT_VERSION})",
+    )
+    world_parser.add_argument(
+        "--seed",
+        "-s",
+        type=str,
+        help="Set the world's seed (default is a random seed)",
+    )
+
+    ##
     # Show subparser
     show_parser = subparsers.add_parser(
         "show", help="Show information about what is installed"
@@ -132,6 +156,9 @@ def main() -> None:
             print(" ".join(cmd))
         else:
             launch.launch()
+    elif args.command_mode == "world":
+        world = launcher.World(mcio_dir=args.mcio_dir)
+        world.generate(args.world_name, args.version, seed=args.seed)
     elif args.command_mode == "show":
         launcher.show(mcio_dir=args.mcio_dir)
     else:

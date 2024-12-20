@@ -31,6 +31,7 @@ class InstanceConfig:
 class WorldConfig:
     name: WorldName = ""
     minecraft_version: MinecraftVersion = ""  # Save the version that created this world
+    seed: str = ""
 
 
 @dataclass
