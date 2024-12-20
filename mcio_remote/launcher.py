@@ -174,9 +174,9 @@ class Installer:
         err_path.unlink()
 
         # Download the server to use for world generation
-        print("Installing server.jar")
-        server = Server(self.instance_dir)
-        server.install_server(self.mc_version)
+        print()
+        server = Server(mcio_dir=self.mcio_dir, mc_version=self.mc_version)
+        server.install_server()
 
         # Disable narrator
         with OptionsTxt(self.instance_dir / "options.txt", save=True) as opts:
@@ -338,24 +338,43 @@ class OptionsTxt:
 class Server:
     """Install / interface with Minecraft server."""
 
-    SERVER_SUBDIR: Final[str] = "server"
+    SERVERS_SUBDIR: Final[str] = "servers"
 
-    def __init__(self, instance_dir: Path) -> None:
-        self.instance_dir = instance_dir
-        self.server_dir = self.instance_dir / self.SERVER_SUBDIR
-        self.server_dir.mkdir(parents=True, exist_ok=True)
+    def __init__(
+        self,
+        mcio_dir: Path,
+        mc_version: str = DEFAULT_MINECRAFT_VERSION,
+    ) -> None:
+        self.mcio_dir = mcio_dir
+        self.mc_version = mc_version
+
+        self.servers_dir = self.mcio_dir / self.SERVERS_SUBDIR
+        self.servers_dir.mkdir(parents=True, exist_ok=True)
+
+        self.server_version_dir = self.servers_dir / self.mc_version
+        self.server_version_dir.mkdir(parents=True, exist_ok=True)
+
         self._process: subprocess.Popen[str] | None = None
 
-    def install_server(self, mc_version: str) -> None:
-        info = get_version_details(mc_version)
+    def install_server(self) -> None:
+        print("Installing server...")
+        info = get_version_details(self.mc_version)
         server_url = info["downloads"]["server"]["url"]
 
         response = requests.get(server_url)
         response.raise_for_status()
 
-        with open(self.server_dir / "server.jar", "wb") as f:
+        with open(self.server_version_dir / "server.jar", "wb") as f:
             f.write(response.content)
         self._write_eula()
+
+        print("Install server java runtime")
+        progress = _InstallProgress()
+        mll.runtime.install_jvm_runtime(
+            info["javaVersion"]["component"],
+            self.server_version_dir,
+            callback=progress.get_callbacks(),
+        )
 
     def set_server_properties(
         self, properties: dict[str, str], clear: bool = False
@@ -379,7 +398,7 @@ class Server:
         cmd = self.get_start_command()
         self._process = subprocess.Popen(
             cmd,
-            cwd=self.server_dir,
+            cwd=self.servers_dir,
             stdin=subprocess.PIPE,
             # stdout=subprocess.PIPE,
             # stderr=subprocess.PIPE,
@@ -406,7 +425,7 @@ class Server:
         """Get the shell command to start the server."""
         # XXX What should java version be?
         java_cmd = mll.runtime.get_executable_path(
-            "java-runtime-delta", self.instance_dir
+            "java-runtime-delta", self.server_version_dir
         )
         if java_cmd is None:
             raise ValueError("Error getting java command")
@@ -416,12 +435,12 @@ class Server:
         return cmd + server_args
 
     def _write_eula(self) -> None:
-        with open(self.server_dir / "eula.txt", "w") as f:
+        with open(self.servers_dir / "eula.txt", "w") as f:
             f.write("eula=true\n")
 
     def _load_properties(self, save: bool = False) -> OptionsTxt:
         return OptionsTxt(
-            self.server_dir / "server.properties", separator="=", save=save
+            self.servers_dir / "server.properties", separator="=", save=save
         )
 
 
@@ -470,7 +489,7 @@ class World:
         server = Server(instance_dir)
 
         # Clear the world dir before generation
-        world_dir = server.server_dir / self.SERVER_WORLD_SUBDIR
+        world_dir = server.servers_dir / self.SERVER_WORLD_SUBDIR
         _rmrf(world_dir)
 
         # Use server to create world

@@ -119,7 +119,7 @@ def main() -> None:
             args.instance_id,
             mcio_dir=args.mcio_dir,
             mc_username=args.username,
-            world=args.world,
+            world_name=args.world,
             width=args.width,
             height=args.height,
             mcio_mode=args.mcio_mode,
