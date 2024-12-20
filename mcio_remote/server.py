@@ -32,8 +32,7 @@ class Server:
         self._process: subprocess.Popen[str] | None = None
 
     def install_server(self) -> None:
-        if self.server_version_dir.exists():
-            # Consider the dir existing as already installed
+        if self.is_installed():
             print(f"Server version {self.mc_version} already installed")
             return
         self.server_version_dir.mkdir(parents=True, exist_ok=True)
@@ -62,6 +61,10 @@ class Server:
             cm.config.servers[self.mc_version] = config.ServerConfig(
                 self.mc_version, server_jvm_version
             )
+
+    def is_installed(self) -> bool:
+        # Consider the dir existing as already installed
+        return self.server_version_dir.exists()
 
     def set_server_properties(
         self, properties: dict[str, str], clear: bool = False

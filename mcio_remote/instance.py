@@ -48,7 +48,7 @@ class Installer:
                 )
 
     def install(self) -> None:
-        print(f"Installing Minecraft in {self.instance_dir}...")
+        print(f"Installing Minecraft {self.mc_version} in {self.instance_dir}...")
         progress = util.InstallProgress()
         mll.install.install_minecraft_version(
             self.mc_version, self.instance_dir, callback=progress.get_callbacks()
@@ -229,6 +229,12 @@ def get_instance_dir(mcio_dir: Path, instance_id: "config.InstanceID") -> Path:
 def get_saves_dir(instance_dir: Path) -> Path:
     SAVES_SUBDIR = "saves"
     return instance_dir / SAVES_SUBDIR
+
+
+def instance_exists(mcio_dir: Path | str, instance_id: config.InstanceID) -> bool:
+    mcio_dir = Path(mcio_dir).expanduser()
+    instance_dir = get_instance_dir(mcio_dir, instance_id)
+    return instance_dir.exists()
 
 
 # XXX Replace with World usage

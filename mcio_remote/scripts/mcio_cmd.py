@@ -1,10 +1,65 @@
 import argparse
 import pprint
 import typing
+from typing import Any
 
 from mcio_remote import instance
 from mcio_remote import config
 from mcio_remote import world
+
+
+def _add_mcio_dir_arg(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument(
+        "--mcio-dir",
+        "-d",
+        type=str,
+        default=config.DEFAULT_MCIO_DIR,
+        help=f"MCio data directory (default: {config.DEFAULT_MCIO_DIR})",
+    )
+
+
+# Unfortunately, argparse is not set up for type hints
+def add_world_command(parent_subparsers: "argparse._SubParsersAction[Any]") -> None:
+    """Add the world command subparser"""
+    world_parser = parent_subparsers.add_parser("world", help="World management")
+    world_subparsers = world_parser.add_subparsers(
+        dest="world_command", metavar="world-command", required=True
+    )
+
+    create_parser = world_subparsers.add_parser("create", help="Create a new world")
+    create_parser.add_argument(
+        "world_name",
+        metavar="world-name",
+        type=str,
+        help="Name of the world",
+    )
+    _add_mcio_dir_arg(create_parser)
+    create_parser.add_argument(
+        "--version",
+        "-v",
+        type=str,
+        default=config.DEFAULT_MINECRAFT_VERSION,
+        help=f"World's Minecraft version (default: {config.DEFAULT_MINECRAFT_VERSION})",
+    )
+    create_parser.add_argument(
+        "--seed",
+        "-s",
+        type=str,
+        help="Set the world's seed (default is a random seed)",
+    )
+
+    cp_parser = world_subparsers.add_parser("cp", help="Copy a world")
+    _add_mcio_dir_arg(cp_parser)
+    cp_parser.add_argument(
+        "src",
+        type=str,
+        help="Source world (storage:<world-name> or <instance-name>:<world-name>)",
+    )
+    cp_parser.add_argument(
+        "dst",
+        type=str,
+        help="Dest world (storage:<world-name> or <instance-name>:<world-name>)",
+    )
 
 
 def parse_args() -> argparse.Namespace:
@@ -14,15 +69,6 @@ def parse_args() -> argparse.Namespace:
 
     # Subparsers for different modes
     subparsers = parser.add_subparsers(dest="command", metavar="command", required=True)
-
-    def _add_mcio_dir_arg(parser: argparse.ArgumentParser) -> None:
-        parser.add_argument(
-            "--mcio-dir",
-            "-d",
-            type=str,
-            default=config.DEFAULT_MCIO_DIR,
-            help=f"MCio data directory (default: {config.DEFAULT_MCIO_DIR})",
-        )
 
     ##
     # Install subparser
@@ -100,27 +146,7 @@ def parse_args() -> argparse.Namespace:
 
     ##
     # World subparser
-    world_parser = subparsers.add_parser("world", help="World management")
-    world_parser.add_argument(
-        "world_name",
-        metavar="world-name",
-        type=str,
-        help="Name of the world",
-    )
-    _add_mcio_dir_arg(world_parser)
-    world_parser.add_argument(
-        "--version",
-        "-v",
-        type=str,
-        default=config.DEFAULT_MINECRAFT_VERSION,
-        help=f"World's Minecraft version (default: {config.DEFAULT_MINECRAFT_VERSION})",
-    )
-    world_parser.add_argument(
-        "--seed",
-        "-s",
-        type=str,
-        help="Set the world's seed (default is a random seed)",
-    )
+    add_world_command(subparsers)
 
     ##
     # Show subparser
@@ -157,8 +183,12 @@ def main() -> None:
         else:
             launch.launch()
     elif args.command == "world":
-        wrld = world.World(mcio_dir=args.mcio_dir)
-        wrld.generate(args.world_name, args.version, seed=args.seed)
+        if args.world_command == "cp":
+            wrld = world.World(mcio_dir=args.mcio_dir)
+            wrld.copy(args.src, args.dst)
+        elif args.world_command == "create":
+            wrld = world.World(mcio_dir=args.mcio_dir)
+            wrld.create(args.world_name, args.version, seed=args.seed)
     elif args.command == "show":
         instance.show(mcio_dir=args.mcio_dir)
     else:

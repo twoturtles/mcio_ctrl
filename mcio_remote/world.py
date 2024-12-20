@@ -22,7 +22,7 @@ class World:
         self.mcio_dir = Path(mcio_dir).expanduser()
         self.storage_dir = self.mcio_dir / self.WORLD_STORAGE
 
-    def generate(
+    def create(
         self,
         world_name: config.WorldName,
         mc_version: config.MinecraftVersion,
@@ -53,10 +53,12 @@ class World:
             seed = random.randint(0, sys.maxsize)
         seed = str(seed)
 
-        # Use server to create world
+        # Prepare for generation. Use server to create world
         svr = server.Server(mcio_dir=self.mcio_dir, mc_version=mc_version)
         # Install server if necessary
-        svr.install_server()
+        if not svr.is_installed():
+            print(f"Server version {mc_version} not installed. Installing...")
+            svr.install_server()
         svr.delete_world_dir()
 
         # Merge properties
@@ -83,6 +85,51 @@ class World:
             )
 
         print(f"\nDone: World saved to storage: {dst_dir}")
+
+    def _src_split(self, loc_world: str) -> tuple[Path, str]:
+        loc, world = loc_world.split(":", 1)
+
+        # Validate loc
+        if loc == "storage":
+            loc_dir = self.storage_dir
+        else:
+            if instance.instance_exists(self.mcio_dir, loc):
+                inst_dir = instance.get_instance_dir(self.mcio_dir, loc)
+                loc_dir = instance.get_saves_dir(inst_dir)
+            else:
+                raise ValueError(f"Invalid instance: {loc}")
+
+        # Validate world
+        if not (loc_dir / world).exists():
+            raise ValueError(f"World does not exist: {loc_world}")
+
+        return loc_dir, world
+
+    def _dst_split(self, loc_world: str, src_world: str) -> tuple[Path, str]:
+        loc, world = loc_world.split(":", 1)
+
+        # Validate loc
+        if loc == "storage":
+            loc_dir = self.storage_dir
+        else:
+            if instance.instance_exists(self.mcio_dir, loc):
+                inst_dir = instance.get_instance_dir(self.mcio_dir, loc)
+                loc_dir = instance.get_saves_dir(inst_dir)
+            else:
+                raise ValueError(f"Invalid instance: {loc}")
+
+        # Validate world
+        if world == "":
+            world = src_world
+        if (loc_dir / world).exists():
+            raise ValueError(f"World already exists: {loc_world}")
+
+        return loc_dir, world
+
+    def copy(self, src: str, dst: str) -> None:
+        src_dir, src_world = self._src_split(src)
+        dst_dir, dst_world = self._dst_split(dst, src_world)
+        print(src_dir, src_world, dst_dir, dst_world)
 
     def copy_from_storage_to_instance(
         self,
