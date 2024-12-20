@@ -142,6 +142,13 @@ class Installer:
         progress.close()
 
         print("\nInstalling Fabric...")
+        # Use the Minecraft jvm to install Fabric.
+        jvm_info = mll.runtime.get_version_runtime_information(
+            self.mc_version, self.instance_dir
+        )
+        assert jvm_info is not None
+        # jvm_info = {'name': 'java-runtime-delta', 'javaMajorVersion': 21}
+        jvm_path = mll.runtime.get_executable_path(jvm_info["name"], self.instance_dir)
         progress = _InstallProgress()
         # XXX This doesn't check that the loader is compatible with the minecraft version
         fabric_ver = mll.fabric.get_latest_loader_version()
@@ -150,6 +157,7 @@ class Installer:
             self.instance_dir,
             loader_version=fabric_ver,
             callback=progress.get_callbacks(),
+            java=jvm_path,
         )
         progress.close()
         # This is the format mll uses to generate the version string.
