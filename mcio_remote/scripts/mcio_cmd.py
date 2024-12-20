@@ -11,9 +11,7 @@ def parse_args() -> argparse.Namespace:
     )
 
     # Subparsers for different modes
-    subparsers = parser.add_subparsers(
-        dest="command_mode", metavar="command-mode", required=True
-    )
+    subparsers = parser.add_subparsers(dest="command", metavar="command", required=True)
 
     def _add_mcio_dir_arg(parser: argparse.ArgumentParser) -> None:
         parser.add_argument(
@@ -135,10 +133,10 @@ def parse_args() -> argparse.Namespace:
 def main() -> None:
     args = parse_args()
 
-    if args.command_mode == "install":
+    if args.command == "install":
         installer = launcher.Installer(args.instance_id, args.mcio_dir, args.version)
         installer.install()
-    elif args.command_mode == "launch":
+    elif args.command == "launch":
         launch = launcher.Launcher(
             args.instance_id,
             mcio_dir=args.mcio_dir,
@@ -156,10 +154,10 @@ def main() -> None:
             print(" ".join(cmd))
         else:
             launch.launch()
-    elif args.command_mode == "world":
+    elif args.command == "world":
         world = launcher.World(mcio_dir=args.mcio_dir)
         world.generate(args.world_name, args.version, seed=args.seed)
-    elif args.command_mode == "show":
+    elif args.command == "show":
         launcher.show(mcio_dir=args.mcio_dir)
     else:
         print(f"Unknown mode: {args.command_mode}")
