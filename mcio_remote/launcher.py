@@ -284,6 +284,7 @@ class OptionsTxt:
         if not self.path.exists():
             # XXX Should we let the user know instead of creating an empty options?
             self.options = {}
+            return
 
         with self.path.open("r") as f:
             txt = f.read()
