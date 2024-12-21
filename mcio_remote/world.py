@@ -94,8 +94,9 @@ class World:
             loc_dir = self.storage_dir
         else:
             if instance.instance_exists(self.mcio_dir, loc):
-                inst_dir = instance.get_instance_dir(self.mcio_dir, loc)
-                loc_dir = instance.get_saves_dir(inst_dir)
+                loc_dir = instance.get_saves_dir(
+                    mcio_dir=self.mcio_dir, instance_id=loc
+                )
             else:
                 raise ValueError(f"Invalid instance: {loc}")
 
@@ -113,8 +114,9 @@ class World:
             loc_dir = self.storage_dir
         else:
             if instance.instance_exists(self.mcio_dir, loc):
-                inst_dir = instance.get_instance_dir(self.mcio_dir, loc)
-                loc_dir = instance.get_saves_dir(inst_dir)
+                loc_dir = instance.get_saves_dir(
+                    mcio_dir=self.mcio_dir, instance_id=loc
+                )
             else:
                 raise ValueError(f"Invalid instance: {loc}")
 
@@ -129,7 +131,8 @@ class World:
     def copy(self, src: str, dst: str) -> None:
         src_dir, src_world = self._src_split(src)
         dst_dir, dst_world = self._dst_split(dst, src_world)
-        print(src_dir, src_world, dst_dir, dst_world)
+        print(f"Copying {src_dir/src_world} to {dst_dir/dst_world}")
+        util.copy_dir(src_dir / src_world, dst_dir / dst_world)
 
     def copy_from_storage_to_instance(
         self,

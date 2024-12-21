@@ -226,8 +226,10 @@ def get_instance_dir(mcio_dir: Path, instance_id: "config.InstanceID") -> Path:
     return get_instances_dir(mcio_dir) / instance_id
 
 
-def get_saves_dir(instance_dir: Path) -> Path:
+def get_saves_dir(mcio_dir: Path | str, instance_id: config.InstanceID) -> Path:
     SAVES_SUBDIR = "saves"
+    mcio_dir = Path(mcio_dir).expanduser()
+    instance_dir = get_instance_dir(mcio_dir, instance_id)
     return instance_dir / SAVES_SUBDIR
 
 
@@ -240,8 +242,7 @@ def instance_exists(mcio_dir: Path | str, instance_id: config.InstanceID) -> boo
 # XXX Replace with World usage
 def get_world_list(mcio_dir: Path | str, instance_id: config.InstanceID) -> list[str]:
     mcio_dir = Path(mcio_dir).expanduser()
-    instance_dir = get_instance_dir(mcio_dir, instance_id)
-    world_dir = get_saves_dir(instance_dir)
+    world_dir = get_saves_dir(mcio_dir, instance_id)
     world_names = [x.name for x in world_dir.iterdir() if x.is_dir()]
     return world_names
 

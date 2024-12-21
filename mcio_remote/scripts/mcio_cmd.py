@@ -2,6 +2,7 @@ import argparse
 import pprint
 import typing
 from typing import Any
+from pathlib import Path
 
 from mcio_remote import instance
 from mcio_remote import config
@@ -16,6 +17,27 @@ def _add_mcio_dir_arg(parser: argparse.ArgumentParser) -> None:
         default=config.DEFAULT_MCIO_DIR,
         help=f"MCio data directory (default: {config.DEFAULT_MCIO_DIR})",
     )
+
+
+def show(mcio_dir: Path | str) -> None:
+    mcio_dir = Path(mcio_dir).expanduser()
+    print(f"Showing information for MCio directory: {mcio_dir}")
+    with config.ConfigManager(mcio_dir) as cm:
+        print("\nInstances:")
+        for inst_id, inst_cfg in cm.config.instances.items():
+            print(f"  {inst_id}: mc_version={inst_cfg.minecraft_version}")
+            saves_dir = instance.get_saves_dir(mcio_dir, inst_id)
+            print("    Worlds:")
+            for world_path in saves_dir.iterdir():
+                print(f"      {world_path.name}")
+
+        print("\nWorld Storage:")
+        for world_name, world_cfg in cm.config.world_storage.items():
+            print(
+                f"  {world_name}: mc_version={world_cfg.minecraft_version} seed={world_cfg.seed}"
+            )
+
+        print()
 
 
 # Unfortunately, argparse is not set up for type hints
@@ -190,7 +212,7 @@ def main() -> None:
             wrld = world.World(mcio_dir=args.mcio_dir)
             wrld.create(args.world_name, args.version, seed=args.seed)
     elif args.command == "show":
-        instance.show(mcio_dir=args.mcio_dir)
+        show(args.mcio_dir)
     else:
         print(f"Unknown mode: {args.command_mode}")
 
