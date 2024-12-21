@@ -228,8 +228,6 @@ class LaunchCmd:
         )
 
 
-##
-# Install subparser
 class InstallCmd:
     CMD = "install"
 
