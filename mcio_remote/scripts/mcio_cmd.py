@@ -27,9 +27,10 @@ def show(mcio_dir: Path | str) -> None:
         for inst_id, inst_cfg in cm.config.instances.items():
             print(f"  {inst_id}: mc_version={inst_cfg.minecraft_version}")
             saves_dir = instance.get_saves_dir(mcio_dir, inst_id)
-            print("    Worlds:")
-            for world_path in saves_dir.iterdir():
-                print(f"      {world_path.name}")
+            if saves_dir.exists():
+                print("    Worlds:")
+                for world_path in saves_dir.iterdir():
+                    print(f"      {world_path.name}")
 
         print("\nWorld Storage:")
         for world_name, world_cfg in cm.config.world_storage.items():
