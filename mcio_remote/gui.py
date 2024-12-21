@@ -3,10 +3,7 @@
 #
 
 import queue
-import argparse
-import textwrap
 import time
-import logging
 from typing import Any
 
 import glfw  # type: ignore
@@ -105,25 +102,3 @@ class MCioGUI:
         """Clean up resources"""
         self.controller.close()
         self.gui.cleanup()
-
-
-def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(
-        description=textwrap.dedent(
-            """
-            Provides a human GUI to MCio
-            Q to quit
-                                    """
-        ),
-        formatter_class=argparse.RawDescriptionHelpFormatter,
-    )
-    parser.add_argument("--scale", type=float, default=1.0, help="Window scale factor")
-    parser.add_argument("--fps", type=int, default=60, help="Set fps limit")
-    return parser.parse_args()
-
-
-if __name__ == "__main__":
-    LOG.setLevel(logging.DEBUG)
-    args = parse_args()
-    app = MCioGUI(scale=args.scale, fps=args.fps)
-    app.run()

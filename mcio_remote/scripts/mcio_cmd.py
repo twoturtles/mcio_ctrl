@@ -3,10 +3,12 @@ import pprint
 import typing
 from typing import Any
 from pathlib import Path
+import textwrap
 
 from mcio_remote import instance
 from mcio_remote import config
 from mcio_remote import world
+from mcio_remote import gui
 
 
 def _add_mcio_dir_arg(parser: argparse.ArgumentParser) -> None:
@@ -83,6 +85,27 @@ def add_world_command(parent_subparsers: "argparse._SubParsersAction[Any]") -> N
         type=str,
         help="Dest world (storage:<world-name> or <instance-name>:<world-name>)",
     )
+
+
+def add_gui_command(parent_subparsers: "argparse._SubParsersAction[Any]") -> None:
+    """Add the gui command subparser"""
+    gui_parser = parent_subparsers.add_parser(
+        "gui",
+        help="Launch demo GUI",
+        description=textwrap.dedent(
+            """
+            Provides a human GUI to MCio.
+            Q to quit.
+                                    """
+        ),
+    )
+    gui_parser.add_argument(
+        "--scale",
+        type=float,
+        default=1.0,
+        help="Window scale factor",
+    )
+    gui_parser.add_argument("--fps", type=int, default=60, help="Set fps limit")
 
 
 def parse_args() -> argparse.Namespace:
@@ -172,6 +195,10 @@ def parse_args() -> argparse.Namespace:
     add_world_command(subparsers)
 
     ##
+    # GUI subparser
+    add_gui_command(subparsers)
+
+    ##
     # Show subparser
     show_parser = subparsers.add_parser(
         "show", help="Show information about what is installed"
@@ -212,6 +239,9 @@ def main() -> None:
         elif args.world_command == "create":
             wrld = world.World(mcio_dir=args.mcio_dir)
             wrld.create(args.world_name, args.version, seed=args.seed)
+    elif args.command == "gui":
+        mcio_gui = gui.MCioGUI(scale=args.scale, fps=args.fps)
+        mcio_gui.run()
     elif args.command == "show":
         show(args.mcio_dir)
     else:
