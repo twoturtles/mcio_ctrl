@@ -8,7 +8,7 @@ import textwrap
 from mcio_remote import instance
 from mcio_remote import config
 from mcio_remote import world
-from mcio_remote import gui
+from mcio_remote import mcio_gui
 
 
 def _add_mcio_dir_arg(parser: argparse.ArgumentParser) -> None:
@@ -123,8 +123,8 @@ class GuiCmd:
         return self.CMD
 
     def run(self, args: argparse.Namespace) -> None:
-        mcio_gui = gui.MCioGUI(scale=args.scale, fps=args.fps)
-        mcio_gui.run()
+        gui = mcio_gui.MCioGUI(scale=args.scale, fps=args.fps)
+        gui.run()
 
     def add(self, parent_subparsers: "argparse._SubParsersAction[Any]") -> None:
         """Add the gui command subparser"""
