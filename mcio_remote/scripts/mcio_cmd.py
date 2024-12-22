@@ -280,19 +280,24 @@ class DemoCmd(Cmd):
         if not wm.world_exists(world.STORAGE_LOCATION, self.world_name):
             wm.copy(world.STORAGE_LOCATION, self.world_name, self.inst_name)
 
-        # 5
-        print("\nLaunching Minecraft...")
-        launch = instance.Launcher(
-            self.inst_name, mcio_dir=args.mcio_dir, world_name=self.world_name
-        )
-        launch.launch(wait=False)
+        try:
+            # 5
+            print("\nLaunching Minecraft...")
+            launch = instance.Launcher(
+                self.inst_name, mcio_dir=args.mcio_dir, world_name=self.world_name
+            )
+            launch.launch(wait=False)
 
-        # 6
-        print("\nStarting MCio GUI...")
-        gui = mcio_gui.MCioGUI()
-        gui.run()
-
-        launch.wait()
+            # 6
+            print("\nStarting MCio GUI...")
+            gui = mcio_gui.MCioGUI()
+            gui.run()  # This blocks
+        except KeyboardInterrupt:
+            pass
+        finally:
+            print("\nExiting...")
+            launch.close()
+            gui.close()
 
     def add(self, parent_subparsers: "argparse._SubParsersAction[Any]") -> None:
         demo_parser = parent_subparsers.add_parser(

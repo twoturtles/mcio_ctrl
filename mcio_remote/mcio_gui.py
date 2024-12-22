@@ -22,6 +22,7 @@ class MCioGUI:
         self.scale = scale
         self.fps = fps if fps > 0 else 60
         self.running = True
+        self.gui: gui.ImageStreamGui | None = None
         self.gui = gui.ImageStreamGui("MCio GUI", scale=scale, width=800, height=600)
         self.controller = controller.ControllerAsync()
 
@@ -50,6 +51,7 @@ class MCioGUI:
 
     def cursor_position_callback(self, window: Any, xpos: float, ypos: float) -> None:
         """Handle mouse movement. Only watch the mouse when we're focused."""
+        assert self.gui is not None
         if self.gui.is_focused:
             # If we're scaling the window, also scale the position so things line up
             # XXX If the user manually resizes the window, the scaling goes out of whack.
@@ -69,6 +71,7 @@ class MCioGUI:
         """Show frame to the user"""
         if observation.frame_png:
             # Link cursor mode to Minecraft.
+            assert self.gui is not None
             self.gui.set_cursor_mode(observation.cursor_mode)
             frame = observation.get_frame_with_cursor()
             self.gui.show(frame)
@@ -103,4 +106,6 @@ class MCioGUI:
     def close(self) -> None:
         """Clean up resources"""
         self.controller.close()
-        self.gui.close()
+        if self.gui is not None:
+            self.gui.close()
+            self.gui = None
