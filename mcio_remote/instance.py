@@ -272,3 +272,21 @@ class InstanceManager:
         world_dir = self.get_saves_dir(instance_name)
         world_names = [x.name for x in world_dir.iterdir() if x.is_dir()]
         return world_names
+
+    def copy(
+        self,
+        src: config.InstanceName,
+        dst: config.InstanceName,
+        overwrite: bool = False,
+    ) -> None:
+        src_dir = self.get_instance_dir(src)
+        dst_dir = self.get_instance_dir(dst)
+        util.copy_dir(src_dir, dst_dir, overwrite=overwrite)
+        with config.ConfigManager(self.mcio_dir, save=True) as cm:
+            cm.config.instances[dst] = cm.config.instances[src]
+
+    def delete(self, instance_name: config.InstanceName) -> None:
+        instance_dir = self.get_instance_dir(instance_name)
+        util.rmrf(instance_dir)
+        with config.ConfigManager(self.mcio_dir, save=True) as cm:
+            cm.config.instances.pop(instance_name)

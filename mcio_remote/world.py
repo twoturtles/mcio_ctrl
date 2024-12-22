@@ -92,6 +92,14 @@ class WorldManager:
 
         print(f"\nDone: World saved to storage: {dst_dir}")
 
+    def delete_from_storage(self, world_name: config.WorldName) -> None:
+        """Delete a world from storage"""
+        print(f"Deleting world from storage: {world_name}")
+        world_dir = self.storage_dir / world_name
+        util.rmrf(world_dir)
+        with config.ConfigManager(self.mcio_dir, save=True) as cm:
+            cm.config.world_storage.pop(world_name, None)
+
     def copy_cmd(self, src: str, dst: str) -> None:
         """Copy world for command line interface"""
         src_loc, src_world = src.split(":", 1)
@@ -100,20 +108,21 @@ class WorldManager:
 
     def copy(
         self,
-        src_location: LocationType,  # "storage" or instance name
+        src_location: LocationType,  # STORAGE_LOCATION or instance name
         src_world: config.WorldName,
-        dst_location: LocationType,  # "storage" or instance name
+        dst_location: LocationType,  # STORAGE_LOCATION or instance name
         dst_world: config.WorldName | None = None,  # If None, uses src_world name
     ) -> None:
         """Copy a world between storage and instances.
 
         Args:
-            src_location: Either "storage" or an instance name for the source
+            src_location: Either STORAGE_LOCATION or an instance name for the source
             src_world: Name of the world to copy
-            dst_location: Either "storage" or an instance name for the destination
+            dst_location: Either STORAGE_LOCATION or an instance name for the destination
             dst_world: Name for the copied world. If None, uses the source world name
         """
         im = instance.InstanceManager(self.mcio_dir)
+
         # Validate source location and get directory
         if src_location == STORAGE_LOCATION:
             src_dir = self.storage_dir
@@ -128,7 +137,7 @@ class WorldManager:
             raise ValueError(f"Src world does not exist: {src_world}")
 
         # Validate destination location and get directory
-        if dst_location == "storage":
+        if dst_location == STORAGE_LOCATION:
             dst_dir = self.storage_dir
         else:
             if im.instance_exists(dst_location):
@@ -144,6 +153,26 @@ class WorldManager:
             raise ValueError(f"Dst world already exists: {dst_world}")
 
         util.copy_dir(src_dir / src_world, dst_dir / dst_world)
+        self._copy_update_config(src_location, src_world, dst_location, dst_world)
+
+    def _copy_update_config(
+        self,
+        src_location: LocationType,
+        src_world: config.WorldName,
+        dst_location: LocationType,
+        dst_world: config.WorldName,
+    ) -> None:
+        # Everything is validated at this point
+        with config.ConfigManager(self.mcio_dir, save=True) as cm:
+            if src_location == STORAGE_LOCATION:
+                src_config = cm.config.world_storage[src_world]
+            else:
+                src_config = cm.config.instances[src_location].worlds[src_world]
+
+            if dst_location == STORAGE_LOCATION:
+                cm.config.world_storage[dst_world] = src_config
+            else:
+                cm.config.instances[dst_location].worlds[dst_world] = src_config
 
     def world_exists(
         self, location: LocationType, world_name: config.WorldName

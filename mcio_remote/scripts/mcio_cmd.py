@@ -56,12 +56,12 @@ class ShowCmd(Cmd):
                 if saves_dir.exists():
                     print("    Worlds:")
                     for world_path in saves_dir.iterdir():
-                        print(f"      {inst_name}:{world_path.name}")
+                        print(f"      {world_path.name}")
 
             print("\nWorld Storage:")
             for world_name, world_cfg in cm.config.world_storage.items():
                 print(
-                    f"  {world.STORAGE_LOCATION}:{world_name}: mc_version={world_cfg.minecraft_version} seed={world_cfg.seed}"
+                    f"  {world_name}: mc_version={world_cfg.minecraft_version} seed={world_cfg.seed}"
                 )
 
             print()
@@ -76,6 +76,8 @@ class WorldCmd(Cmd):
             wm.copy_cmd(args.src, args.dst)
         elif args.world_command == "create":
             wm.create(args.world_name, args.version, seed=args.seed)
+        elif args.world_command == "rm":
+            wm.delete_from_storage(args.world_name)
 
     def add(self, parent_subparsers: "argparse._SubParsersAction[Any]") -> None:
         """Add the world command subparser"""
@@ -84,7 +86,9 @@ class WorldCmd(Cmd):
             dest="world_command", metavar="world-command", required=True
         )
 
-        create_parser = world_subparsers.add_parser("create", help="Create a new world")
+        create_parser = world_subparsers.add_parser(
+            "create", help="Create world and save it to storage"
+        )
         create_parser.add_argument(
             "world_name",
             metavar="world-name",
@@ -118,6 +122,17 @@ class WorldCmd(Cmd):
             type=str,
             help="Dest world (storage:<world-name> or <instance-name>:<world-name>)",
         )
+
+        rm_parser = world_subparsers.add_parser(
+            "rm", help="Delete a world from storage"
+        )
+        rm_parser.add_argument(
+            "world_name",
+            metavar="world-name",
+            type=str,
+            help="Name of the world",
+        )
+        _add_mcio_dir_arg(rm_parser)
 
 
 class GuiCmd(Cmd):

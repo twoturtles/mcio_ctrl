@@ -20,6 +20,8 @@ DEFAULT_MINECRAFT_VERSION: Final[str] = "1.21.3"
 ##
 # Configuration
 
+# XXX Consider saving necessary config in each entity's directory
+
 CONFIG_FILENAME: Final[str] = "mcio.yaml"
 CONFIG_VERSION: Final[int] = 0
 InstanceName: TypeAlias = str
@@ -28,17 +30,18 @@ MinecraftVersion: TypeAlias = str
 
 
 @dataclass
-class InstanceConfig:
-    id: InstanceName = ""
-    launch_version: MinecraftVersion = ""
-    minecraft_version: MinecraftVersion = ""
-
-
-@dataclass
 class WorldConfig:
     name: WorldName = ""
     minecraft_version: MinecraftVersion = ""  # Save the version that created this world
     seed: str = ""
+
+
+@dataclass
+class InstanceConfig:
+    id: InstanceName = ""
+    launch_version: MinecraftVersion = ""
+    minecraft_version: MinecraftVersion = ""
+    worlds: dict[WorldName, WorldConfig] = field(default_factory=dict)
 
 
 @dataclass
