@@ -28,9 +28,10 @@ def test_action_to_packet(
     default_mcio_env: mcio_env.MCioEnv, action_space_sample1: mcio_env.MCioAction
 ) -> None:
     expected1 = network.ActionPacket(
-        version=0,
+        version=network.MCIO_PROTOCOL_VERSION,
         sequence=0,
         commands=[],
+        stop=False,
         keys=[(32, 1), (69, 1), (83, 1), (87, 1), (340, 1)],
         mouse_buttons=[(0, 1)],
         cursor_pos=[(827, 22)],
@@ -39,7 +40,7 @@ def test_action_to_packet(
     assert pkt == expected1
 
     expected2 = network.ActionPacket(
-        version=0,
+        version=network.MCIO_PROTOCOL_VERSION,
         sequence=0,
         commands=[],
         keys=[],

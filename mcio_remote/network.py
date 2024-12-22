@@ -17,7 +17,7 @@ from . import logger
 
 LOG = logger.LOG.get_logger(__name__)
 
-MCIO_PROTOCOL_VERSION: Final[int] = 0
+MCIO_PROTOCOL_VERSION: Final[int] = 1
 
 DEFAULT_HOST = "localhost"
 DEFAULT_ACTION_PORT = 4001  # 4ction
@@ -71,7 +71,7 @@ class ObservationPacket:
             return None
 
         try:
-            rv = cls(**decoded_dict)
+            obs = cls(**decoded_dict)
         except Exception as e:
             # This means the received packet doesn't match ObservationPacket
             LOG.error(f"ObservationPacket decode error: {type(e).__name__}: {e}")
@@ -83,7 +83,13 @@ class ObservationPacket:
             LOG.error(pprint.pformat(decoded_dict))
             return None
 
-        return rv
+        if obs.version != MCIO_PROTOCOL_VERSION:
+            LOG.error(
+                f"MCio Protocol version mismatch: Observation packet = {obs.version}, expected = {MCIO_PROTOCOL_VERSION}"
+            )
+            return None
+
+        return obs
 
     def __str__(self) -> str:
         # frame_png is excluded from repr. Add its size to str. Slow?
@@ -113,6 +119,7 @@ class ActionPacket:
     commands: list[str] = field(
         default_factory=list
     )  # Server commands to execute (teleport, time set, etc.). Do not include the /
+    stop: bool = False  # Tell Minecraft to exit
 
     ## Action ##
 
