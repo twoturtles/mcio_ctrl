@@ -25,6 +25,8 @@ REQUIRED_MODS: Final[tuple[str, ...]] = ("fabric-api", "mcio")
 
 McioMode = Literal["off", "async", "sync"]
 
+# XXX Rethink classes - Installer / Launcher / InstanceManager are confusing
+
 
 class Installer:
     """Install Minecraft along with Fabric and MCio"""
@@ -39,7 +41,8 @@ class Installer:
         mcio_dir = mcio_dir or config.DEFAULT_MCIO_DIR
         self.mcio_dir = Path(mcio_dir).expanduser()
         self.mc_version = mc_version
-        self.instance_dir = get_instance_dir(self.mcio_dir, self.instance_name)
+        im = InstanceManager(self.mcio_dir)
+        self.instance_dir = im.get_instance_dir(self.instance_name)
 
         with config.ConfigManager(self.mcio_dir) as cfg_mgr:
             if cfg_mgr.config.instances.get(self.instance_name) is not None:
@@ -151,7 +154,8 @@ class Launcher:
         mcio_dir = mcio_dir or config.DEFAULT_MCIO_DIR
         self.mcio_dir = Path(mcio_dir).expanduser()
         self.mcio_mode = mcio_mode
-        self.instance_dir = get_instance_dir(self.mcio_dir, self.instance_name)
+        im = InstanceManager(self.mcio_dir)
+        self.instance_dir = im.get_instance_dir(self.instance_name)
         self.mc_username = mc_username
         self.mc_uuid = uuid.uuid5(uuid.NAMESPACE_URL, self.mc_username)
 
@@ -241,34 +245,30 @@ class Launcher:
 
 ##
 # Utility functions
+class InstanceManager:
+    def __init__(
+        self,
+        mcio_dir: Path | str | None = None,
+    ) -> None:
+        mcio_dir = mcio_dir or config.DEFAULT_MCIO_DIR
+        self.mcio_dir = Path(mcio_dir).expanduser()
 
+    def get_instances_dir(self) -> Path:
+        return self.mcio_dir / INSTANCES_SUBDIR
 
-def get_instances_dir(mcio_dir: Path) -> Path:
-    return mcio_dir / INSTANCES_SUBDIR
+    def get_instance_dir(self, instance_name: config.InstanceName) -> Path:
+        return self.get_instances_dir() / instance_name
 
+    def get_saves_dir(self, instance_name: config.InstanceName) -> Path:
+        SAVES_SUBDIR = "saves"
+        instance_dir = self.get_instance_dir(instance_name)
+        return instance_dir / SAVES_SUBDIR
 
-def get_instance_dir(mcio_dir: Path, instance_name: "config.InstanceName") -> Path:
-    return get_instances_dir(mcio_dir) / instance_name
+    def instance_exists(self, instance_name: config.InstanceName) -> bool:
+        instance_dir = self.get_instance_dir(instance_name)
+        return instance_dir.exists()
 
-
-def get_saves_dir(mcio_dir: Path | str, instance_name: config.InstanceName) -> Path:
-    SAVES_SUBDIR = "saves"
-    mcio_dir = Path(mcio_dir).expanduser()
-    instance_dir = get_instance_dir(mcio_dir, instance_name)
-    return instance_dir / SAVES_SUBDIR
-
-
-def instance_exists(mcio_dir: Path | str, instance_name: config.InstanceName) -> bool:
-    mcio_dir = Path(mcio_dir).expanduser()
-    instance_dir = get_instance_dir(mcio_dir, instance_name)
-    return instance_dir.exists()
-
-
-# XXX Replace with World usage
-def get_world_list(
-    mcio_dir: Path | str, instance_name: config.InstanceName
-) -> list[str]:
-    mcio_dir = Path(mcio_dir).expanduser()
-    world_dir = get_saves_dir(mcio_dir, instance_name)
-    world_names = [x.name for x in world_dir.iterdir() if x.is_dir()]
-    return world_names
+    def get_instance_world_list(self, instance_name: config.InstanceName) -> list[str]:
+        world_dir = self.get_saves_dir(instance_name)
+        world_names = [x.name for x in world_dir.iterdir() if x.is_dir()]
+        return world_names

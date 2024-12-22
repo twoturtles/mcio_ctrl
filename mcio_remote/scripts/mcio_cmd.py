@@ -46,12 +46,13 @@ class ShowCmd(Cmd):
 
     def show(self, mcio_dir: Path | str) -> None:
         mcio_dir = Path(mcio_dir).expanduser()
+        im = instance.InstanceManager(mcio_dir)
         print(f"Showing information for MCio directory: {mcio_dir}")
         with config.ConfigManager(mcio_dir) as cm:
             print("\nInstances:")
             for inst_name, inst_cfg in cm.config.instances.items():
                 print(f"  {inst_name}: mc_version={inst_cfg.minecraft_version}")
-                saves_dir = instance.get_saves_dir(mcio_dir, inst_name)
+                saves_dir = im.get_saves_dir(inst_name)
                 if saves_dir.exists():
                     print("    Worlds:")
                     for world_path in saves_dir.iterdir():
@@ -261,9 +262,10 @@ class DemoCmd(Cmd):
 
     def run(self, args: argparse.Namespace) -> None:
         """See 1-6 in add() for an explaination"""
+        im = instance.InstanceManager(args.mcio_dir)
 
         # 1 and 2
-        if not instance.instance_exists(args.mcio_dir, self.inst_name):
+        if not im.instance_exists(self.inst_name):
             print("Installing Minecraft...")
             installer = instance.Installer(self.inst_name, mcio_dir=args.mcio_dir)
             installer.install()

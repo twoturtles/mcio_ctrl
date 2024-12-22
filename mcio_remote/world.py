@@ -113,14 +113,13 @@ class WorldManager:
             dst_location: Either "storage" or an instance name for the destination
             dst_world: Name for the copied world. If None, uses the source world name
         """
+        im = instance.InstanceManager(self.mcio_dir)
         # Validate source location and get directory
         if src_location == STORAGE_LOCATION:
             src_dir = self.storage_dir
         else:
-            if instance.instance_exists(self.mcio_dir, src_location):
-                src_dir = instance.get_saves_dir(
-                    mcio_dir=self.mcio_dir, instance_name=src_location
-                )
+            if im.instance_exists(src_location):
+                src_dir = im.get_saves_dir(instance_name=src_location)
             else:
                 raise ValueError(f"Invalid src instance: {src_location}")
 
@@ -132,10 +131,8 @@ class WorldManager:
         if dst_location == "storage":
             dst_dir = self.storage_dir
         else:
-            if instance.instance_exists(self.mcio_dir, dst_location):
-                dst_dir = instance.get_saves_dir(
-                    mcio_dir=self.mcio_dir, instance_name=dst_location
-                )
+            if im.instance_exists(dst_location):
+                dst_dir = im.get_saves_dir(instance_name=dst_location)
             else:
                 raise ValueError(f"Invalid dst instance: {dst_location}")
 
@@ -151,11 +148,12 @@ class WorldManager:
     def world_exists(
         self, location: LocationType, world_name: config.WorldName
     ) -> bool:
+        im = instance.InstanceManager(self.mcio_dir)
         if location == STORAGE_LOCATION:
             loc_dir = self.mcio_dir / WorldManager.WORLD_STORAGE_SUBDIR
         else:
-            if instance.instance_exists(self.mcio_dir, location):
-                loc_dir = instance.get_saves_dir(self.mcio_dir, location)
+            if im.instance_exists(location):
+                loc_dir = im.get_saves_dir(location)
             else:
                 return False
         return (loc_dir / world_name).exists()
