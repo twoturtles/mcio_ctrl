@@ -87,6 +87,7 @@ class MCioGUI:
         """Main application loop
         NOTE: This must run on the main thread on MacOS
         """
+        assert self.gui is not None
         frame_time = 1.0 / self.fps
         fps_track = util.TrackPerSecond("FPS")
         while self.running:
@@ -94,7 +95,7 @@ class MCioGUI:
             try:
                 observation = self.controller.recv_observation(block=False)
             except queue.Empty:
-                pass
+                self.gui.poll()
             else:
                 LOG.debug(observation)
                 self.show(observation)
