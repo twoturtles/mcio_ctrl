@@ -110,7 +110,9 @@ class WorldCmd(Cmd):
             help="Set the world's seed (default is a random seed)",
         )
 
-        cp_parser = world_subparsers.add_parser("cp", help="Copy a world")
+        cp_parser = world_subparsers.add_parser(
+            "cp", help="Copy a world", formatter_class=argparse.RawTextHelpFormatter
+        )
         _add_mcio_dir_arg(cp_parser)
         cp_parser.add_argument(
             "src",
@@ -120,7 +122,10 @@ class WorldCmd(Cmd):
         cp_parser.add_argument(
             "dst",
             type=str,
-            help="Dest world (storage:<world-name> or <instance-name>:<world-name>)",
+            help=(
+                "Dest location (storage:<world-name> or <instance-name>:<world-name>)\n"
+                "If world-name is omitted, uses the source world-name"
+            ),
         )
 
         rm_parser = world_subparsers.add_parser(
@@ -146,7 +151,7 @@ class GuiCmd(Cmd):
         """Add the gui command subparser"""
         gui_parser = parent_subparsers.add_parser(
             "gui",
-            help="Launch demo GUI",
+            help="Launch human interface to Minecraft MCio",
             description=textwrap.dedent(
                 """
                 Provides a human GUI to MCio.
@@ -187,7 +192,7 @@ class LaunchCmd(Cmd):
             launch.launch()
 
     def add(self, parent_subparsers: "argparse._SubParsersAction[Any]") -> None:
-        launch_parser = parent_subparsers.add_parser("launch", help="Launch Minecraft")
+        launch_parser = parent_subparsers.add_parser("launch", help="Launch instance")
         launch_parser.add_argument(
             "instance_name",
             metavar="instance-name",
@@ -251,7 +256,7 @@ class InstallCmd(Cmd):
 
     def add(self, parent_subparsers: "argparse._SubParsersAction[Any]") -> None:
         install_parser = parent_subparsers.add_parser(
-            "install", help="Install Minecraft"
+            "install", help="Install instance"
         )
         install_parser.add_argument(
             "instance_name",
@@ -267,6 +272,32 @@ class InstallCmd(Cmd):
             default=config.DEFAULT_MINECRAFT_VERSION,
             help=f"Minecraft version to install (default: {config.DEFAULT_MINECRAFT_VERSION})",
         )
+
+
+class InstanceCmd(Cmd):
+    CMD = "inst"
+
+    def run(self, args: argparse.Namespace) -> None:
+        for cmd in self.cmd_objects:
+            if args.instance_command == cmd.cmd():
+                cmd.run(args)
+                return
+
+    def add(self, parent_subparsers: "argparse._SubParsersAction[Any]") -> None:
+        instance_parser = parent_subparsers.add_parser(
+            self.CMD, help="Minecraft instance management"
+        )
+        subparsers = instance_parser.add_subparsers(
+            dest="instance_command", metavar="instance-command", required=True
+        )
+
+        self.cmd_objects: list[Any] = [
+            InstallCmd(),
+            LaunchCmd(),
+        ]
+
+        for cmd in self.cmd_objects:
+            cmd.add(subparsers)
 
 
 class DemoCmd(Cmd):
@@ -339,7 +370,7 @@ class DemoCmd(Cmd):
         _add_mcio_dir_arg(demo_parser)
 
 
-def parse_args() -> tuple[argparse.Namespace, list[Any]]:
+def base_parse_args() -> tuple[argparse.Namespace, list[Any]]:
     parser = argparse.ArgumentParser(
         description="Minecraft Instance Manager and Launcher"
     )
@@ -348,11 +379,10 @@ def parse_args() -> tuple[argparse.Namespace, list[Any]]:
     subparsers = parser.add_subparsers(dest="command", metavar="command", required=True)
 
     cmd_objects: list[Any] = [
-        InstallCmd(),
-        LaunchCmd(),
+        InstanceCmd(),
         WorldCmd(),
-        GuiCmd(),
         ShowCmd(),
+        GuiCmd(),
         DemoCmd(),
     ]
 
@@ -362,13 +392,17 @@ def parse_args() -> tuple[argparse.Namespace, list[Any]]:
     return parser.parse_args(), cmd_objects
 
 
-def main() -> None:
-    args, cmd_objects = parse_args()
+def base_run(args: argparse.Namespace, cmd_objects: list[Any]) -> None:
     for cmd in cmd_objects:
         if args.command == cmd.cmd():
             cmd.run(args)
             return
     print(f"Unknown command: {args.command}")
+
+
+def main() -> None:
+    args, cmd_objects = base_parse_args()
+    base_run(args, cmd_objects)
 
 
 if __name__ == "__main__":
