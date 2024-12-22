@@ -272,14 +272,3 @@ def get_world_list(
     world_dir = get_saves_dir(mcio_dir, instance_name)
     world_names = [x.name for x in world_dir.iterdir() if x.is_dir()]
     return world_names
-
-
-# XXX Fix
-def show(mcio_dir: Path | str) -> None:
-    mcio_dir = Path(mcio_dir).expanduser()
-    print(f"Available Instances in {mcio_dir}:")
-    with config.ConfigManager(mcio_dir=mcio_dir) as cm:
-        for inst_name, inst_info in cm.config.instances.items():
-            print(f"  Instance ID: {inst_name})")
-            world_list = get_world_list(mcio_dir, inst_name)
-            print(f"    Worlds: {", ".join(world_list)}")

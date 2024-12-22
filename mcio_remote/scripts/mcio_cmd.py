@@ -176,7 +176,7 @@ class LaunchCmd(Cmd):
             "instance_name",
             metavar="instance-name",
             type=str,
-            help="ID/Name of the Minecraft instance",
+            help="Name of the Minecraft instance",
         )
         launch_parser.add_argument(
             "--mcio_mode",
@@ -241,7 +241,7 @@ class InstallCmd(Cmd):
             "instance_name",
             metavar="instance-name",
             type=str,
-            help="ID/Name of the Minecraft instance",
+            help="Name of the Minecraft instance",
         )
         _add_mcio_dir_arg(install_parser)
         install_parser.add_argument(

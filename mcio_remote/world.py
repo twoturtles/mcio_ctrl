@@ -100,9 +100,9 @@ class WorldManager:
 
     def copy(
         self,
-        src_location: LocationType,  # "storage" or InstanceID
+        src_location: LocationType,  # "storage" or instance name
         src_world: config.WorldName,
-        dst_location: LocationType,  # "storage" or InstanceID
+        dst_location: LocationType,  # "storage" or instance name
         dst_world: config.WorldName | None = None,  # If None, uses src_world name
     ) -> None:
         """Copy a world between storage and instances.
