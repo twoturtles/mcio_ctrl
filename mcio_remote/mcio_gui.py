@@ -74,7 +74,9 @@ class MCioGUI:
             self.gui.show(frame)
 
     def run(self) -> None:
-        """Main application loop"""
+        """Main application loop
+        NOTE: This must run on the main thread on MacOS
+        """
         frame_time = 1.0 / self.fps
         fps_track = util.TrackPerSecond("FPS")
         while self.running:
@@ -96,9 +98,9 @@ class MCioGUI:
 
         # Cleanup
         LOG.info("Exiting...")
-        self.cleanup()
+        self.close()
 
-    def cleanup(self) -> None:
+    def close(self) -> None:
         """Clean up resources"""
         self.controller.close()
-        self.gui.cleanup()
+        self.gui.close()

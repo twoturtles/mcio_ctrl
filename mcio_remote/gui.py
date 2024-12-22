@@ -18,8 +18,6 @@ class ImageStreamGui:
     Uses glfw since we already use that as a requirement.
     """
 
-    """ scale allows you to use a window larger or smaller than the minecraft window """
-
     def __init__(
         self,
         name: str = "MCio GUI",
@@ -105,7 +103,7 @@ class ImageStreamGui:
         """Set the cursor mode. Minecraft uses glfw.CURSOR_NORMAL (212993) and glfw.CURSOR_DISABLED (212995)"""
         glfw.set_input_mode(self.window, glfw.CURSOR, mode)
 
-    def cleanup(self) -> None:
+    def close(self) -> None:
         """Clean up resources"""
         glfw.set_window_should_close(self.window, True)
         glfw.terminate()
@@ -288,7 +286,7 @@ def main() -> None:
         if gui.show(frame):
             break
         time.sleep(0.1)
-    gui.cleanup()
+    gui.close()
 
 
 if __name__ == "__main__":

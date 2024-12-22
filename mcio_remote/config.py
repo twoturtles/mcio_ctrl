@@ -22,14 +22,14 @@ DEFAULT_MINECRAFT_VERSION: Final[str] = "1.21.3"
 
 CONFIG_FILENAME: Final[str] = "mcio.yaml"
 CONFIG_VERSION: Final[int] = 0
-InstanceID: TypeAlias = str
+InstanceName: TypeAlias = str
 WorldName: TypeAlias = str
 MinecraftVersion: TypeAlias = str
 
 
 @dataclass
 class InstanceConfig:
-    id: InstanceID = ""
+    id: InstanceName = ""
     launch_version: MinecraftVersion = ""
     minecraft_version: MinecraftVersion = ""
 
@@ -50,7 +50,7 @@ class ServerConfig:
 @dataclass
 class Config:
     config_version: int = CONFIG_VERSION  # XXX Eventually check this
-    instances: dict[InstanceID, InstanceConfig] = field(default_factory=dict)
+    instances: dict[InstanceName, InstanceConfig] = field(default_factory=dict)
     world_storage: dict[WorldName, WorldConfig] = field(default_factory=dict)
     servers: dict[MinecraftVersion, ServerConfig] = field(default_factory=dict)
 

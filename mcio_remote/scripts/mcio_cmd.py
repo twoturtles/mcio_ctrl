@@ -1,7 +1,7 @@
 import argparse
 import pprint
 import typing
-from typing import Any
+from typing import Any, Protocol, Final
 from pathlib import Path
 import textwrap
 
@@ -21,11 +21,18 @@ def _add_mcio_dir_arg(parser: argparse.ArgumentParser) -> None:
     )
 
 
-class ShowCmd:
-    CMD = "show"
+class Cmd(Protocol):
+    CMD: str
 
     def cmd(self) -> str:
         return self.CMD
+
+    def run(self, args: argparse.Namespace) -> None: ...
+    def add(self, parent_subparsers: "argparse._SubParsersAction[Any]") -> None: ...
+
+
+class ShowCmd(Cmd):
+    CMD = "show"
 
     # Unfortunately, argparse is not set up for type hints
     def add(self, parent_subparsers: "argparse._SubParsersAction[Any]") -> None:
@@ -42,9 +49,9 @@ class ShowCmd:
         print(f"Showing information for MCio directory: {mcio_dir}")
         with config.ConfigManager(mcio_dir) as cm:
             print("\nInstances:")
-            for inst_id, inst_cfg in cm.config.instances.items():
-                print(f"  {inst_id}: mc_version={inst_cfg.minecraft_version}")
-                saves_dir = instance.get_saves_dir(mcio_dir, inst_id)
+            for inst_name, inst_cfg in cm.config.instances.items():
+                print(f"  {inst_name}: mc_version={inst_cfg.minecraft_version}")
+                saves_dir = instance.get_saves_dir(mcio_dir, inst_name)
                 if saves_dir.exists():
                     print("    Worlds:")
                     for world_path in saves_dir.iterdir():
@@ -59,19 +66,15 @@ class ShowCmd:
             print()
 
 
-class WorldCmd:
+class WorldCmd(Cmd):
     CMD = "world"
 
-    def cmd(self) -> str:
-        return self.CMD
-
     def run(self, args: argparse.Namespace) -> None:
+        wm = world.WorldManager(mcio_dir=args.mcio_dir)
         if args.world_command == "cp":
-            wrld = world.World(mcio_dir=args.mcio_dir)
-            wrld.copy(args.src, args.dst)
+            wm.copy_cmd(args.src, args.dst)
         elif args.world_command == "create":
-            wrld = world.World(mcio_dir=args.mcio_dir)
-            wrld.create(args.world_name, args.version, seed=args.seed)
+            wm.create(args.world_name, args.version, seed=args.seed)
 
     def add(self, parent_subparsers: "argparse._SubParsersAction[Any]") -> None:
         """Add the world command subparser"""
@@ -116,11 +119,8 @@ class WorldCmd:
         )
 
 
-class GuiCmd:
+class GuiCmd(Cmd):
     CMD = "gui"
-
-    def cmd(self) -> str:
-        return self.CMD
 
     def run(self, args: argparse.Namespace) -> None:
         gui = mcio_gui.MCioGUI(scale=args.scale, fps=args.fps)
@@ -135,8 +135,9 @@ class GuiCmd:
                 """
                 Provides a human GUI to MCio.
                 Q to quit.
-                                        """
+                """
             ),
+            formatter_class=argparse.RawDescriptionHelpFormatter,
         )
         gui_parser.add_argument(
             "--scale",
@@ -147,15 +148,12 @@ class GuiCmd:
         gui_parser.add_argument("--fps", type=int, default=60, help="Set fps limit")
 
 
-class LaunchCmd:
+class LaunchCmd(Cmd):
     CMD = "launch"
-
-    def cmd(self) -> str:
-        return self.CMD
 
     def run(self, args: argparse.Namespace) -> None:
         launch = instance.Launcher(
-            args.instance_id,
+            args.instance_name,
             mcio_dir=args.mcio_dir,
             mc_username=args.username,
             world_name=args.world,
@@ -175,8 +173,8 @@ class LaunchCmd:
     def add(self, parent_subparsers: "argparse._SubParsersAction[Any]") -> None:
         launch_parser = parent_subparsers.add_parser("launch", help="Launch Minecraft")
         launch_parser.add_argument(
-            "instance_id",
-            metavar="instance-id",
+            "instance_name",
+            metavar="instance-name",
             type=str,
             help="ID/Name of the Minecraft instance",
         )
@@ -228,11 +226,11 @@ class LaunchCmd:
         )
 
 
-class InstallCmd:
+class InstallCmd(Cmd):
     CMD = "install"
 
     def run(self, args: argparse.Namespace) -> None:
-        installer = instance.Installer(args.instance_id, args.mcio_dir, args.version)
+        installer = instance.Installer(args.instance_name, args.mcio_dir, args.version)
         installer.install()
 
     def add(self, parent_subparsers: "argparse._SubParsersAction[Any]") -> None:
@@ -240,8 +238,8 @@ class InstallCmd:
             "install", help="Install Minecraft"
         )
         install_parser.add_argument(
-            "instance_id",
-            metavar="instance-id",
+            "instance_name",
+            metavar="instance-name",
             type=str,
             help="ID/Name of the Minecraft instance",
         )
@@ -253,6 +251,70 @@ class InstallCmd:
             default=config.DEFAULT_MINECRAFT_VERSION,
             help=f"Minecraft version to install (default: {config.DEFAULT_MINECRAFT_VERSION})",
         )
+
+
+class DemoCmd(Cmd):
+    CMD = "demo"
+    inst_name: Final[str] = "DemoInstance"
+    world_name: Final[str] = "DemoWorld"
+    seed: Final[str] = "Hello, World!"
+
+    def run(self, args: argparse.Namespace) -> None:
+        """See 1-6 in add() for an explaination"""
+
+        # 1 and 2
+        if not instance.instance_exists(args.mcio_dir, self.inst_name):
+            print("Installing Minecraft...")
+            installer = instance.Installer(self.inst_name, mcio_dir=args.mcio_dir)
+            installer.install()
+
+        # 3
+        wm = world.WorldManager(mcio_dir=args.mcio_dir)
+        if not wm.world_exists(world.STORAGE_LOCATION, self.world_name):
+            print("\nCreating world...")
+            with config.ConfigManager(args.mcio_dir, save=True) as cm:
+                cm.config.world_storage
+            wm.create(self.world_name, seed=self.seed)
+
+        # 4
+        if not wm.world_exists(world.STORAGE_LOCATION, self.world_name):
+            wm.copy(world.STORAGE_LOCATION, self.world_name, self.inst_name)
+
+        # 5
+        print("\nLaunching Minecraft...")
+        launch = instance.Launcher(
+            self.inst_name, mcio_dir=args.mcio_dir, world_name=self.world_name
+        )
+        launch.launch(wait=False)
+
+        # 6
+        print("\nStarting MCio GUI...")
+        gui = mcio_gui.MCioGUI()
+        gui.run()
+
+        launch.wait()
+
+    def add(self, parent_subparsers: "argparse._SubParsersAction[Any]") -> None:
+        demo_parser = parent_subparsers.add_parser(
+            "demo",
+            help="Run the demo",
+            description=textwrap.dedent(
+                f"""
+                1. Installs Minecraft instance called {self.inst_name} in <mcio-dir>
+                2. Installs Fabric, fabric-api, and MCio in {self.inst_name}
+                3. Creates a world called {self.world_name} in world storage
+                4. Copies {self.world_name} into {self.inst_name}
+                5. Launches Minecraft with {self.inst_name} and {self.world_name}
+                6. Starts the MCio demo GUI
+
+                Two windows will open - one for Minecraft and one for the MCio GUI.
+
+                Note: This is meant to be run on your local machine, not a headless server.
+                """
+            ),
+            formatter_class=argparse.RawDescriptionHelpFormatter,
+        )
+        _add_mcio_dir_arg(demo_parser)
 
 
 def parse_args() -> tuple[argparse.Namespace, list[Any]]:
@@ -269,6 +331,7 @@ def parse_args() -> tuple[argparse.Namespace, list[Any]]:
         WorldCmd(),
         GuiCmd(),
         ShowCmd(),
+        DemoCmd(),
     ]
 
     for cmd in cmd_objects:

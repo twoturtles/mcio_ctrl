@@ -31,20 +31,20 @@ class Installer:
 
     def __init__(
         self,
-        instance_id: "config.InstanceID",
+        instance_name: "config.InstanceName",
         mcio_dir: Path | str | None = None,
         mc_version: str = config.DEFAULT_MINECRAFT_VERSION,
     ) -> None:
-        self.instance_id = instance_id
+        self.instance_name = instance_name
         mcio_dir = mcio_dir or config.DEFAULT_MCIO_DIR
         self.mcio_dir = Path(mcio_dir).expanduser()
         self.mc_version = mc_version
-        self.instance_dir = get_instance_dir(self.mcio_dir, self.instance_id)
+        self.instance_dir = get_instance_dir(self.mcio_dir, self.instance_name)
 
         with config.ConfigManager(self.mcio_dir) as cfg_mgr:
-            if cfg_mgr.config.instances.get(self.instance_id) is not None:
+            if cfg_mgr.config.instances.get(self.instance_name) is not None:
                 print(
-                    f"Warning: Instance {self.instance_id} already exists in {cfg_mgr.config_file}"
+                    f"Warning: Instance {self.instance_name} already exists in {cfg_mgr.config_file}"
                 )
 
     def install(self) -> None:
@@ -92,8 +92,8 @@ class Installer:
             opts["narrator"] = "0"
 
         with config.ConfigManager(self.mcio_dir, save=True) as cfg_mgr:
-            cfg_mgr.config.instances[self.instance_id] = config.InstanceConfig(
-                id=self.instance_id,
+            cfg_mgr.config.instances[self.instance_name] = config.InstanceConfig(
+                id=self.instance_name,
                 launch_version=fabric_minecraft_version,
                 minecraft_version=self.mc_version,
             )
@@ -139,7 +139,7 @@ class Launcher:
 
     def __init__(
         self,
-        instance_id: config.InstanceID,
+        instance_name: config.InstanceName,
         mcio_dir: Path | str | None = None,
         world_name: config.WorldName | None = None,
         width: int = DEFAULT_WINDOW_WIDTH,
@@ -147,18 +147,18 @@ class Launcher:
         mcio_mode: McioMode = "async",
         mc_username: str = DEFAULT_MINECRAFT_USER,
     ) -> None:
-        self.instance_id = instance_id
+        self.instance_name = instance_name
         mcio_dir = mcio_dir or config.DEFAULT_MCIO_DIR
         self.mcio_dir = Path(mcio_dir).expanduser()
         self.mcio_mode = mcio_mode
-        self.instance_dir = get_instance_dir(self.mcio_dir, self.instance_id)
+        self.instance_dir = get_instance_dir(self.mcio_dir, self.instance_name)
         self.mc_username = mc_username
         self.mc_uuid = uuid.uuid5(uuid.NAMESPACE_URL, self.mc_username)
 
         with config.ConfigManager(self.mcio_dir) as cm:
-            instance_config = cm.config.instances.get(self.instance_id)
+            instance_config = cm.config.instances.get(self.instance_name)
         if instance_config is None:
-            raise ValueError(f"Missing instance_id in {cm.config_file}")
+            raise ValueError(f"Missing instance_name in {cm.config_file}")
         self.launch_version = instance_config.launch_version
 
         # Store options
@@ -174,11 +174,31 @@ class Launcher:
             options["quickPlaySingleplayer"] = world_name
         self.mll_options = options
 
-    def launch(self) -> None:
+        self._process: subprocess.Popen[str] | None = None
+
+    def launch(self, wait: bool = True) -> None:
         env = self._get_env()
         cmd = self.get_command()
         # For some reason Minecraft logs end up in cwd, so set it to instance_dir
-        subprocess.run(cmd, env=env, cwd=self.instance_dir)
+        self._process = subprocess.Popen(cmd, env=env, cwd=self.instance_dir, text=True)
+        if wait:
+            self._process.wait()
+            self._process = None
+
+    def close(self) -> None:
+        # XXX Cleaner way to stop?
+        if self._process is not None:
+            try:
+                self._process.terminate()
+                self._process.wait(timeout=5)
+            except TimeoutError:
+                self._process.kill()
+        self._process = None
+
+    def wait(self) -> None:
+        if self._process is not None:
+            self._process.wait()
+            self._process = None
 
     def get_command(self) -> list[str]:
         mc_cmd = mll.command.get_minecraft_command(
@@ -222,27 +242,29 @@ def get_instances_dir(mcio_dir: Path) -> Path:
     return mcio_dir / INSTANCES_SUBDIR
 
 
-def get_instance_dir(mcio_dir: Path, instance_id: "config.InstanceID") -> Path:
-    return get_instances_dir(mcio_dir) / instance_id
+def get_instance_dir(mcio_dir: Path, instance_name: "config.InstanceName") -> Path:
+    return get_instances_dir(mcio_dir) / instance_name
 
 
-def get_saves_dir(mcio_dir: Path | str, instance_id: config.InstanceID) -> Path:
+def get_saves_dir(mcio_dir: Path | str, instance_name: config.InstanceName) -> Path:
     SAVES_SUBDIR = "saves"
     mcio_dir = Path(mcio_dir).expanduser()
-    instance_dir = get_instance_dir(mcio_dir, instance_id)
+    instance_dir = get_instance_dir(mcio_dir, instance_name)
     return instance_dir / SAVES_SUBDIR
 
 
-def instance_exists(mcio_dir: Path | str, instance_id: config.InstanceID) -> bool:
+def instance_exists(mcio_dir: Path | str, instance_name: config.InstanceName) -> bool:
     mcio_dir = Path(mcio_dir).expanduser()
-    instance_dir = get_instance_dir(mcio_dir, instance_id)
+    instance_dir = get_instance_dir(mcio_dir, instance_name)
     return instance_dir.exists()
 
 
 # XXX Replace with World usage
-def get_world_list(mcio_dir: Path | str, instance_id: config.InstanceID) -> list[str]:
+def get_world_list(
+    mcio_dir: Path | str, instance_name: config.InstanceName
+) -> list[str]:
     mcio_dir = Path(mcio_dir).expanduser()
-    world_dir = get_saves_dir(mcio_dir, instance_id)
+    world_dir = get_saves_dir(mcio_dir, instance_name)
     world_names = [x.name for x in world_dir.iterdir() if x.is_dir()]
     return world_names
 
@@ -252,7 +274,7 @@ def show(mcio_dir: Path | str) -> None:
     mcio_dir = Path(mcio_dir).expanduser()
     print(f"Available Instances in {mcio_dir}:")
     with config.ConfigManager(mcio_dir=mcio_dir) as cm:
-        for inst_id, inst_info in cm.config.instances.items():
-            print(f"  Instance ID: {inst_id})")
-            world_list = get_world_list(mcio_dir, inst_id)
+        for inst_name, inst_info in cm.config.instances.items():
+            print(f"  Instance ID: {inst_name})")
+            world_list = get_world_list(mcio_dir, inst_name)
             print(f"    Worlds: {", ".join(world_list)}")

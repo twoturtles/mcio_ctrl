@@ -312,7 +312,7 @@ class MCioEnv(gym.Env[MCioObservation, MCioAction]):
 
     def close(self) -> None:
         if self.gui is not None:
-            self.gui.cleanup()
+            self.gui.close()
 
 
 ##

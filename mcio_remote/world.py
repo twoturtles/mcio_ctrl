@@ -8,11 +8,16 @@ from . import util
 from . import instance
 from . import server
 
+# STORAGE_LOCATION must equal StorageType
+STORAGE_LOCATION: Final[str] = "storage"
+StorageType = Literal["storage"]
+LocationType = StorageType | config.InstanceName
 
-class World:
+
+class WorldManager:
 
     INSTANCE_WORLDS_SUBDIR: Final[str] = "saves"
-    WORLD_STORAGE: Final[str] = "world_storage"
+    WORLD_STORAGE_SUBDIR: Final[str] = "world_storage"
 
     def __init__(
         self,
@@ -20,12 +25,12 @@ class World:
     ) -> None:
         mcio_dir = mcio_dir or config.DEFAULT_MCIO_DIR
         self.mcio_dir = Path(mcio_dir).expanduser()
-        self.storage_dir = self.mcio_dir / self.WORLD_STORAGE
+        self.storage_dir = self.mcio_dir / self.WORLD_STORAGE_SUBDIR
 
     def create(
         self,
         world_name: config.WorldName,
-        mc_version: config.MinecraftVersion,
+        mc_version: config.MinecraftVersion = config.DEFAULT_MINECRAFT_VERSION,
         gamemode: Literal[
             "survival", "creative", "adventure", "spectator"
         ] = "survival",
@@ -86,80 +91,70 @@ class World:
 
         print(f"\nDone: World saved to storage: {dst_dir}")
 
-    def _src_split(self, loc_world: str) -> tuple[Path, str]:
-        loc, world = loc_world.split(":", 1)
+    def copy_cmd(self, src: str, dst: str) -> None:
+        """Copy world for command line interface"""
+        src_loc, src_world = src.split(":", 1)
+        dst_loc, dst_world = dst.split(":", 1)
+        self.copy(src_loc, src_world, dst_loc, dst_world)
 
-        # Validate loc
-        if loc == "storage":
-            loc_dir = self.storage_dir
+    def copy(
+        self,
+        src_location: LocationType,  # "storage" or InstanceID
+        src_world: config.WorldName,
+        dst_location: LocationType,  # "storage" or InstanceID
+        dst_world: config.WorldName | None = None,  # If None, uses src_world name
+    ) -> None:
+        """Copy a world between storage and instances.
+
+        Args:
+            src_location: Either "storage" or an instance name for the source
+            src_world: Name of the world to copy
+            dst_location: Either "storage" or an instance name for the destination
+            dst_world: Name for the copied world. If None, uses the source world name
+        """
+        # Validate source location and get directory
+        if src_location == STORAGE_LOCATION:
+            src_dir = self.storage_dir
         else:
-            if instance.instance_exists(self.mcio_dir, loc):
-                loc_dir = instance.get_saves_dir(
-                    mcio_dir=self.mcio_dir, instance_id=loc
+            if instance.instance_exists(self.mcio_dir, src_location):
+                src_dir = instance.get_saves_dir(
+                    mcio_dir=self.mcio_dir, instance_name=src_location
                 )
             else:
-                raise ValueError(f"Invalid instance: {loc}")
+                raise ValueError(f"Invalid src instance: {src_location}")
 
-        # Validate world
-        if not (loc_dir / world).exists():
-            raise ValueError(f"World does not exist: {loc_world}")
+        # Validate source world exists
+        if not (src_dir / src_world).exists():
+            raise ValueError(f"Src world does not exist: {src_world}")
 
-        return loc_dir, world
-
-    def _dst_split(self, loc_world: str, src_world: str) -> tuple[Path, str]:
-        loc, world = loc_world.split(":", 1)
-
-        # Validate loc
-        if loc == "storage":
-            loc_dir = self.storage_dir
+        # Validate destination location and get directory
+        if dst_location == "storage":
+            dst_dir = self.storage_dir
         else:
-            if instance.instance_exists(self.mcio_dir, loc):
-                loc_dir = instance.get_saves_dir(
-                    mcio_dir=self.mcio_dir, instance_id=loc
+            if instance.instance_exists(self.mcio_dir, dst_location):
+                dst_dir = instance.get_saves_dir(
+                    mcio_dir=self.mcio_dir, instance_name=dst_location
                 )
             else:
-                raise ValueError(f"Invalid instance: {loc}")
+                raise ValueError(f"Invalid dst instance: {dst_location}")
 
-        # Validate world
-        if world == "":
-            world = src_world
-        if (loc_dir / world).exists():
-            raise ValueError(f"World already exists: {loc_world}")
+        # Use source world name if destination name not specified
+        dst_world = dst_world or src_world
 
-        return loc_dir, world
+        # Validate destination world doesn't exist
+        if (dst_dir / dst_world).exists():
+            raise ValueError(f"Dst world already exists: {dst_world}")
 
-    def copy(self, src: str, dst: str) -> None:
-        src_dir, src_world = self._src_split(src)
-        dst_dir, dst_world = self._dst_split(dst, src_world)
-        print(f"Copying {src_dir/src_world} to {dst_dir/dst_world}")
         util.copy_dir(src_dir / src_world, dst_dir / dst_world)
 
-    def copy_from_storage_to_instance(
-        self,
-        src_name: config.WorldName,
-        dst_instance_id: config.InstanceID,
-        dst_name: config.WorldName | None = None,
-        overwrite: bool = False,
-    ) -> None:
-        dst_name = dst_name or src_name
-        dst_instance_dir = instance.get_instance_dir(self.mcio_dir, dst_instance_id)
-        util.copy_dir(
-            self.storage_dir / src_name,
-            dst_instance_dir / dst_name,
-            overwrite=overwrite,
-        )
-
-    def copy_from_instance_to_storage(
-        self,
-        src_instance_id: config.InstanceID,
-        src_name: config.WorldName,
-        dst_name: config.WorldName | None = None,
-        overwrite: bool = False,
-    ) -> None:
-        dst_name = dst_name or src_name
-        src_instance_dir = instance.get_instance_dir(self.mcio_dir, src_instance_id)
-        util.copy_dir(
-            src_instance_dir / src_name,
-            self.storage_dir / dst_name,
-            overwrite=overwrite,
-        )
+    def world_exists(
+        self, location: LocationType, world_name: config.WorldName
+    ) -> bool:
+        if location == STORAGE_LOCATION:
+            loc_dir = self.mcio_dir / WorldManager.WORLD_STORAGE_SUBDIR
+        else:
+            if instance.instance_exists(self.mcio_dir, location):
+                loc_dir = instance.get_saves_dir(self.mcio_dir, location)
+            else:
+                return False
+        return (loc_dir / world_name).exists()
