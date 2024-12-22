@@ -46,25 +46,9 @@ class ShowCmd(Cmd):
 
     def show(self, mcio_dir: Path | str) -> None:
         mcio_dir = Path(mcio_dir).expanduser()
-        im = instance.InstanceManager(mcio_dir)
-        print(f"Showing information for MCio directory: {mcio_dir}")
+        print(f"Showing information for MCio directory: {mcio_dir}\n")
         with config.ConfigManager(mcio_dir) as cm:
-            print("\nInstances:")
-            for inst_name, inst_cfg in cm.config.instances.items():
-                print(f"  {inst_name}: mc_version={inst_cfg.minecraft_version}")
-                saves_dir = im.get_saves_dir(inst_name)
-                if saves_dir.exists():
-                    print("    Worlds:")
-                    for world_path in saves_dir.iterdir():
-                        print(f"      {world_path.name}")
-
-            print("\nWorld Storage:")
-            for world_name, world_cfg in cm.config.world_storage.items():
-                print(
-                    f"  {world_name}: mc_version={world_cfg.minecraft_version} seed={world_cfg.seed}"
-                )
-
-            print()
+            print(cm.pformat())
 
 
 class WorldCmd(Cmd):
@@ -169,7 +153,7 @@ class GuiCmd(Cmd):
         gui_parser.add_argument("--fps", type=int, default=60, help="Set fps limit")
 
 
-class LaunchCmd(Cmd):
+class InstanceLaunchCmd(Cmd):
     CMD = "launch"
 
     def run(self, args: argparse.Namespace) -> None:
@@ -247,7 +231,7 @@ class LaunchCmd(Cmd):
         )
 
 
-class InstallCmd(Cmd):
+class InstanceInstallCmd(Cmd):
     CMD = "install"
 
     def run(self, args: argparse.Namespace) -> None:
@@ -274,6 +258,48 @@ class InstallCmd(Cmd):
         )
 
 
+class InstanceCpCmd(Cmd):
+    CMD = "cp"
+
+    def run(self, args: argparse.Namespace) -> None:
+        im = instance.InstanceManager(args.mcio_dir)
+        im.copy(args.src, args.dst)
+
+    def add(self, parent_subparsers: "argparse._SubParsersAction[Any]") -> None:
+        cp_parser = parent_subparsers.add_parser(
+            "cp", help="Copy an instance", formatter_class=argparse.RawTextHelpFormatter
+        )
+        _add_mcio_dir_arg(cp_parser)
+        cp_parser.add_argument(
+            "src",
+            type=str,
+            help="Src instance name",
+        )
+        cp_parser.add_argument(
+            "dst",
+            type=str,
+            help="Dst instance name",
+        )
+
+
+class InstanceRmCmd(Cmd):
+    CMD = "rm"
+
+    def run(self, args: argparse.Namespace) -> None:
+        im = instance.InstanceManager(args.mcio_dir)
+        im.delete(args.instance_name)
+
+    def add(self, parent_subparsers: "argparse._SubParsersAction[Any]") -> None:
+        rm_parser = parent_subparsers.add_parser("rm", help="Delete an instance")
+        rm_parser.add_argument(
+            "instance_name",
+            metavar="instance-name",
+            type=str,
+            help="Instance name",
+        )
+        _add_mcio_dir_arg(rm_parser)
+
+
 class InstanceCmd(Cmd):
     CMD = "inst"
 
@@ -292,8 +318,10 @@ class InstanceCmd(Cmd):
         )
 
         self.cmd_objects: list[Any] = [
-            InstallCmd(),
-            LaunchCmd(),
+            InstanceInstallCmd(),
+            InstanceLaunchCmd(),
+            InstanceCpCmd(),
+            InstanceRmCmd(),
         ]
 
         for cmd in self.cmd_objects:

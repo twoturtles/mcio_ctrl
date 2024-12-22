@@ -2,6 +2,7 @@ from dataclasses import dataclass, asdict, field
 from typing import Any, Final, Optional, TypeAlias
 from pathlib import Path
 import types
+from io import StringIO
 
 from ruamel.yaml import YAML
 import dacite
@@ -88,6 +89,12 @@ class ConfigManager:
                 self.config = Config.from_dict(cfg_dict) or Config()
         else:
             self.config = Config()
+
+    def pformat(self) -> str:
+        """Pretty print the config"""
+        string_stream = StringIO()
+        self.yaml.dump(self.config.to_dict(), string_stream)
+        return string_stream.getvalue()
 
     def save(self) -> None:
         with open(self.config_file, "w") as f:
