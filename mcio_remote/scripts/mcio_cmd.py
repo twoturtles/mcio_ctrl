@@ -291,7 +291,7 @@ class DemoCmd(Cmd):
             # 6
             print("\nStarting MCio GUI...")
             gui = mcio_gui.MCioGUI()
-            gui.run()  # This blocks
+            gui.run(launcher=launch)  # This blocks
         except KeyboardInterrupt:
             pass
         finally:

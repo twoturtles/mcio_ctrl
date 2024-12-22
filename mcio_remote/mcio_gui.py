@@ -13,17 +13,24 @@ from . import gui
 from . import controller
 from . import network
 from . import util
+from . import instance
 
 LOG = logger.LOG.get_logger(__name__)
 
 
 class MCioGUI:
-    def __init__(self, name: str = "MCio GUI", scale: float = 1.0, fps: int = 60):
+
+    def __init__(
+        self,
+        name: str = "MCio GUI",
+        scale: float = 1.0,
+        fps: int = 60,
+    ):
         self.scale = scale
         self.fps = fps if fps > 0 else 60
         self.running = True
         self.gui: gui.ImageStreamGui | None = None
-        self.gui = gui.ImageStreamGui("MCio GUI", scale=scale, width=800, height=600)
+        self.gui = gui.ImageStreamGui(name, scale=scale, width=800, height=600)
         self.controller = controller.ControllerAsync()
 
         # Set callbacks. Defaults are good enough for resize and focus.
@@ -76,7 +83,7 @@ class MCioGUI:
             frame = observation.get_frame_with_cursor()
             self.gui.show(frame)
 
-    def run(self) -> None:
+    def run(self, launcher: instance.Launcher | None = None) -> None:
         """Main application loop
         NOTE: This must run on the main thread on MacOS
         """
@@ -91,6 +98,12 @@ class MCioGUI:
             else:
                 LOG.debug(observation)
                 self.show(observation)
+
+            if launcher is not None:
+                ret = launcher.poll()
+                if ret is not None:
+                    # Minecraft exited
+                    self.running = False
 
             # Calculate sleep time to maintain target FPS
             elapsed = time.perf_counter() - frame_start

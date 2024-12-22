@@ -195,6 +195,11 @@ class Launcher:
                 self._process.kill()
         self._process = None
 
+    def poll(self) -> int | None:
+        """Return the process return code, or None if still running"""
+        assert self._process is not None
+        return self._process.poll()
+
     def wait(self) -> None:
         if self._process is not None:
             self._process.wait()
