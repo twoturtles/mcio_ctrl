@@ -13,7 +13,6 @@ class Server:
     """Install / interface with Minecraft server."""
 
     SERVERS_SUBDIR: Final[str] = "servers"
-    SERVER_WORLD_SUBDIR: Final[str] = "world"
 
     def __init__(
         self,
@@ -27,7 +26,6 @@ class Server:
         self.servers_dir.mkdir(parents=True, exist_ok=True)
 
         self.server_version_dir = self.servers_dir / self.mc_version
-        self.server_world_dir = self.server_version_dir / self.SERVER_WORLD_SUBDIR
 
         self._process: subprocess.Popen[str] | None = None
 
@@ -126,9 +124,11 @@ class Server:
         server_args = "-Xmx1024M -Xms1024M -jar server.jar nogui".split()
         return cmd + server_args
 
-    def delete_world_dir(self) -> None:
-        """Clear world to prepare for new generation"""
-        util.rmrf(self.server_world_dir)
+    def get_world_dir(self, world_name: config.WorldName) -> Path:
+        return self.server_version_dir / world_name
+
+    def delete_world_dir(self, world_name: config.WorldName) -> None:
+        util.rmrf(self.get_world_dir(world_name))
 
     def _write_eula(self) -> None:
         with open(self.server_version_dir / "eula.txt", "w") as f:

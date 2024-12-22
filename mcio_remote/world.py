@@ -64,7 +64,6 @@ class WorldManager:
         if not svr.is_installed():
             print(f"Server version {mc_version} not installed. Installing...")
             svr.install_server()
-        svr.delete_world_dir()
 
         # Merge properties
         server_properties = server_properties or {}
@@ -72,6 +71,7 @@ class WorldManager:
             "gamemode": gamemode,
             "difficulty": difficulty,
             "level-seed": seed,
+            "level-name": world_name,
         }
         server_properties = default_properties | server_properties
         svr.set_server_properties(server_properties, clear=reset_server_properties)
@@ -82,7 +82,8 @@ class WorldManager:
         svr.stop()
 
         # Copy world to storage
-        util.copy_dir(svr.server_world_dir, dst_dir)
+        util.copy_dir(svr.get_world_dir(world_name), dst_dir)
+        svr.delete_world_dir(world_name)
 
         with config.ConfigManager(self.mcio_dir, save=True) as cm:
             cm.config.world_storage[world_name] = config.WorldConfig(

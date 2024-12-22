@@ -55,12 +55,12 @@ class ShowCmd(Cmd):
                 if saves_dir.exists():
                     print("    Worlds:")
                     for world_path in saves_dir.iterdir():
-                        print(f"      {world_path.name}")
+                        print(f"      {inst_name}:{world_path.name}")
 
             print("\nWorld Storage:")
             for world_name, world_cfg in cm.config.world_storage.items():
                 print(
-                    f"  {world_name}: mc_version={world_cfg.minecraft_version} seed={world_cfg.seed}"
+                    f"  {world.STORAGE_LOCATION}:{world_name}: mc_version={world_cfg.minecraft_version} seed={world_cfg.seed}"
                 )
 
             print()
@@ -277,7 +277,7 @@ class DemoCmd(Cmd):
             wm.create(self.world_name, seed=self.seed)
 
         # 4
-        if not wm.world_exists(world.STORAGE_LOCATION, self.world_name):
+        if not wm.world_exists(self.inst_name, self.world_name):
             wm.copy(world.STORAGE_LOCATION, self.world_name, self.inst_name)
 
         try:
