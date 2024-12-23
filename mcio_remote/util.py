@@ -180,6 +180,23 @@ class InstallProgress:
 ##
 # Mojang web API utils
 def mojang_get_version_manifest() -> dict[Any, Any]:
+    """Example:
+    {
+      "latest": {
+        "release": "1.21.4",
+        "snapshot": "1.21.4"
+      },
+      "versions": [
+        {
+          "id": "1.21.4",
+          "type": "release",
+          "url": "https://piston-meta.mojang.com/v1/packages/a3bcba436caa849622fd7e1e5b89489ed6c9ac63/1.21.4.json",
+          "time": "2024-12-03T10:24:48+00:00",
+          "releaseTime": "2024-12-03T10:12:57+00:00",
+          "sha1": "a3bcba436caa849622fd7e1e5b89489ed6c9ac63",
+          "complianceLevel": 1
+        },
+    """
     versions_url = "https://launchermeta.mojang.com/mc/game/version_manifest_v2.json"
     response = requests.get(versions_url)
     response.raise_for_status()
@@ -188,17 +205,6 @@ def mojang_get_version_manifest() -> dict[Any, Any]:
 
 
 def mojang_get_version_info(mc_version: str) -> dict[str, Any]:
-    """Example:
-    {
-      "id": "1.21.4",
-      "type": "release",
-      "url": "https://piston-meta.mojang.com/v1/packages/a3bcba436caa849622fd7e1e5b89489ed6c9ac63/1.21.4.json",
-      "time": "2024-12-03T10:24:48+00:00",
-      "releaseTime": "2024-12-03T10:12:57+00:00",
-      "sha1": "a3bcba436caa849622fd7e1e5b89489ed6c9ac63",
-      "complianceLevel": 1
-    },
-    """
     manifest = mojang_get_version_manifest()
     ver_list = manifest["versions"]
     ver_info: dict[str, Any]
