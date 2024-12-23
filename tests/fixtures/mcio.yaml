@@ -1,0 +1,29 @@
+config_version: 0
+instances:
+  Inst1:
+    id: Inst1
+    launch_version: fabric-loader-0.16.9-1.21.3
+    minecraft_version: 1.21.3
+    worlds: {}
+  Inst2:
+    id: Inst2
+    launch_version: fabric-loader-0.16.9-1.21.3
+    minecraft_version: 1.21.3
+    worlds:
+      World1:
+        name: World1
+        minecraft_version: 1.21.3
+        seed: duff
+world_storage:
+  DemoWorld:
+    name: DemoWorld
+    minecraft_version: 1.21.3
+    seed: Hello, World!
+  World1:
+    name: World1
+    minecraft_version: 1.21.3
+    seed: duff
+servers:
+  1.21.3:
+    minecraft_version: 1.21.3
+    jvm_version: java-runtime-delta
