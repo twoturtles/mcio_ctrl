@@ -143,8 +143,10 @@ class ActionPacket:
         return cbor2.dumps(pkt_dict)
 
 
-# Connections to MCio mod. Used by Controller.
 class _Connection:
+    """Connections to MCio mod. Used by Controller.
+    Don't use this directly, use controller."""
+
     def __init__(
         self,
         action_addr: str = DEFAULT_ACTION_ADDR,
