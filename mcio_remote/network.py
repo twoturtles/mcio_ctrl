@@ -157,7 +157,7 @@ class _Connection:
 
         # Socket to send commands
         self.action_socket = self.zmq_context.socket(zmq.PUB)
-        self.action_socket.bind(action_addr)
+        self.action_socket.connect(action_addr)
 
         # Socket to receive observation updates
         self.observation_socket = self.zmq_context.socket(zmq.SUB)
