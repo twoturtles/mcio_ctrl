@@ -3,6 +3,7 @@
 ## 0.2.0 - 2024-12-22
 - Add installer / launcher / world manager
 - Add stop command
+- Reverse bind/connect for the action port
 - MCIO_PROTOCOL_VERSION = 1
 
 ## 0.1.1 - 2024-12-09
