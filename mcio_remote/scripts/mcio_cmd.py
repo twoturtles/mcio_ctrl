@@ -220,7 +220,7 @@ class InstanceLaunchCmd(Cmd):
             "--java",
             "-j",
             type=str,
-            help="Path to java executable (defaults to Mojang's java installed with instance)",
+            help="Path to java executable (defaults to Mojang's java installed with the instance)",
         )
 
         launch_group = launch_parser.add_mutually_exclusive_group()
@@ -242,7 +242,12 @@ class InstanceInstallCmd(Cmd):
     CMD = "install"
 
     def run(self, args: argparse.Namespace) -> None:
-        installer = instance.Installer(args.instance_name, args.mcio_dir, args.version)
+        installer = instance.Installer(
+            args.instance_name,
+            args.mcio_dir,
+            mc_version=args.version,
+            java_path=args.java,
+        )
         installer.install()
 
     def add(self, parent_subparsers: "argparse._SubParsersAction[Any]") -> None:
@@ -262,6 +267,12 @@ class InstanceInstallCmd(Cmd):
             type=str,
             default=config.DEFAULT_MINECRAFT_VERSION,
             help=f"Minecraft version to install (default: {config.DEFAULT_MINECRAFT_VERSION})",
+        )
+        install_parser.add_argument(
+            "--java",
+            "-j",
+            type=str,
+            help="Path to java executable (defaults to Mojang's java installed with the instance)",
         )
 
 

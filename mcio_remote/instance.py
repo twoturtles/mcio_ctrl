@@ -36,6 +36,7 @@ class Installer:
         instance_name: "config.InstanceName",
         mcio_dir: Path | str | None = None,
         mc_version: str = config.DEFAULT_MINECRAFT_VERSION,
+        java_path: str | None = None,  # Used to run the Fabric installer
     ) -> None:
         self.instance_name = instance_name
         mcio_dir = mcio_dir or config.DEFAULT_MCIO_DIR
@@ -43,6 +44,7 @@ class Installer:
         self.mc_version = mc_version
         im = InstanceManager(self.mcio_dir)
         self.instance_dir = im.get_instance_dir(self.instance_name)
+        self.java_path = java_path
 
         with config.ConfigManager(self.mcio_dir) as cfg_mgr:
             if cfg_mgr.config.instances.get(self.instance_name) is not None:
@@ -65,7 +67,13 @@ class Installer:
         )
         assert jvm_info is not None
         # jvm_info = {'name': 'java-runtime-delta', 'javaMajorVersion': 21}
-        java_cmd = mll.runtime.get_executable_path(jvm_info["name"], self.instance_dir)
+        if self.java_path is None:
+            java_cmd = mll.runtime.get_executable_path(
+                jvm_info["name"], self.instance_dir
+            )
+        else:
+            java_cmd = self.java_path
+
         progress = util.InstallProgress()
         # XXX This doesn't check that the loader is compatible with the minecraft version
         fabric_ver = mll.fabric.get_latest_loader_version()
