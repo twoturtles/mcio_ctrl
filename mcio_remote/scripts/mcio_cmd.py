@@ -165,6 +165,7 @@ class InstanceLaunchCmd(Cmd):
             width=args.width,
             height=args.height,
             mcio_mode=args.mcio_mode,
+            java_path=args.java,
         )
         if args.list:
             cmd = launch.get_show_command()
@@ -214,6 +215,12 @@ class InstanceLaunchCmd(Cmd):
             type=str,
             default=instance.DEFAULT_MINECRAFT_USER,
             help=f"Player name (default: {instance.DEFAULT_MINECRAFT_USER})",
+        )
+        launch_parser.add_argument(
+            "--java",
+            "-j",
+            type=str,
+            help="Path to java executable (defaults to Mojang's java installed with instance)",
         )
 
         launch_group = launch_parser.add_mutually_exclusive_group()

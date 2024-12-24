@@ -149,6 +149,7 @@ class Launcher:
         height: int = DEFAULT_WINDOW_HEIGHT,
         mcio_mode: McioMode = "async",
         mc_username: str = DEFAULT_MINECRAFT_USER,
+        java_path: str | None = None,
     ) -> None:
         self.instance_name = instance_name
         mcio_dir = mcio_dir or config.DEFAULT_MCIO_DIR
@@ -176,6 +177,8 @@ class Launcher:
         )
         if world_name is not None:
             options["quickPlaySingleplayer"] = world_name
+        if java_path is not None:
+            options["executablePath"] = java_path
         self.mll_options = options
 
         self._process: subprocess.Popen[str] | None = None
