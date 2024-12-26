@@ -1,5 +1,4 @@
 """Similar to the MineRL "Hello World" tutorial
-XXX Requires that Minecraft is started first (will fix)
 """
 
 import argparse
@@ -37,7 +36,7 @@ def tutorial(steps: int) -> None:
         elif cycle == 1:
             action["keys"]["SPACE"] = mcio_env.NO_PRESS
 
-        # # # Go forward and press attack button
+        # Go forward and press attack button
         action["keys"]["W"] = mcio_env.PRESS
         action["mouse_buttons"]["LEFT"] = mcio_env.PRESS
         observation, reward, terminated, truncated, info = env.step(action)
