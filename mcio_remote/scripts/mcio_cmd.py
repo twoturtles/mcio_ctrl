@@ -59,7 +59,9 @@ class WorldCmd(Cmd):
         if args.world_command == "cp":
             wm.copy_cmd(args.src, args.dst)
         elif args.world_command == "create":
-            wm.create(args.world_name, args.version, seed=args.seed)
+            wm.create(
+                args.world_name, args.version, seed=args.seed, gamemode=args.gamemode
+            )
         elif args.world_command == "rm":
             wm.delete_from_storage(args.world_name)
 
@@ -92,6 +94,14 @@ class WorldCmd(Cmd):
             "-s",
             type=str,
             help="Set the world's seed (default is a random seed)",
+        )
+        create_parser.add_argument(
+            "--gamemode",
+            "-g",
+            type=str,
+            choices=["survival", "creative", "hardcore", "spectator"],
+            default="survival",
+            help="Game mode (default: survival)",
         )
 
         cp_parser = world_subparsers.add_parser(
