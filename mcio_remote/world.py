@@ -3,6 +3,8 @@ import random
 import sys
 from typing import Final, Literal
 
+from nbt import nbt  # type: ignore
+
 from . import config
 from . import util
 from . import instance
@@ -85,12 +87,22 @@ class WorldManager:
         util.copy_dir(svr.get_world_dir(world_name), dst_dir)
         svr.delete_world_dir(world_name)
 
+        # Enable commands in the world. This is disabled by default in survival worlds.
+        self._allow_commands(dst_dir)
+
         with config.ConfigManager(self.mcio_dir, save=True) as cm:
             cm.config.world_storage[world_name] = config.WorldConfig(
                 name=world_name, minecraft_version=mc_version, seed=seed
             )
 
         print(f"\nDone: World saved to storage: {dst_dir}")
+
+    def _allow_commands(self, world_dir: Path) -> None:
+        """Modifies level.dat to allow commands"""
+        level_dat = world_dir / "level.dat"
+        nbt_data = nbt.NBTFile(level_dat)
+        nbt_data["Data"]["allowCommands"].value = 1
+        nbt_data.write_file()
 
     def delete_from_storage(self, world_name: config.WorldName) -> None:
         """Delete a world from storage"""
