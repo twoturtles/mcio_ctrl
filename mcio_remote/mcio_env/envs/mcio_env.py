@@ -1,4 +1,7 @@
-from typing import Literal, Sequence, Any
+"""This is a sample gym environment for MCio. The current plan is to make an environment
+base class for MCio once the requirements become more clear"""
+
+from typing import Literal, Sequence, Any, TypeVar
 
 import gymnasium as gym
 from gymnasium import spaces
@@ -6,7 +9,7 @@ import numpy as np
 from numpy.typing import NDArray
 import glfw  # type: ignore
 
-from mcio_remote import controller, network, gui
+from mcio_remote import controller, network, gui, instance
 
 ##
 # Defines used in creating spaces
@@ -42,15 +45,22 @@ NO_CURSOR_REL = np.array((0.0, 0.0), dtype=np.float32)
 # Stub in the action and observation space types
 type MCioAction = dict[str, Any]
 type MCioObservation = dict[str, Any]
+RenderFrame = TypeVar("RenderFrame")  # NDArray[np] shape = (height, width, channels)
 
 
 class MCioEnv(gym.Env[MCioObservation, MCioAction]):
-    metadata = {"render_modes": ["human", "rgb_array"], "render_fps": 60}
+    metadata = {
+        "render_modes": ["human", "rgb_array"],
+        "render_fps": 60,
+    }  # XXX Copied from gym sample env.
 
     def __init__(
         self,
         width: int = 640,
         height: int = 480,
+        # This defines the size of the cursor_pos_rel Box space.
+        # Essentially, the maximum distance the cursor can move in a
+        # particular direction in one step.
         cursor_rel_bound: int = CURSOR_REL_BOUND_DEFAULT,
         mcio_mode: Literal["sync", "async"] = "sync",
         render_mode: str | None = None,
@@ -66,6 +76,7 @@ class MCioEnv(gym.Env[MCioObservation, MCioAction]):
         self.last_cursor_pos: tuple[int, int] = (0, 0)
         self.keys_pressed: set[str] = set()
         self.mouse_buttons_pressed: set[str] = set()
+        self.launcher: instance.Launcher | None = None
 
         self.observation_space = spaces.Dict(
             {
@@ -294,13 +305,17 @@ class MCioEnv(gym.Env[MCioObservation, MCioAction]):
 
         return observation, reward, terminated, truncated, info
 
-    def render(self) -> None:
+    # NDArray[np.uint8] shape = (height, width, channels)
+    # Gym's render returns a generic TypeVar("RenderFrame"), which is not very useful.
+    def render(self) -> NDArray[np.uint8] | None:  # type: ignore[override]
         if self.render_mode == "human":
             self._render_frame_human()
         elif self.render_mode == "rgb_array":
             return self._render_frame_rgb_array()
+        return None
 
-    def _render_frame_rgb_array(self) -> None: ...
+    def _render_frame_rgb_array(self) -> NDArray[np.uint8] | None:
+        return self.last_frame
 
     def _render_frame_human(self) -> None:
         if self.gui is None and self.render_mode == "human":
@@ -313,6 +328,10 @@ class MCioEnv(gym.Env[MCioObservation, MCioAction]):
     def close(self) -> None:
         if self.gui is not None:
             self.gui.close()
+            self.gui = None
+        if self.launcher is not None:
+            self.launcher.close()
+            self.launcher = None
 
 
 ##
