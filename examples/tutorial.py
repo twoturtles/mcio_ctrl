@@ -10,14 +10,16 @@ from mcio_remote.types import EnvConfig, LauncherOptions
 from mcio_remote.mcio_env.envs import mcio_env
 
 
-def tutorial(steps: int, instance_name: str | None) -> None:
+def tutorial(steps: int, instance_name: str | None, world_name: str | None) -> None:
     # gym.make doesn't seem to play well with type checking
     ec = EnvConfig(mcio_mode="sync")
     if instance_name is None:
         # No launch
         env = mcio_env.MCioEnv(config=ec, render_mode="human")
     else:
-        opts = LauncherOptions(instance_name=instance_name, env_config=ec)
+        opts = LauncherOptions(
+            instance_name=instance_name, world_name=world_name, env_config=ec
+        )
         env = mcio_env.MCioEnv(opts, render_mode="human")
 
     if steps == 0:
@@ -94,6 +96,7 @@ def parse_args() -> argparse.Namespace:
         type=str,
         help="Name of the Minecraft instance to launch",
     )
+    parser.add_argument("--world", "-w", type=str, help="World name")
     return parser.parse_args()
 
 
@@ -101,4 +104,4 @@ if __name__ == "__main__":
     args = parse_args()
     # mcio.LOG.setLevel(mcio.logging.WARNING)
 
-    tutorial(args.steps, args.instance_name)
+    tutorial(args.steps, args.instance_name, args.world)
