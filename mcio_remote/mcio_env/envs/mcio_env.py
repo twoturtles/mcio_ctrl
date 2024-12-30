@@ -1,7 +1,7 @@
 """This is a sample gym environment for MCio. The current plan is to make an environment
 base class for MCio once the requirements become more clear"""
 
-from typing import Literal, Sequence, Any, TypeVar
+from typing import Sequence, Any, TypeVar, TypedDict
 
 import gymnasium as gym
 from gymnasium import spaces
@@ -10,6 +10,7 @@ from numpy.typing import NDArray
 import glfw  # type: ignore
 
 from mcio_remote import controller, network, gui, instance
+from mcio_remote.types import EnvConfig, LauncherOptions
 
 ##
 # Defines used in creating spaces
@@ -40,12 +41,14 @@ NO_CURSOR_REL = np.array((0.0, 0.0), dtype=np.float32)
 
 # XXX gymnasium.utils.env_checker.check_env
 
-# XXX env width/height must match minecraft. Automate?
-
 # Stub in the action and observation space types
 type MCioAction = dict[str, Any]
 type MCioObservation = dict[str, Any]
 RenderFrame = TypeVar("RenderFrame")  # NDArray[np] shape = (height, width, channels)
+
+
+class ResetOptions(TypedDict, total=False):
+    commands: list[str]  # List of Minecraft commands
 
 
 class MCioEnv(gym.Env[MCioObservation, MCioAction]):
@@ -56,26 +59,34 @@ class MCioEnv(gym.Env[MCioObservation, MCioAction]):
 
     def __init__(
         self,
-        width: int = 640,
-        height: int = 480,
+        # If you don't plan on launching via the environment, just pass an EnvConfig.
+        # Otherwise pass LauncherOptions.
+        config: EnvConfig | LauncherOptions,
         # This defines the size of the cursor_pos_rel Box space.
         # Essentially, the maximum distance the cursor can move in a
         # particular direction in one step.
         cursor_rel_bound: int = CURSOR_REL_BOUND_DEFAULT,
-        mcio_mode: Literal["sync", "async"] = "sync",
         render_mode: str | None = None,
     ):
-        self.width = width
-        self.height = height
+        self.env_config: EnvConfig = (
+            config if isinstance(config, EnvConfig) else config.env_config
+        )
+        self.launcher_options: LauncherOptions | None = (
+            config if isinstance(config, LauncherOptions) else None
+        )
+
         self.cursor_rel_bound = cursor_rel_bound
-        self.mcio_mode = mcio_mode
+        assert render_mode is None or render_mode in self.metadata["render_modes"]
+        self.render_mode = render_mode
 
         self.last_frame: NDArray[np.uint8] | None = None
-        self.gui: gui.ImageStreamGui | None = None
-        self.ctrl: controller.ControllerCommon | None = None
         self.last_cursor_pos: tuple[int, int] = (0, 0)
         self.keys_pressed: set[str] = set()
         self.mouse_buttons_pressed: set[str] = set()
+
+        # These need closing when done.
+        self.gui: gui.ImageStreamGui | None = None
+        self.ctrl: controller.ControllerCommon | None = None
         self.launcher: instance.Launcher | None = None
 
         self.observation_space = spaces.Dict(
@@ -83,8 +94,8 @@ class MCioEnv(gym.Env[MCioObservation, MCioAction]):
                 "frame": spaces.Box(
                     low=0,
                     high=255,
-                    # shape = (height, width, channels)
-                    shape=(height, width, 3),
+                    # shape=(height, width, channels)
+                    shape=(self.env_config.height, self.env_config.width, 3),
                     dtype=np.uint8,
                 ),
                 "player_pos": spaces.Box(
@@ -117,9 +128,6 @@ class MCioEnv(gym.Env[MCioObservation, MCioAction]):
                 ),
             }
         )
-
-        assert render_mode is None or render_mode in self.metadata["render_modes"]
-        self.render_mode = render_mode
 
     # Is there a better way to get a noop? Wrappers?
     # E.g., noop = env.unwrapped.get_noop_action() XXX Don't require unwrapped
@@ -239,6 +247,7 @@ class MCioEnv(gym.Env[MCioObservation, MCioAction]):
         return pairs
 
     def _get_reset_action(self) -> dict[str, Any]:
+        """This creates an action that resets all input"""
         action: MCioAction = {}
 
         action["keys"] = {}
@@ -261,17 +270,30 @@ class MCioEnv(gym.Env[MCioObservation, MCioAction]):
         return {}
 
     def reset(
-        self, seed: int | None = None, options: dict[str, Any] | None = None
+        self,
+        seed: int | None = None,
+        *,
+        options: ResetOptions | None = None,  # type: ignore[override]
     ) -> tuple[MCioObservation, dict[Any, Any]]:
         """valid options:
-        commands: list of server commands to initialize the environment.
+        commands: list[str] | None = None
+            List of server commands to initialize the environment.
             E.g. teleport, time set, etc. Do not include the initial "/" in the commands.
+        launcher_options: instance:LauncherOptions | None = None
+            Minecraft launch options. Will skip launch if None.
         """
         # We need the following line to seed self.np_random
         super().reset(seed=seed)
-        options = options or {}
+        options = options or ResetOptions()
 
-        if self.mcio_mode == "async":
+        # For multiple resets, close the previous connections, etc.
+        self.close()
+
+        if self.launcher_options is not None:
+            self.launcher = instance.Launcher(self.launcher_options)
+            self.launcher.launch(wait=False)
+
+        if self.env_config.mcio_mode == "async":
             self.ctrl = controller.ControllerAsync()
         else:
             self.ctrl = controller.ControllerSync()
@@ -319,7 +341,9 @@ class MCioEnv(gym.Env[MCioObservation, MCioAction]):
 
     def _render_frame_human(self) -> None:
         if self.gui is None and self.render_mode == "human":
-            self.gui = gui.ImageStreamGui("MCio", width=self.width, height=self.height)
+            self.gui = gui.ImageStreamGui(
+                "MCio", width=self.env_config.width, height=self.env_config.height
+            )
         if self.last_frame is None:
             return
         assert self.gui is not None
@@ -329,6 +353,9 @@ class MCioEnv(gym.Env[MCioObservation, MCioAction]):
         if self.gui is not None:
             self.gui.close()
             self.gui = None
+        if self.ctrl is not None:
+            self.ctrl.close()
+            self.ctrl = None
         if self.launcher is not None:
             self.launcher.close()
             self.launcher = None

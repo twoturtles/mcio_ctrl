@@ -6,13 +6,19 @@ import textwrap
 import pprint
 import sys
 
+from mcio_remote.types import EnvConfig, LauncherOptions
 from mcio_remote.mcio_env.envs import mcio_env
 
 
-def tutorial(steps: int) -> None:
+def tutorial(steps: int, instance_name: str | None) -> None:
     # gym.make doesn't seem to play well with type checking
-    # env = gym.make("mcio_env/MCioEnv-v0", render_mode="human")
-    env = mcio_env.MCioEnv(render_mode="human")
+    ec = EnvConfig(mcio_mode="sync")
+    if instance_name is None:
+        # No launch
+        env = mcio_env.MCioEnv(config=ec, render_mode="human")
+    else:
+        opts = LauncherOptions(instance_name=instance_name, env_config=ec)
+        env = mcio_env.MCioEnv(opts, render_mode="human")
 
     if steps == 0:
         steps = sys.maxsize  # Go forever
@@ -82,6 +88,12 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--steps", "-s", type=int, default=100, help="Number of steps, 0 for forever"
     )
+    parser.add_argument(
+        "--instance-name",
+        "-i",
+        type=str,
+        help="Name of the Minecraft instance to launch",
+    )
     return parser.parse_args()
 
 
@@ -89,4 +101,4 @@ if __name__ == "__main__":
     args = parse_args()
     # mcio.LOG.setLevel(mcio.logging.WARNING)
 
-    tutorial(args.steps)
+    tutorial(args.steps, args.instance_name)

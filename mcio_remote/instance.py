@@ -1,10 +1,9 @@
 """Interface for managing and launching Minecraft instances"""
 
 import subprocess
-import uuid
 from pathlib import Path
 import os
-from typing import Any, Final, Literal
+from typing import Any, Final
 
 import requests
 import minecraft_launcher_lib as mll
@@ -12,18 +11,12 @@ import minecraft_launcher_lib as mll
 from . import logger
 from . import config
 from . import util
+from . import types
 
 LOG = logger.LOG.get_logger(__name__)
 
 INSTANCES_SUBDIR: Final[str] = "instances"
-
-DEFAULT_MINECRAFT_USER: Final[str] = "MCio"
-DEFAULT_WINDOW_WIDTH: Final[int] = 854
-DEFAULT_WINDOW_HEIGHT: Final[int] = 480
-
 REQUIRED_MODS: Final[tuple[str, ...]] = ("fabric-api", "mcio")
-
-McioMode = Literal["off", "async", "sync"]
 
 # XXX Rethink classes - Installer / Launcher / InstanceManager are confusing
 
@@ -150,44 +143,33 @@ class Launcher:
 
     def __init__(
         self,
-        instance_name: config.InstanceName,
-        mcio_dir: Path | str | None = None,
-        world_name: config.WorldName | None = None,
-        width: int = DEFAULT_WINDOW_WIDTH,
-        height: int = DEFAULT_WINDOW_HEIGHT,
-        mcio_mode: McioMode = "async",
-        mc_username: str = DEFAULT_MINECRAFT_USER,
-        java_path: str | None = None,
+        launch_options: types.LauncherOptions,
     ) -> None:
-        self.instance_name = instance_name
-        mcio_dir = mcio_dir or config.DEFAULT_MCIO_DIR
-        self.mcio_dir = Path(mcio_dir).expanduser()
-        self.mcio_mode = mcio_mode
-        im = InstanceManager(self.mcio_dir)
-        self.instance_dir = im.get_instance_dir(self.instance_name)
-        self.mc_username = mc_username
-        self.mc_uuid = uuid.uuid5(uuid.NAMESPACE_URL, self.mc_username)
 
-        with config.ConfigManager(self.mcio_dir) as cm:
-            instance_config = cm.config.instances.get(self.instance_name)
+        self.launch_opts = launch_options
+
+        with config.ConfigManager(self.launch_opts.mcio_dir) as cm:
+            instance_config = cm.config.instances.get(self.launch_opts.instance_name)
         if instance_config is None:
-            raise ValueError(f"Missing instance_name in {cm.config_file}")
+            raise ValueError(
+                f"Instancd {self.launch_opts.instance_name} not found in {cm.config_file}"
+            )
         self.launch_version = instance_config.launch_version
 
         # Store options
-        options = mll.types.MinecraftOptions(
-            username=mc_username,
-            uuid=str(self.mc_uuid),
+        mll_opts = mll.types.MinecraftOptions(
+            username=self.launch_opts.mc_username,
+            uuid=str(self.launch_opts.mc_uuid),
             token="MCioDev",
             customResolution=True,
-            resolutionWidth=str(width),
-            resolutionHeight=str(height),
+            resolutionWidth=str(self.launch_opts.env_config.width),
+            resolutionHeight=str(self.launch_opts.env_config.height),
         )
-        if world_name is not None:
-            options["quickPlaySingleplayer"] = world_name
-        if java_path is not None:
-            options["executablePath"] = java_path
-        self.mll_options = options
+        if self.launch_opts.world_name is not None:
+            mll_opts["quickPlaySingleplayer"] = self.launch_opts.world_name
+        if self.launch_opts.java_path is not None:
+            mll_opts["executablePath"] = self.launch_opts.java_path
+        self.mll_opts = mll_opts
 
         self._process: subprocess.Popen[str] | None = None
 
@@ -195,7 +177,9 @@ class Launcher:
         env = self._get_env()
         cmd = self.get_command()
         # For some reason Minecraft logs end up in cwd, so set it to instance_dir
-        self._process = subprocess.Popen(cmd, env=env, cwd=self.instance_dir, text=True)
+        self._process = subprocess.Popen(
+            cmd, env=env, cwd=self.launch_opts.instance_dir, text=True
+        )
         if wait:
             self._process.wait()
             self._process = None
@@ -222,20 +206,20 @@ class Launcher:
 
     def get_command(self) -> list[str]:
         mc_cmd = mll.command.get_minecraft_command(
-            self.launch_version, self.instance_dir, self.mll_options
+            self.launch_version, self.launch_opts.instance_dir, self.mll_opts
         )
         mc_cmd = self._update_option_argument(mc_cmd, "--userType", "legacy")
         return mc_cmd
 
     def get_show_command(self) -> list[str]:
         """For testing, return the command that will be run"""
-        cmd = [f"MCIO_MODE={self.mcio_mode}"]
+        cmd = [f"MCIO_MODE={self.launch_opts.env_config.mcio_mode}"]
         cmd += self.get_command()
         return cmd
 
     def _get_env(self) -> dict[str, str]:
         env = os.environ.copy()
-        env["MCIO_MODE"] = self.mcio_mode
+        env["MCIO_MODE"] = self.launch_opts.env_config.mcio_mode
         return env
 
     def _update_option_argument(

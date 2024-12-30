@@ -2,11 +2,12 @@ import numpy as np
 import pytest
 from mcio_remote.mcio_env.envs import mcio_env
 from mcio_remote import network
+from mcio_remote.types import EnvConfig
 
 
 @pytest.fixture
 def default_mcio_env() -> mcio_env.MCioEnv:
-    return mcio_env.MCioEnv()
+    return mcio_env.MCioEnv(config=EnvConfig())
 
 
 @pytest.fixture

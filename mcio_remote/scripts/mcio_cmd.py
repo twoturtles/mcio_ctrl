@@ -9,6 +9,7 @@ from mcio_remote import instance
 from mcio_remote import config
 from mcio_remote import world
 from mcio_remote import mcio_gui
+from mcio_remote import types
 
 
 def _add_mcio_dir_arg(parser: argparse.ArgumentParser) -> None:
@@ -167,16 +168,19 @@ class InstanceLaunchCmd(Cmd):
     CMD = "launch"
 
     def run(self, args: argparse.Namespace) -> None:
-        launch = instance.Launcher(
-            args.instance_name,
+        opts = types.LauncherOptions(
+            instance_name=args.instance_name,
+            env_config=types.EnvConfig(
+                width=args.width,
+                height=args.height,
+                mcio_mode=args.mcio_mode,
+            ),
             mcio_dir=args.mcio_dir,
             mc_username=args.username,
             world_name=args.world,
-            width=args.width,
-            height=args.height,
-            mcio_mode=args.mcio_mode,
             java_path=args.java,
         )
+        launch = instance.Launcher(opts)
         if args.list:
             cmd = launch.get_show_command()
             pprint.pprint(cmd)
@@ -199,7 +203,7 @@ class InstanceLaunchCmd(Cmd):
             "-m",
             metavar="mcio-mode",
             type=str,
-            choices=typing.get_args(instance.McioMode),
+            choices=typing.get_args(types.McioMode),
             default="async",
             help="MCio mode: (default: async)",
         )
@@ -209,22 +213,22 @@ class InstanceLaunchCmd(Cmd):
             "--width",
             "-W",
             type=int,
-            default=instance.DEFAULT_WINDOW_WIDTH,
-            help=f"Window width (default: {instance.DEFAULT_WINDOW_WIDTH})",
+            default=types.DEFAULT_WINDOW_WIDTH,
+            help=f"Window width (default: {types.DEFAULT_WINDOW_WIDTH})",
         )
         launch_parser.add_argument(
             "--height",
             "-H",
             type=int,
-            default=instance.DEFAULT_WINDOW_HEIGHT,
-            help=f"Window height (default: {instance.DEFAULT_WINDOW_HEIGHT})",
+            default=types.DEFAULT_WINDOW_HEIGHT,
+            help=f"Window height (default: {types.DEFAULT_WINDOW_HEIGHT})",
         )
         launch_parser.add_argument(
             "--username",
             "-u",
             type=str,
-            default=instance.DEFAULT_MINECRAFT_USER,
-            help=f"Player name (default: {instance.DEFAULT_MINECRAFT_USER})",
+            default=types.DEFAULT_MINECRAFT_USER,
+            help=f"Player name (default: {types.DEFAULT_MINECRAFT_USER})",
         )
         launch_parser.add_argument(
             "--java",
@@ -387,9 +391,12 @@ class DemoCmd(Cmd):
         try:
             # 5
             print("\nLaunching Minecraft...")
-            launch = instance.Launcher(
-                self.inst_name, mcio_dir=args.mcio_dir, world_name=self.world_name
+            opts = types.LauncherOptions(
+                instance_name=self.inst_name,
+                mcio_dir=args.mcio_dir,
+                world_name=self.world_name,
             )
+            launch = instance.Launcher(opts)
             launch.launch(wait=False)
 
             # 6
