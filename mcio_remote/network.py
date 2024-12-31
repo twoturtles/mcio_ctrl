@@ -74,13 +74,14 @@ class ObservationPacket:
         try:
             obs = cls(**decoded_dict)
         except Exception as e:
-            # This means the received packet doesn't match ObservationPacket
+            # This means the received packet doesn't match ObservationPacket.
+            # It may not even be a dict.
             LOG.error(f"ObservationPacket decode error: {type(e).__name__}: {e}")
-            if "frame_png" in decoded_dict:
+            if isinstance(decoded_dict, dict) and "frame_png" in decoded_dict:
                 decoded_dict["frame_png"] = (
                     f"Frame len: {len(decoded_dict['frame_png'])}"
                 )
-            LOG.error("Raw packet:")
+            LOG.error("Raw packet follows:")
             LOG.error(pprint.pformat(decoded_dict))
             return None
 
