@@ -7,10 +7,11 @@ import time
 
 import cbor2
 import glfw  # type: ignore
-import zmq
 import numpy as np
 from numpy.typing import NDArray
 from PIL import Image, ImageDraw
+import zmq
+import zmq.utils.monitor as zmon
 
 from . import util
 from . import logger
@@ -151,27 +152,34 @@ class _Connection:
         self,
         action_addr: str = DEFAULT_ACTION_ADDR,
         observation_addr: str = DEFAULT_OBSERVATION_ADDR,
+        connection_timeout: float = 30.0,  # Enough time for Minecraft to launch
     ):
+        LOG.info("Connecting to Minecraft")
         # Initialize ZMQ context
         self.zmq_context = zmq.Context()
 
         # Socket to send commands
         self.action_socket = self.zmq_context.socket(zmq.PUB)
+        action_monitor = self.action_socket.get_monitor_socket()
         self.action_socket.connect(action_addr)
 
         # Socket to receive observation updates
         self.observation_socket = self.zmq_context.socket(zmq.SUB)
+        observation_monitor = self.observation_socket.get_monitor_socket()
         self.observation_socket.connect(observation_addr)
         self.observation_socket.setsockopt_string(zmq.SUBSCRIBE, "")
 
+        # Wait for both connections to be established
+        self._wait_for_connections(
+            action_monitor, observation_monitor, connection_timeout
+        )
+        LOG.info("Minecraft connections established")
+        # May be useful to monitor these on another thread. For now, close.
+        action_monitor.close()
+        observation_monitor.close()
+
         self.recv_counter = util.TrackPerSecond("RecvObservationPPS")
         self.send_counter = util.TrackPerSecond("SendActionPPS")
-
-        # XXX zmq has this weird behavior that if you send a packet before it's connected
-        # it just drops the packet. Pause here to give it a chance to connect. This only
-        # works if minecraft is already running. Need to make a more reliable way of
-        # handling this. See https://zguide.zeromq.org/docs/chapter5/ "slow joiner syndrome"
-        time.sleep(0.5)
 
     def send_action(self, action: ActionPacket) -> None:
         """
@@ -202,3 +210,56 @@ class _Connection:
         self.action_socket.close()
         self.observation_socket.close()
         self.zmq_context.term()
+
+    def _wait_for_connections(
+        self,
+        action_monitor: zmq.SyncSocket,
+        observation_monitor: zmq.SyncSocket,
+        timeout: float,
+    ) -> None:
+
+        event_map = get_zmq_event_names()
+        start_time = time.time()
+
+        poller = zmq.Poller()
+        poller.register(action_monitor, zmq.POLLIN)
+        poller.register(observation_monitor, zmq.POLLIN)
+
+        act_connected = obs_connected = False
+        while not (act_connected and obs_connected):
+            if time.time() - start_time > timeout:
+                raise TimeoutError(
+                    f"Failed to connect to Minecraft within timeout: {timeout}s"
+                )
+
+            # {socket: poll_event_mask}
+            # Only care about socket here
+            poll_events = dict(poller.poll(1000))  # Wait up to 1 sec
+
+            # returns dict of {"event":int, "value":int, "endpoint":str}
+            # Only care about the event
+            # See http://api.zeromq.org/4-2:zmq-socket-monitor
+            if action_monitor in poll_events:
+                ev = zmon.recv_monitor_message(action_monitor, zmq.NOBLOCK)
+                if ev["event"] == zmq.EVENT_CONNECTED:
+                    LOG.info("Action socket connected")
+                    act_connected = True
+                else:
+                    LOG.debug(f"Action socket event: {event_map[ev["event"]]}")
+            if observation_monitor in poll_events:
+                ev = zmon.recv_monitor_message(observation_monitor, zmq.NOBLOCK)
+                if ev["event"] == zmq.EVENT_CONNECTED:
+                    LOG.info("Observation socket connected")
+                    obs_connected = True
+                else:
+                    LOG.debug(f"Observation socket event: {event_map[ev["event"]]}")
+
+
+def get_zmq_event_names() -> dict[int, str]:
+    """This is ugly, but it's how the zmq examples do it"""
+    events: dict[int, str] = {}
+    for name in dir(zmq):
+        if name.startswith("EVENT_"):
+            value = getattr(zmq, name)
+            events[value] = name
+    return events
