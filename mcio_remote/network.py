@@ -4,6 +4,7 @@ from typing import Optional, Final
 import io
 import pprint
 import time
+import threading
 
 import cbor2
 import glfw  # type: ignore
@@ -147,113 +148,165 @@ class ActionPacket:
 
 class _Connection:
     """Connections to MCio mod. Used by Controller.
-    Don't use this directly, use controller."""
+    Don't use this directly, use ControllerSync or ControllerAsync."""
 
     def __init__(
         self,
         action_addr: str = DEFAULT_ACTION_ADDR,
         observation_addr: str = DEFAULT_OBSERVATION_ADDR,
-        connection_timeout: float = 30.0,  # Enough time for Minecraft to launch
+        block: bool = True,  # Block until connection is established
+        connection_timeout: (
+            float | None
+        ) = 30.0,  # Enough time for Minecraft to launch. Only used when blocking
     ):
         LOG.info("Connecting to Minecraft")
         # Initialize ZMQ context
         self.zmq_context = zmq.Context()
 
         # Socket to send commands
-        self.action_socket = self.zmq_context.socket(zmq.PUB)
+        self.action_socket = self.zmq_context.socket(zmq.PUSH)
         action_monitor = self.action_socket.get_monitor_socket()
         self.action_socket.connect(action_addr)
+        self.action_connected = threading.Event()
 
         # Socket to receive observation updates
-        self.observation_socket = self.zmq_context.socket(zmq.SUB)
+        self.observation_socket = self.zmq_context.socket(zmq.PULL)
         observation_monitor = self.observation_socket.get_monitor_socket()
         self.observation_socket.connect(observation_addr)
-        self.observation_socket.setsockopt_string(zmq.SUBSCRIBE, "")
+        self.observation_connected = threading.Event()
+
+        # Start monitor thread
+        self._running = threading.Event()
+        self._running.set()
+        self.monitor_thread = threading.Thread(
+            target=self._monitor_thread_fn,
+            args=(action_monitor, observation_monitor),
+            name="MonitorThread",
+            daemon=True,
+        )
+        self.monitor_thread.start()
 
         # Wait for both connections to be established
-        self._wait_for_connections(
-            action_monitor, observation_monitor, connection_timeout
-        )
-        LOG.info("Minecraft connections established")
-        # May be useful to monitor these on another thread. For now, close.
-        action_monitor.close()
-        observation_monitor.close()
+        if block:
+            if not self.wait_for_connections(connection_timeout):
+                raise TimeoutError(
+                    f"Failed to connect to Minecraft within timeout: {connection_timeout}s"
+                )
+            LOG.info("Minecraft connections established")
 
         self.recv_counter = util.TrackPerSecond("RecvObservationPPS")
         self.send_counter = util.TrackPerSecond("SendActionPPS")
 
     def send_action(self, action: ActionPacket) -> None:
         """
-        Send action through zmq socket. Should not block. (Unless zmq buffer is full?)
+        Send action through zmq socket. Does not block.
+
+        There's a zmq bug that causes send to not block if there
+        is room in the queue even if there is no connection.
+        In that case the packet is placed on zmq's internal queue.
+        https://github.com/zeromq/libzmq/issues/3248
+        To avoid confusion, this never blocks.
         """
         self.send_counter.count()
-        self.action_socket.send(action.pack())
+        try:
+            self.action_socket.send(action.pack(), zmq.DONTWAIT)
+        except zmq.Again as e:
+            # Will only happen if ZMQ's queue is full
+            LOG.error(f"ZMQ error in send_action: {e.errno}: {e}")
 
-    def recv_observation(self) -> ObservationPacket | None:
+    def recv_observation(self, block: bool = True) -> ObservationPacket | None:
         """
-        Receives observation from zmq socket. Blocks until a observation packet is returned
+        Receives observation from zmq socket.
         """
+        flags = 0 if block else zmq.DONTWAIT
         try:
             # RECV 1
-            pbytes = self.observation_socket.recv()
-        except zmq.error.ContextTerminated:
+            pbytes = self.observation_socket.recv(flags)
+        except zmq.ContextTerminated:
+            # Shutting down
+            return None
+        except zmq.Again:
+            # Non-blocking, nothing available
             return None
 
         # This may also return None if there was an unpack error.
-        # XXX Maybe these errors should be separated. A context error can happen during shutdown.
-        # We could continue after a parse error.
         observation = ObservationPacket.unpack(pbytes)
         self.recv_counter.count()
         LOG.debug(observation)
         return observation
 
     def close(self) -> None:
+        self._running.clear()
         self.action_socket.close()
         self.observation_socket.close()
         self.zmq_context.term()
 
-    def _wait_for_connections(
+    def wait_for_connections(self, connection_timeout: float | None = None) -> bool:
+        start = time.time()
+        while True:
+            if self.action_connected.is_set() and self.observation_connected.is_set():
+                return True
+            if connection_timeout is not None:
+                if time.time() - start >= connection_timeout:
+                    return False
+            self.action_connected.wait(timeout=0.01)
+            self.observation_connected.wait(timeout=0.01)
+
+    def _process_monitor_event(
         self,
-        action_monitor: zmq.SyncSocket,
-        observation_monitor: zmq.SyncSocket,
-        timeout: float,
+        label: str,
+        monitor: zmq.SyncSocket,
+        conn_flag: threading.Event,
+        event_map: dict[int, str],
+    ) -> None:
+        """Process a single event for _monitor_thread_fn()"""
+        # recv_monitor_event() returns dict of
+        # {"event":int, "value":int, "endpoint":str}
+        # Only care about the event
+        # See http://api.zeromq.org/4-2:zmq-socket-monitor
+        ev = zmon.recv_monitor_message(monitor, zmq.NOBLOCK)
+        event = ev["event"]
+        if event == zmq.EVENT_CONNECTED:
+            LOG.info(f"{label} socket connected {event_map[event]}")
+            conn_flag.set()
+        elif conn_flag.is_set() and event in [zmq.EVENT_DISCONNECTED, zmq.EVENT_CLOSED]:
+            # XXX Close socket / signal user?
+            LOG.info(f"{label} socket disconnected: {event_map[event]}")
+            conn_flag.clear()
+        else:
+            LOG.debug(f"{label} socket event: {event_map[event]}")
+
+    def _monitor_thread_fn(
+        self, action_monitor: zmq.SyncSocket, observation_monitor: zmq.SyncSocket
     ) -> None:
 
         event_map = get_zmq_event_names()
-        start_time = time.time()
 
         poller = zmq.Poller()
         poller.register(action_monitor, zmq.POLLIN)
         poller.register(observation_monitor, zmq.POLLIN)
 
-        act_connected = obs_connected = False
-        while not (act_connected and obs_connected):
-            if time.time() - start_time > timeout:
-                raise TimeoutError(
-                    f"Failed to connect to Minecraft within timeout: {timeout}s"
+        while self._running.is_set():
+            # returns list of (socket, poll_event_mask)
+            # with dict() this is {socket: poll_event_mask}
+            # Only care about socket here since the only event
+            # we're listening for is POLLIN.
+            poll_events = dict(poller.poll())
+
+            if action_monitor in poll_events:
+                self._process_monitor_event(
+                    "Action", action_monitor, self.action_connected, event_map
+                )
+            if observation_monitor in poll_events:
+                self._process_monitor_event(
+                    "Observation",
+                    observation_monitor,
+                    self.observation_connected,
+                    event_map,
                 )
 
-            # {socket: poll_event_mask}
-            # Only care about socket here
-            poll_events = dict(poller.poll(1000))  # Wait up to 1 sec
-
-            # returns dict of {"event":int, "value":int, "endpoint":str}
-            # Only care about the event
-            # See http://api.zeromq.org/4-2:zmq-socket-monitor
-            if action_monitor in poll_events:
-                ev = zmon.recv_monitor_message(action_monitor, zmq.NOBLOCK)
-                if ev["event"] == zmq.EVENT_CONNECTED:
-                    LOG.info("Action socket connected")
-                    act_connected = True
-                else:
-                    LOG.debug(f"Action socket event: {event_map[ev["event"]]}")
-            if observation_monitor in poll_events:
-                ev = zmon.recv_monitor_message(observation_monitor, zmq.NOBLOCK)
-                if ev["event"] == zmq.EVENT_CONNECTED:
-                    LOG.info("Observation socket connected")
-                    obs_connected = True
-                else:
-                    LOG.debug(f"Observation socket event: {event_map[ev["event"]]}")
+        action_monitor.close()
+        observation_monitor.close()
 
 
 def get_zmq_event_names() -> dict[int, str]:

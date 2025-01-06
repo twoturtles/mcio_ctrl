@@ -40,7 +40,7 @@ class ControllerSync(ControllerCommon):
         self, block: bool = True, timeout: float | None = None
     ) -> network.ObservationPacket:
         """Receive observation. Blocks"""
-        obs = self._mcio_conn.recv_observation()
+        obs = self._mcio_conn.recv_observation(block=True)
         if obs is None:
             # This will only ever happen when zmq is shutting down
             return network.ObservationPacket()
@@ -131,7 +131,7 @@ class ControllerAsync(ControllerCommon):
             # RECV 2
             # I don't think we'll ever drop here. this is a short loop to recv the packet
             # and put it on the queue to be processed.
-            observation = self._mcio_conn.recv_observation()
+            observation = self._mcio_conn.recv_observation(block=True)
             if observation is None:
                 continue  # Exiting or packet decode error
 

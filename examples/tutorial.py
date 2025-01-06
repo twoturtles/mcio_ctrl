@@ -35,6 +35,7 @@ def tutorial(steps: int, instance_name: str | None, world_name: str | None) -> N
     print_step(step, None, observation)
     step += 1
     done = False
+
     while not done and step < steps:
         # Cycle jumping on and off
         cycle = (steps // 50) % 2
