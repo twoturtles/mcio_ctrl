@@ -5,6 +5,7 @@ import io
 import pprint
 import time
 import threading
+import logging
 
 import cbor2
 import glfw  # type: ignore
@@ -15,9 +16,9 @@ import zmq
 import zmq.utils.monitor as zmon
 
 from . import util
-from . import logger
 
-LOG = logger.LOG.get_logger(__name__)
+
+LOG = logging.getLogger(__name__)
 
 MCIO_PROTOCOL_VERSION: Final[int] = 1
 
@@ -236,6 +237,7 @@ class _Connection:
         return observation
 
     def close(self) -> None:
+        LOG.info("Closing connections")
         self._running.clear()
         self.action_socket.close()
         self.observation_socket.close()
@@ -280,6 +282,7 @@ class _Connection:
         self, action_monitor: zmq.SyncSocket, observation_monitor: zmq.SyncSocket
     ) -> None:
 
+        LOG.info("MonitorThread started")
         event_map = get_zmq_event_names()
 
         poller = zmq.Poller()
@@ -291,7 +294,10 @@ class _Connection:
             # with dict() this is {socket: poll_event_mask}
             # Only care about socket here since the only event
             # we're listening for is POLLIN.
-            poll_events = dict(poller.poll())
+            try:
+                poll_events = dict(poller.poll())
+            except zmq.ContextTerminated:
+                break  # exiting
 
             if action_monitor in poll_events:
                 self._process_monitor_event(
@@ -307,6 +313,7 @@ class _Connection:
 
         action_monitor.close()
         observation_monitor.close()
+        LOG.info("MonitorThread done")
 
 
 def get_zmq_event_names() -> dict[int, str]:
