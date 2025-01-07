@@ -4,12 +4,15 @@ import typing
 from typing import Any, Protocol, Final
 from pathlib import Path
 import textwrap
+import logging
 
 from mcio_remote import instance
 from mcio_remote import config
 from mcio_remote import world
 from mcio_remote import mcio_gui
 from mcio_remote import types
+
+LOG = logging.getLogger(__name__)
 
 
 def _add_mcio_dir_arg(parser: argparse.ArgumentParser) -> None:

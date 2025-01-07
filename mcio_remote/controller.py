@@ -149,8 +149,4 @@ class ControllerAsync(ControllerCommon):
         """Shut down the network connection"""
         self._running.clear()
         self._mcio_conn.close()
-
         self._observation_thread.join()
-        # # Send empty action to unblock ActionThread
-        # self._action_queue.put(None)
-        # self._action_thread.join()

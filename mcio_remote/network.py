@@ -219,16 +219,23 @@ class _Connection:
         """
         Receives observation from zmq socket.
         """
-        flags = 0 if block else zmq.DONTWAIT
-        try:
-            # RECV 1
-            pbytes = self.observation_socket.recv(flags)
-        except zmq.ContextTerminated:
-            # Shutting down
-            return None
-        except zmq.Again:
-            # Non-blocking, nothing available
-            return None
+        while self._running.is_set():
+            try:
+                # RECV 1
+                pbytes = self.observation_socket.recv(zmq.DONTWAIT)
+            except zmq.ContextTerminated:
+                # Shutting down
+                return None
+            except zmq.Again:
+                if not block:
+                    # Non-blocking, nothing available
+                    return None
+                # Blocking, need to try again.
+                # Doing our own sleep so we can do a clean shutdown on close()
+                time.sleep(0.01)
+            else:
+                # recv returned
+                break
 
         # This may also return None if there was an unpack error.
         observation = ObservationPacket.unpack(pbytes)
@@ -245,7 +252,7 @@ class _Connection:
 
     def wait_for_connections(self, connection_timeout: float | None = None) -> bool:
         start = time.time()
-        while True:
+        while self._running.is_set():
             if self.action_connected.is_set() and self.observation_connected.is_set():
                 return True
             if connection_timeout is not None:
@@ -253,6 +260,7 @@ class _Connection:
                     return False
             self.action_connected.wait(timeout=0.01)
             self.observation_connected.wait(timeout=0.01)
+        return False
 
     def _process_monitor_event(
         self,

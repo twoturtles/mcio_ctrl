@@ -5,17 +5,17 @@
 import queue
 import time
 from typing import Any
+import logging
 
 import glfw  # type: ignore
 
-from . import logger
 from . import gui
 from . import controller
 from . import network
 from . import util
 from . import instance
 
-LOG = logger.LOG.get_logger(__name__)
+LOG = logging.getLogger(__name__)
 
 
 class MCioGUI:
