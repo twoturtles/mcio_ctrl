@@ -6,21 +6,15 @@ import textwrap
 import pprint
 import sys
 
-from mcio_remote.types import EnvConfig, LauncherOptions
+from mcio_remote.types import RunOptions
 from mcio_remote.mcio_env.envs import mcio_env
 
 
 def tutorial(steps: int, instance_name: str | None, world_name: str | None) -> None:
-    # gym.make doesn't seem to play well with type checking
-    ec = EnvConfig(mcio_mode="sync")
-    if instance_name is None:
-        # No launch
-        env = mcio_env.MCioEnv(config=ec, render_mode="human")
-    else:
-        opts = LauncherOptions(
-            instance_name=instance_name, world_name=world_name, env_config=ec
-        )
-        env = mcio_env.MCioEnv(opts, render_mode="human")
+    opts = RunOptions(
+        instance_name=instance_name, world_name=world_name, mcio_mode="sync"
+    )
+    env = mcio_env.MCioEnv(opts, render_mode="human")
 
     if steps == 0:
         steps = sys.maxsize  # Go forever

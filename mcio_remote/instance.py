@@ -11,7 +11,8 @@ import minecraft_launcher_lib as mll
 from . import logger
 from . import config
 from . import util
-from . import types
+
+from mcio_remote.types import RunOptions
 
 LOG = logger.LOG.get_logger(__name__)
 
@@ -141,34 +142,33 @@ class Installer:
 class Launcher:
     """Launch Minecraft"""
 
-    def __init__(
-        self,
-        launch_options: types.LauncherOptions,
-    ) -> None:
+    def __init__(self, run_options: RunOptions) -> None:
 
-        self.launch_opts = launch_options
+        self.run_options = run_options
+        if self.run_options.instance_name is None:
+            raise ValueError("instance_name is required")
 
-        with config.ConfigManager(self.launch_opts.mcio_dir) as cm:
-            instance_config = cm.config.instances.get(self.launch_opts.instance_name)
+        with config.ConfigManager(self.run_options.mcio_dir) as cm:
+            instance_config = cm.config.instances.get(self.run_options.instance_name)
         if instance_config is None:
             raise ValueError(
-                f"Instancd {self.launch_opts.instance_name} not found in {cm.config_file}"
+                f"Instancd {self.run_options.instance_name} not found in {cm.config_file}"
             )
         self.launch_version = instance_config.launch_version
 
         # Store options
         mll_opts = mll.types.MinecraftOptions(
-            username=self.launch_opts.mc_username,
-            uuid=str(self.launch_opts.mc_uuid),
+            username=self.run_options.mc_username,
+            uuid=str(self.run_options.mc_uuid),
             token="MCioDev",
             customResolution=True,
-            resolutionWidth=str(self.launch_opts.env_config.width),
-            resolutionHeight=str(self.launch_opts.env_config.height),
+            resolutionWidth=str(self.run_options.width),
+            resolutionHeight=str(self.run_options.height),
         )
-        if self.launch_opts.world_name is not None:
-            mll_opts["quickPlaySingleplayer"] = self.launch_opts.world_name
-        if self.launch_opts.java_path is not None:
-            mll_opts["executablePath"] = self.launch_opts.java_path
+        if self.run_options.world_name is not None:
+            mll_opts["quickPlaySingleplayer"] = self.run_options.world_name
+        if self.run_options.java_path is not None:
+            mll_opts["executablePath"] = self.run_options.java_path
         self.mll_opts = mll_opts
 
         self._process: subprocess.Popen[str] | None = None
@@ -178,7 +178,7 @@ class Launcher:
         cmd = self.get_command()
         # For some reason Minecraft logs end up in cwd, so set it to instance_dir
         self._process = subprocess.Popen(
-            cmd, env=env, cwd=self.launch_opts.instance_dir, text=True
+            cmd, env=env, cwd=self.run_options.instance_dir, text=True
         )
         if wait:
             self._process.wait()
@@ -205,21 +205,22 @@ class Launcher:
             self._process = None
 
     def get_command(self) -> list[str]:
+        assert self.run_options.instance_dir is not None
         mc_cmd = mll.command.get_minecraft_command(
-            self.launch_version, self.launch_opts.instance_dir, self.mll_opts
+            self.launch_version, self.run_options.instance_dir, self.mll_opts
         )
         mc_cmd = self._update_option_argument(mc_cmd, "--userType", "legacy")
         return mc_cmd
 
     def get_show_command(self) -> list[str]:
         """For testing, return the command that will be run"""
-        cmd = [f"MCIO_MODE={self.launch_opts.env_config.mcio_mode}"]
+        cmd = [f"MCIO_MODE={self.run_options.mcio_mode}"]
         cmd += self.get_command()
         return cmd
 
     def _get_env(self) -> dict[str, str]:
         env = os.environ.copy()
-        env["MCIO_MODE"] = self.launch_opts.env_config.mcio_mode
+        env["MCIO_MODE"] = self.run_options.mcio_mode
         return env
 
     def _update_option_argument(

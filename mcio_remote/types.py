@@ -17,30 +17,39 @@ DEFAULT_MCIO_MODE: Final[McioMode] = "async"
 
 
 @dataclass(kw_only=True)
-class EnvConfig:
-    """Core configuration needed by MCioEnv (and LauncherOptions)"""
+class RunOptions:
+    """Options for running Minecraft
+
+    Args:
+        instance_name: Required if launching
+        world_name: Launch directly into a world
+        width: Frame width
+        height: Frame height
+        mcio_mode: sync/async
+        mcio_dir: Top-level data directory
+        java_path: Path to alternative java executable
+        mc_username: Minecraft username
+    """
+
+    instance_name: config.InstanceName | None = None  # Required if launching
+    world_name: config.WorldName | None = None
 
     width: int = DEFAULT_WINDOW_WIDTH
     height: int = DEFAULT_WINDOW_HEIGHT
     mcio_mode: McioMode = DEFAULT_MCIO_MODE
 
-
-@dataclass(kw_only=True)
-class LauncherOptions:
-    """Options for launching Minecraft"""
-
-    instance_name: config.InstanceName
-    env_config: EnvConfig = field(default_factory=EnvConfig)
-    # If world_name is None, Minecraft will launch to the main menu
-    world_name: config.WorldName | None = None
-    mc_username: str = DEFAULT_MINECRAFT_USER
-    mc_uuid: uuid.UUID = field(init=False)  # Calculated automatically
     mcio_dir: Path | str = config.DEFAULT_MCIO_DIR
-    instance_dir: Path = field(init=False)  # Calculated automatically
-    java_path: str | None = None
+    java_path: str | None = None  # To use a different java executable
+
+    mc_username: str = DEFAULT_MINECRAFT_USER
+    instance_dir: Path | None = field(init=False)  # Auto-generated
+    mc_uuid: uuid.UUID = field(init=False)  # Auto-generated
 
     def __post_init__(self) -> None:
         self.mc_uuid: uuid.UUID = uuid.uuid5(uuid.NAMESPACE_URL, self.mc_username)
         self.mcio_dir = Path(self.mcio_dir).expanduser()
         im = instance.InstanceManager(self.mcio_dir)
-        self.instance_dir = im.get_instance_dir(self.instance_name)
+        if self.instance_name is not None:
+            self.instance_dir = im.get_instance_dir(self.instance_name)
+        else:
+            self.instance_dir = None

@@ -1,3 +1,5 @@
+"""Persistent config - mcio.yaml"""
+
 from dataclasses import dataclass, asdict, field
 from typing import Any, Final, Optional, TypeAlias
 from pathlib import Path

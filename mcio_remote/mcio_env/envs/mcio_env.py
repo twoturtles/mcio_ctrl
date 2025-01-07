@@ -10,7 +10,7 @@ from numpy.typing import NDArray
 import glfw  # type: ignore
 
 from mcio_remote import controller, network, gui, instance
-from mcio_remote.types import EnvConfig, LauncherOptions
+from mcio_remote.types import RunOptions
 
 ##
 # Defines used in creating spaces
@@ -59,22 +59,29 @@ class MCioEnv(gym.Env[MCioObservation, MCioAction]):
 
     def __init__(
         self,
-        # If you don't plan on launching via the environment, just pass an EnvConfig.
-        # Otherwise pass LauncherOptions.
-        config: EnvConfig | LauncherOptions,
-        # This defines the size of the cursor_pos_rel Box space.
-        # Essentially, the maximum distance the cursor can move in a
-        # particular direction in one step.
+        run_options: RunOptions,
+        *,
         cursor_rel_bound: int = CURSOR_REL_BOUND_DEFAULT,
         render_mode: str | None = None,
     ):
-        self.env_config: EnvConfig = (
-            config if isinstance(config, EnvConfig) else config.env_config
-        )
-        self.launcher_options: LauncherOptions | None = (
-            config if isinstance(config, LauncherOptions) else None
-        )
+        """Model gym environment
 
+        Args:
+            run_options:
+                If you're not using this env to launch Minecraft, the only options
+                used are height, width, and mcio_mode.
+
+                If instance_name is set, this environment will launch that instance
+                and the remaining options are used for the launch.
+
+            cursor_rel_bound:
+
+                This defines the size of the cursor_pos_rel Box space. Essentially,
+                the maximum distance the cursor can move in a particular direction in one step.
+
+            render_mode: human, rgb_array
+        """
+        self.run_options = run_options
         self.cursor_rel_bound = cursor_rel_bound
         assert render_mode is None or render_mode in self.metadata["render_modes"]
         self.render_mode = render_mode
@@ -95,7 +102,7 @@ class MCioEnv(gym.Env[MCioObservation, MCioAction]):
                     low=0,
                     high=255,
                     # shape=(height, width, channels)
-                    shape=(self.env_config.height, self.env_config.width, 3),
+                    shape=(self.run_options.height, self.run_options.width, 3),
                     dtype=np.uint8,
                 ),
                 "player_pos": spaces.Box(
@@ -289,11 +296,11 @@ class MCioEnv(gym.Env[MCioObservation, MCioAction]):
         # For multiple resets, close the previous connections, etc.
         self.close()
 
-        if self.launcher_options is not None:
-            self.launcher = instance.Launcher(self.launcher_options)
+        if self.run_options.instance_name is not None:
+            self.launcher = instance.Launcher(self.run_options)
             self.launcher.launch(wait=False)
 
-        if self.env_config.mcio_mode == "async":
+        if self.run_options.mcio_mode == "async":
             self.ctrl = controller.ControllerAsync()
         else:
             self.ctrl = controller.ControllerSync()
@@ -342,7 +349,7 @@ class MCioEnv(gym.Env[MCioObservation, MCioAction]):
     def _render_frame_human(self) -> None:
         if self.gui is None and self.render_mode == "human":
             self.gui = gui.ImageStreamGui(
-                "MCio", width=self.env_config.width, height=self.env_config.height
+                "MCio", width=self.run_options.width, height=self.run_options.height
             )
         if self.last_frame is None:
             return

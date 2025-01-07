@@ -171,13 +171,11 @@ class InstanceLaunchCmd(Cmd):
     CMD = "launch"
 
     def run(self, args: argparse.Namespace) -> None:
-        opts = types.LauncherOptions(
+        opts = types.RunOptions(
             instance_name=args.instance_name,
-            env_config=types.EnvConfig(
-                width=args.width,
-                height=args.height,
-                mcio_mode=args.mcio_mode,
-            ),
+            width=args.width,
+            height=args.height,
+            mcio_mode=args.mcio_mode,
             mcio_dir=args.mcio_dir,
             mc_username=args.username,
             world_name=args.world,
@@ -394,7 +392,7 @@ class DemoCmd(Cmd):
         try:
             # 5
             print("\nLaunching Minecraft...")
-            opts = types.LauncherOptions(
+            opts = types.RunOptions(
                 instance_name=self.inst_name,
                 mcio_dir=args.mcio_dir,
                 world_name=self.world_name,

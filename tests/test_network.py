@@ -1,3 +1,5 @@
+import time
+from typing import Generator, Any
 from unittest.mock import MagicMock
 
 import pytest
@@ -22,9 +24,12 @@ def mock_zmq(monkeypatch: pytest.MonkeyPatch) -> dict[str, MagicMock]:
 
     # Set up Poller mock
     mock_poller = MagicMock()
-    mock_poller.return_value.poll.return_value = {
-        mock_socket.get_monitor_socket.return_value: zmq.POLLIN
-    }
+
+    def poll_with_sleep(*args: Any, **kwargs: Any) -> dict[Any, Any]:
+        time.sleep(0.01)
+        return {mock_socket.get_monitor_socket.return_value: zmq.POLLIN}
+
+    mock_poller.return_value.poll = poll_with_sleep
     monkeypatch.setattr("zmq.Poller", mock_poller)
 
     # Return objects that tests might need to access
@@ -36,17 +41,25 @@ def mock_zmq(monkeypatch: pytest.MonkeyPatch) -> dict[str, MagicMock]:
     }
 
 
-def test_send(mock_zmq: dict[str, MagicMock]) -> None:
-    conn = network._Connection()
+@pytest.fixture
+def connection() -> Generator[network._Connection, None, None]:
+    conn = network._Connection(block=False)
+    yield conn
+    conn.close()
+    time.sleep(0.1)  # Give monitor thread time to shut down
+
+
+def test_send(mock_zmq: dict[str, MagicMock], connection: network._Connection) -> None:
     action = network.ActionPacket()
-    conn.send_action(action)
+    connection.send_action(action)
     # Just checks that the packet makes it through to send.
     assert action.pack() == mock_zmq["socket"].send.call_args_list[0][0][0]
 
 
-def test_recv_observation(mock_zmq: dict[str, MagicMock]) -> None:
+def test_recv_observation(
+    mock_zmq: dict[str, MagicMock], connection: network._Connection
+) -> None:
     # Set up garbage packet. Decode will fail and we'll receive None
     mock_zmq["socket"].recv.return_value = b"garbage packet"
-    conn = network._Connection()
-    observation = conn.recv_observation()
+    observation = connection.recv_observation()
     assert observation is None
