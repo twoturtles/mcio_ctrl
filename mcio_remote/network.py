@@ -235,13 +235,14 @@ class _Connection:
                 time.sleep(0.01)
             else:
                 # recv returned
-                break
+                # This may also return None if there was an unpack error.
+                observation = ObservationPacket.unpack(pbytes)
+                self.recv_counter.count()
+                LOG.debug(observation)
+                return observation
 
-        # This may also return None if there was an unpack error.
-        observation = ObservationPacket.unpack(pbytes)
-        self.recv_counter.count()
-        LOG.debug(observation)
-        return observation
+        # Loop exited
+        return None
 
     def close(self) -> None:
         LOG.info("Closing connections")
@@ -252,11 +253,16 @@ class _Connection:
 
     def wait_for_connections(self, connection_timeout: float | None = None) -> bool:
         start = time.time()
+        last_log = start
         while self._running.is_set():
+            now = time.time()
             if self.action_connected.is_set() and self.observation_connected.is_set():
                 return True
+            if now - last_log >= 1.0:
+                LOG.info(f"Waiting for connections... {int(now-start)}s")
+                last_log = now
             if connection_timeout is not None:
-                if time.time() - start >= connection_timeout:
+                if now - start >= connection_timeout:
                     return False
             self.action_connected.wait(timeout=0.01)
             self.observation_connected.wait(timeout=0.01)

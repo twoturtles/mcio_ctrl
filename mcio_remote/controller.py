@@ -33,7 +33,6 @@ class ControllerSync(ControllerCommon):
     # XXX Implement context manager
     def __init__(self, host: str = "localhost"):
         self._action_sequence_last_sent = 0
-        # This briefly sleeps for zmq initialization.
         self._mcio_conn = network._Connection()
 
     def recv_observation(
@@ -67,8 +66,6 @@ class ControllerAsync(ControllerCommon):
         self._running.set()
 
         self._observation_queue = util.LatestItemQueue[network.ObservationPacket]()
-
-        # This briefly sleeps for zmq initialization.
         self._mcio_conn = network._Connection()
 
         # Start observation thread
