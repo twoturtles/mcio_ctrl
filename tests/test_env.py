@@ -1,5 +1,8 @@
-import numpy as np
+from unittest.mock import MagicMock
+
 import pytest
+import numpy as np
+
 from mcio_remote.mcio_env.envs import mcio_env
 from mcio_remote import network
 from mcio_remote.types import RunOptions
@@ -19,10 +22,45 @@ def action_space_sample1() -> mcio_env.MCioAction:
     }
 
 
-def test_fixture_is_valid(
+@pytest.fixture
+def mock_controller(monkeypatch: pytest.MonkeyPatch) -> dict[str, MagicMock]:
+    mock_ctrl_sync = MagicMock()
+    mock_ctrl_async = MagicMock()
+    monkeypatch.setattr("mcio_remote.controller.ControllerSync", mock_ctrl_sync)
+    monkeypatch.setattr("mcio_remote.controller.ControllerAsync", mock_ctrl_async)
+
+    # Return objects that tests might need to access
+    return {
+        "ctrl_sync": mock_ctrl_sync,
+        "ctrl_async": mock_ctrl_async,
+    }
+
+
+def test_action_fixture_is_valid(
     default_mcio_env: mcio_env.MCioEnv, action_space_sample1: mcio_env.MCioAction
 ) -> None:
     assert action_space_sample1 in default_mcio_env.action_space
+
+
+# Smoke test of env
+def test_env_smoke(
+    mock_controller: dict[str, MagicMock], action_space_sample1: mcio_env.MCioAction
+) -> None:
+    env = mcio_env.MCioEnv(RunOptions(mcio_mode="sync"), launch=False)
+    obs, info = env.reset()
+    assert isinstance(obs, dict)  # mcio_env.MCioObservation
+    assert "frame" in obs
+    env.step(action_space_sample1)
+    with pytest.raises(ValueError):
+        env.step({"Invalid Action": "will fail"})
+
+
+def test_step_assert(
+    mock_controller: dict[str, MagicMock], action_space_sample1: mcio_env.MCioAction
+) -> None:
+    env = mcio_env.MCioEnv(RunOptions(mcio_mode="sync"), launch=False)
+    with pytest.raises(AssertionError):
+        env.step(action_space_sample1)  # No controller because reset hasn't been called
 
 
 def test_action_to_packet(

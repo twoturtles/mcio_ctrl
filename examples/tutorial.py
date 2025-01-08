@@ -14,14 +14,15 @@ def tutorial(steps: int, instance_name: str | None, world_name: str | None) -> N
     opts = RunOptions(
         instance_name=instance_name, world_name=world_name, mcio_mode="sync"
     )
-    env = mcio_env.MCioEnv(opts, render_mode="human")
+    launch = True if instance_name is not None else False
+    env = mcio_env.MCioEnv(opts, launch=launch, render_mode="human")
 
     if steps == 0:
         steps = sys.maxsize  # Go forever
     step = 0
     setup_commands = [
         "time set day",
-        "teleport @s 0  0 180 0",
+        "teleport @s 14 135 140 180 0",
         "summon minecraft:sheep ~2 ~2 ~2",
         "summon minecraft:cow ~-2 ~2 ~-2",
     ]
@@ -40,6 +41,7 @@ def tutorial(steps: int, instance_name: str | None, world_name: str | None) -> N
             action["keys"]["SPACE"] = mcio_env.NO_PRESS
 
         # Go forward and press attack button
+        action["keys"]["E"] = mcio_env.NO_PRESS
         action["keys"]["W"] = mcio_env.PRESS
         action["mouse_buttons"]["LEFT"] = mcio_env.PRESS
         observation, reward, terminated, truncated, info = env.step(action)

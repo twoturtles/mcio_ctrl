@@ -189,7 +189,7 @@ class InstanceLaunchCmd(Cmd):
             cmd = launch.get_show_command()
             print(" ".join(cmd))
         else:
-            launch.launch()
+            launch.launch(wait=True)
 
     def add(self, parent_subparsers: "argparse._SubParsersAction[Any]") -> None:
         launch_parser = parent_subparsers.add_parser("launch", help="Launch instance")

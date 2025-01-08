@@ -173,7 +173,12 @@ class Launcher:
 
         self._process: subprocess.Popen[str] | None = None
 
-    def launch(self, wait: bool = True) -> None:
+    def launch(self, wait: bool = False) -> None:
+        """launch the instance
+
+        Args:
+            wait: block waiting for the instance to exit
+        """
         env = self._get_env()
         cmd = self.get_command()
         # For some reason Minecraft logs end up in cwd, so set it to instance_dir

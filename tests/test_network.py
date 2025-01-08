@@ -43,7 +43,7 @@ def mock_zmq(monkeypatch: pytest.MonkeyPatch) -> dict[str, MagicMock]:
 
 @pytest.fixture
 def connection() -> Generator[network._Connection, None, None]:
-    conn = network._Connection(block=False)
+    conn = network._Connection(wait_for_connection=False)
     yield conn
     conn.close()
     time.sleep(0.1)  # Give monitor thread time to shut down

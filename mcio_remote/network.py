@@ -155,10 +155,10 @@ class _Connection:
         self,
         action_addr: str = DEFAULT_ACTION_ADDR,
         observation_addr: str = DEFAULT_OBSERVATION_ADDR,
-        block: bool = True,  # Block until connection is established
+        wait_for_connection: bool = True,  # Block until connection is established
         connection_timeout: (
             float | None
-        ) = 30.0,  # Enough time for Minecraft to launch. Only used when blocking
+        ) = None,  # Only used when wait_for_connection is True
     ):
         LOG.info("Connecting to Minecraft")
         # Initialize ZMQ context
@@ -188,8 +188,8 @@ class _Connection:
         self.monitor_thread.start()
 
         # Wait for both connections to be established
-        if block:
-            if not self.wait_for_connections(connection_timeout):
+        if wait_for_connection:
+            if not self._wait_for_connections(connection_timeout):
                 raise TimeoutError(
                     f"Failed to connect to Minecraft within timeout: {connection_timeout}s"
                 )
@@ -232,6 +232,7 @@ class _Connection:
                     return None
                 # Blocking, need to try again.
                 # Doing our own sleep so we can do a clean shutdown on close()
+                # XXX Turn into poll
                 time.sleep(0.01)
             else:
                 # recv returned
@@ -251,7 +252,7 @@ class _Connection:
         self.observation_socket.close()
         self.zmq_context.term()
 
-    def wait_for_connections(self, connection_timeout: float | None = None) -> bool:
+    def _wait_for_connections(self, connection_timeout: float | None = None) -> bool:
         start = time.time()
         last_log = start
         while self._running.is_set():

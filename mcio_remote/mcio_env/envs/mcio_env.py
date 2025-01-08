@@ -61,6 +61,7 @@ class MCioEnv(gym.Env[MCioObservation, MCioAction]):
         self,
         run_options: RunOptions,
         *,
+        launch: bool = False,
         cursor_rel_bound: int = CURSOR_REL_BOUND_DEFAULT,
         render_mode: str | None = None,
     ):
@@ -71,8 +72,10 @@ class MCioEnv(gym.Env[MCioObservation, MCioAction]):
                 If you're not using this env to launch Minecraft, the only options
                 used are height, width, and mcio_mode.
 
-                If instance_name is set, this environment will launch that instance
-                and the remaining options are used for the launch.
+                The remaining options are used if the env is launching an instance. At least
+                instance_name is required in that case.
+
+            launch: Should the env launch Minecraft
 
             cursor_rel_bound:
 
@@ -82,6 +85,7 @@ class MCioEnv(gym.Env[MCioObservation, MCioAction]):
             render_mode: human, rgb_array
         """
         self.run_options = run_options
+        self.launch = launch
         self.cursor_rel_bound = cursor_rel_bound
         assert render_mode is None or render_mode in self.metadata["render_modes"]
         self.render_mode = render_mode
@@ -293,10 +297,10 @@ class MCioEnv(gym.Env[MCioObservation, MCioAction]):
         super().reset(seed=seed)
         options = options or ResetOptions()
 
-        # For multiple resets, close the previous connections, etc.
-        self.close()
-
-        if self.run_options.instance_name is not None:
+        if self.launch:
+            # For multiple resets, close the previous connections, etc.
+            if self.launcher is not None:
+                self.close()
             self.launcher = instance.Launcher(self.run_options)
             self.launcher.launch(wait=False)
 

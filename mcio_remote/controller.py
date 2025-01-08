@@ -30,10 +30,14 @@ class ControllerSync(ControllerCommon):
     Blocks in recv waiting for a new observation.
     """
 
-    # XXX Implement context manager
-    def __init__(self, host: str = "localhost"):
+    def __init__(
+        self, wait_for_connection: bool = True, connection_timeout: float | None = None
+    ):
         self._action_sequence_last_sent = 0
-        self._mcio_conn = network._Connection()
+        self._mcio_conn = network._Connection(
+            wait_for_connection=wait_for_connection,
+            connection_timeout=connection_timeout,
+        )
 
     def recv_observation(
         self, block: bool = True, timeout: float | None = None
@@ -55,7 +59,9 @@ class ControllerAsync(ControllerCommon):
     Handles ASYNC mode connections to Minecraft
     """
 
-    def __init__(self, host: str = "localhost"):
+    def __init__(
+        self, wait_for_connection: bool = True, connection_timeout: float | None = None
+    ):
         self._action_sequence_last_sent = 0
 
         self.process_counter = util.TrackPerSecond("ProcessObservationPPS")
@@ -66,7 +72,10 @@ class ControllerAsync(ControllerCommon):
         self._running.set()
 
         self._observation_queue = util.LatestItemQueue[network.ObservationPacket]()
-        self._mcio_conn = network._Connection()
+        self._mcio_conn = network._Connection(
+            wait_for_connection=wait_for_connection,
+            connection_timeout=connection_timeout,
+        )
 
         # Start observation thread
         self._observation_thread = threading.Thread(
