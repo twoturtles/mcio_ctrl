@@ -48,6 +48,8 @@ RenderFrame = TypeVar("RenderFrame")  # NDArray[np] shape = (height, width, chan
 
 
 class ResetOptions(TypedDict, total=False):
+    """For now just commands"""
+
     commands: list[str]  # List of Minecraft commands
 
 
@@ -321,11 +323,17 @@ class MCioEnv(gym.Env[MCioObservation, MCioAction]):
         return observation, info
 
     def step(
-        self, action: MCioAction
+        self,
+        action: MCioAction,
+        *,
+        options: ResetOptions | None = None,
     ) -> tuple[MCioObservation, int, bool, bool, dict[Any, Any]]:
+        """Env step function. Includes extra options arg to allow command to be sent during step."""
         if action not in self.action_space:
             raise ValueError(f"Invalid action: {action}")
-        self._send_action(action)
+        options = options or ResetOptions()
+
+        self._send_action(action, options.get("commands"))
 
         observation = self._get_obs()
         reward = 0

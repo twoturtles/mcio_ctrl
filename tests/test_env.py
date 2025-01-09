@@ -63,6 +63,29 @@ def test_step_assert(
         env.step(action_space_sample1)  # No controller because reset hasn't been called
 
 
+def test_env_with_commands(
+    mock_controller: dict[str, MagicMock], action_space_sample1: mcio_env.MCioAction
+) -> None:
+    mock_ctrl_class: MagicMock = mock_controller["ctrl_sync"]
+    env = mcio_env.MCioEnv(RunOptions(mcio_mode="sync"), launch=False)
+    cmds = ["command one", "command two"]
+
+    def _check_send_action(send_action_mock: MagicMock) -> None:
+        assert send_action_mock.call_count == 1
+        action = send_action_mock.call_args.args[0]
+        assert isinstance(action, network.ActionPacket)
+        assert action.commands == cmds
+        send_action_mock.reset_mock()
+
+    # Check commands through reset
+    env.reset(options={"commands": cmds})
+    send_action = mock_ctrl_class.return_value.send_action
+    _check_send_action(send_action)
+
+    env.step(action_space_sample1, options={"commands": cmds})
+    _check_send_action(send_action)
+
+
 def test_action_to_packet(
     default_mcio_env: mcio_env.MCioEnv, action_space_sample1: mcio_env.MCioAction
 ) -> None:
