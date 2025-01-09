@@ -4,14 +4,13 @@ from pathlib import Path
 from typing import TypeVar, Any, Literal
 import shutil
 import requests
+import logging
 import types
 
 from tqdm import tqdm
 import minecraft_launcher_lib as mll
 
-from . import logger
-
-LOG = logger.LOG.get_logger(__name__)
+LOG = logging.getLogger(__name__)
 
 T = TypeVar("T")
 

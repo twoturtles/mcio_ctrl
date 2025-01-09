@@ -3,18 +3,18 @@
 import subprocess
 from pathlib import Path
 import os
+import logging
 from typing import Any, Final
 
 import requests
 import minecraft_launcher_lib as mll
 
-from . import logger
 from . import config
 from . import util
 
 from mcio_remote.types import RunOptions
 
-LOG = logger.LOG.get_logger(__name__)
+LOG = logging.getLogger(__name__)
 
 INSTANCES_SUBDIR: Final[str] = "instances"
 REQUIRED_MODS: Final[tuple[str, ...]] = ("fabric-api", "mcio")

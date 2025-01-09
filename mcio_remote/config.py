@@ -5,13 +5,12 @@ from typing import Any, Final, Optional, TypeAlias
 from pathlib import Path
 import types
 from io import StringIO
+import logging
 
 from ruamel.yaml import YAML
 import dacite
 
-from . import logger
-
-LOG = logger.LOG.get_logger(__name__)
+LOG = logging.getLogger(__name__)
 
 ##
 # Global defines

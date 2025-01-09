@@ -3,15 +3,10 @@ Just sends noop actions and displays observations. Uses async mode to test async
 
 import argparse
 import sys
-import logging
 import textwrap
 
 import mcio_remote as mcio
 from mcio_remote import controller
-
-LOG = mcio.logger.LOG.get_logger(__name__)
-
-# XXX Doesn't work if agent is started first
 
 
 def step(n_steps: int, wait: bool = False) -> None:
@@ -55,7 +50,6 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> None:
     args = parse_args()
-    LOG.setLevel(logging.DEBUG)  # XXX Not working
     step(args.steps, args.wait)
 
 

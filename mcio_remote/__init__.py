@@ -7,12 +7,13 @@ from . import (
     instance,
     logger,
     mcio_env,
+    mcio_gui,
     network,
     server,
+    types,
     util,
     world,
 )
-
 
 __all__ = [
     "__version__",
@@ -23,8 +24,10 @@ __all__ = [
     "instance",
     "logger",
     "mcio_env",
+    "mcio_gui",
     "network",
     "server",
+    "types",
     "util",
     "world",
 ]

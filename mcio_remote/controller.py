@@ -1,11 +1,11 @@
 import threading
+import logging
 from typing import Protocol
 
 from . import network
 from . import util
-from . import logger
 
-LOG = logger.LOG.get_logger(__name__)
+LOG = logging.getLogger(__name__)
 
 
 class ControllerCommon(Protocol):
