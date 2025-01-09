@@ -1,18 +1,17 @@
 """Interface for managing and launching Minecraft instances"""
 
+import logging
+import os
 import subprocess
 from pathlib import Path
-import os
-import logging
 from typing import Any, Final
 
-import requests
 import minecraft_launcher_lib as mll
-
-from . import config
-from . import util
+import requests
 
 from mcio_remote.types import RunOptions
+
+from . import config, util
 
 LOG = logging.getLogger(__name__)
 

@@ -1,11 +1,10 @@
 from pathlib import Path
 
+import minecraft_launcher_lib
 import pytest
 
-import minecraft_launcher_lib
 from mcio_remote import config
 from mcio_remote.scripts import mcio_cmd
-
 
 INST_NAME = "test-instance"
 

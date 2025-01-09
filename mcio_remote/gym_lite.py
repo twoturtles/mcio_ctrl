@@ -1,9 +1,6 @@
 from typing import Literal
 
-
-from . import controller
-from . import network
-from . import gui
+from . import controller, gui, network
 
 
 class GymLite:

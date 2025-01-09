@@ -1,13 +1,12 @@
 """ ImageStreamGui class for displaying frames in a window using glfw and opengl (gym render) """
 
 import time
-from typing import Callable, Any
+from typing import Any, Callable
 
 import glfw  # type: ignore
+import numpy as np
 import OpenGL.GL as gl  # type: ignore
 from numpy.typing import NDArray
-
-import numpy as np
 
 
 class ImageStreamGui:

@@ -1,9 +1,15 @@
 repos:
   - repo: local
     hooks:
-      - id: mypy
-        name: mypy
-        entry: mypy --install-types --non-interactive --strict
+      - id: isort
+        name: isort
+        entry: isort --check-only --diff
+        language: system
+        types: [python]
+
+      - id: black
+        name: black
+        entry: black --check --diff
         language: system
         types: [python]
 
@@ -13,9 +19,9 @@ repos:
         language: system
         types: [python]
 
-      - id: black
-        name: black
-        entry: black --check --diff
+      - id: mypy
+        name: mypy
+        entry: mypy --install-types --non-interactive --strict
         language: system
         types: [python]
 

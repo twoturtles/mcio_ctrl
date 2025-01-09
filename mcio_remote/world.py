@@ -1,14 +1,11 @@
-from pathlib import Path
 import random
 import sys
+from pathlib import Path
 from typing import Final, Literal
 
 from nbt import nbt  # type: ignore
 
-from . import config
-from . import util
-from . import instance
-from . import server
+from . import config, instance, server, util
 
 # STORAGE_LOCATION must equal StorageType
 STORAGE_LOCATION: Final[str] = "storage"

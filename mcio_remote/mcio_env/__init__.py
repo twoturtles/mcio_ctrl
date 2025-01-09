@@ -1,6 +1,6 @@
-from . import envs as envs
-
 from gymnasium.envs.registration import register
+
+from . import envs as envs
 
 register(
     id="mcio_env/MCioEnv-v0",

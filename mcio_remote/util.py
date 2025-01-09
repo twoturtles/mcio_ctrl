@@ -1,14 +1,14 @@
-import time
-import queue
-from pathlib import Path
-from typing import TypeVar, Any, Literal
-import shutil
-import requests
 import logging
+import queue
+import shutil
+import time
 import types
+from pathlib import Path
+from typing import Any, Literal, TypeVar
 
-from tqdm import tqdm
 import minecraft_launcher_lib as mll
+import requests
+from tqdm import tqdm
 
 LOG = logging.getLogger(__name__)
 

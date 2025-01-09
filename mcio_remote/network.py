@@ -1,22 +1,21 @@
 # Code for communicating with the MCio mod
-from dataclasses import dataclass, asdict, field
-from typing import Optional, Final
 import io
-import pprint
-import time
-import threading
 import logging
+import pprint
+import threading
+import time
+from dataclasses import asdict, dataclass, field
+from typing import Final, Optional
 
 import cbor2
 import glfw  # type: ignore
 import numpy as np
-from numpy.typing import NDArray
-from PIL import Image, ImageDraw
 import zmq
 import zmq.utils.monitor as zmon
+from numpy.typing import NDArray
+from PIL import Image, ImageDraw
 
 from . import util
-
 
 LOG = logging.getLogger(__name__)
 

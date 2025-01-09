@@ -1,7 +1,8 @@
 import json
 from pathlib import Path
-import pytest
 from typing import Any
+
+import pytest
 import requests
 
 from mcio_remote import util

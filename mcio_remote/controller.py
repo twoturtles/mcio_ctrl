@@ -1,9 +1,8 @@
-import threading
 import logging
+import threading
 from typing import Protocol
 
-from . import network
-from . import util
+from . import network, util
 
 LOG = logging.getLogger(__name__)
 

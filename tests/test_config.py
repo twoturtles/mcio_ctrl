@@ -1,6 +1,7 @@
 from pathlib import Path
-import pytest
 from typing import Generator
+
+import pytest
 
 from mcio_remote import config
 

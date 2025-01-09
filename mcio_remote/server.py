@@ -2,11 +2,10 @@ import subprocess
 from pathlib import Path
 from typing import Final
 
-import requests
 import minecraft_launcher_lib as mll
+import requests
 
-from . import config
-from . import util
+from . import config, util
 
 
 class Server:

@@ -2,18 +2,14 @@
 # Example allowing human control through MCio
 #
 
+import logging
 import queue
 import time
 from typing import Any
-import logging
 
 import glfw  # type: ignore
 
-from . import gui
-from . import controller
-from . import network
-from . import util
-from . import instance
+from . import controller, gui, instance, network, util
 
 LOG = logging.getLogger(__name__)
 

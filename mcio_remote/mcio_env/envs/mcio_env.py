@@ -1,15 +1,15 @@
 """This is a sample gym environment for MCio. The current plan is to make an environment
 base class for MCio once the requirements become more clear"""
 
-from typing import Sequence, Any, TypeVar, TypedDict
+from typing import Any, Sequence, TypedDict, TypeVar
 
-import gymnasium as gym
-from gymnasium import spaces
-import numpy as np
-from numpy.typing import NDArray
 import glfw  # type: ignore
+import gymnasium as gym
+import numpy as np
+from gymnasium import spaces
+from numpy.typing import NDArray
 
-from mcio_remote import controller, network, gui, instance
+from mcio_remote import controller, gui, instance, network
 from mcio_remote.types import RunOptions
 
 ##

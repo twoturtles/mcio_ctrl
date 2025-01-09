@@ -7,9 +7,9 @@ This version doesn't use types to allow the use of gym.make(),
 
 
 import argparse
-import textwrap
 import pprint
 import sys
+import textwrap
 
 import gymnasium as gym
 

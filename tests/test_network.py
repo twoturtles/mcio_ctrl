@@ -1,5 +1,5 @@
 import time
-from typing import Generator, Any
+from typing import Any, Generator
 from unittest.mock import MagicMock
 
 import pytest

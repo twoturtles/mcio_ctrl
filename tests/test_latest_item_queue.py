@@ -1,8 +1,9 @@
-from queue import Empty
-from typing import TypeVar
-import pytest
 import time
+from queue import Empty
 from threading import Thread
+from typing import TypeVar
+
+import pytest
 
 from mcio_remote.util import LatestItemQueue
 

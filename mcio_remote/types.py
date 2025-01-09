@@ -1,12 +1,11 @@
 """Defines some common types for the module"""
 
-from dataclasses import dataclass, field
 import uuid
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Final, Literal
 
-from . import config
-from . import instance
+from . import config, instance
 
 DEFAULT_MINECRAFT_USER: Final[str] = "MCio"
 DEFAULT_WINDOW_WIDTH: Final[int] = 854
