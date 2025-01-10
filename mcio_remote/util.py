@@ -1,3 +1,4 @@
+import argparse
 import logging
 import queue
 import shutil
@@ -11,6 +12,54 @@ import requests
 from tqdm import tqdm
 
 LOG = logging.getLogger(__name__)
+
+
+COLORS = {
+    "cyan": "\033[36m",
+    "green": "\033[32m",
+    "yellow": "\033[33m",
+    "red": "\033[31m",
+    "red-background": "\033[41m",
+    "reset": "\033[0m",
+}
+
+
+def logging_add_arg(
+    parser: argparse.ArgumentParser, default: int | str = "INFO"
+) -> None:
+    """Add a default logging argument to argparse"""
+    parser.add_argument(
+        "--log-level",
+        "-L",
+        choices=["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
+        default=default,
+        help="Set the logging level (default: INFO)",
+    )
+
+
+def logging_init(
+    *,
+    args: argparse.Namespace | None = None,
+    level: int | str | None = None,
+    color: str | None = "cyan",
+) -> None:
+    """Default log init. If args are passed (see logging_add_arg), level is pulled
+    from that. Otherwise uses a passed in level. Finally defaults to INFO"""
+    if color is not None:
+        color = COLORS[color]
+        reset = COLORS["reset"]
+    else:
+        color = reset = ""
+
+    if args is not None:
+        level = getattr(logging, args.log_level.upper(), logging.INFO)
+    elif level is None:
+        level = logging.INFO
+
+    fmt = f"{color}[%(asctime)s] [%(threadName)s/%(levelname)s] (%(name)s) %(message)s{reset}"
+    datefmt = "%H:%M:%S"
+    logging.basicConfig(level=level, format=fmt, datefmt=datefmt)
+
 
 T = TypeVar("T")
 

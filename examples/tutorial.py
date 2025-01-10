@@ -6,12 +6,12 @@ import pprint
 import sys
 import textwrap
 
+import mcio_remote
 from mcio_remote.mcio_env.envs import mcio_env
-from mcio_remote.types import RunOptions
 
 
 def tutorial(steps: int, instance_name: str | None, world_name: str | None) -> None:
-    opts = RunOptions(
+    opts = mcio_remote.types.RunOptions(
         instance_name=instance_name, world_name=world_name, mcio_mode="sync"
     )
     launch = True if instance_name is not None else False
@@ -84,6 +84,9 @@ def parse_args() -> argparse.Namespace:
         ),
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
+
+    mcio_remote.util.logging_add_arg(parser)
+
     parser.add_argument(
         "--steps", "-s", type=int, default=100, help="Number of steps, 0 for forever"
     )
@@ -94,11 +97,13 @@ def parse_args() -> argparse.Namespace:
         help="Name of the Minecraft instance to launch",
     )
     parser.add_argument("--world", "-w", type=str, help="World name")
-    return parser.parse_args()
+
+    args = parser.parse_args()
+    mcio_remote.util.logging_init(args=args)
+    return args
 
 
 if __name__ == "__main__":
     args = parse_args()
-    # mcio.LOG.setLevel(mcio.logging.WARNING)
 
     tutorial(args.steps, args.instance_name, args.world)
