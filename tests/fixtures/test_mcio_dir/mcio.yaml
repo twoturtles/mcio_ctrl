@@ -1,0 +1,41 @@
+config_version: 0
+instances:
+  test_inst1:
+    id: test_inst1
+    launch_version: fabric-loader-0.16.10-1.21.3
+    minecraft_version: 1.21.3
+    worlds:
+      World1:
+        name: World1
+        minecraft_version: 1.21.3
+        seed: '4959444364238547049'
+      World2:
+        name: World2
+        minecraft_version: 1.21.3
+        seed: '6517405637264311576'
+  test_inst2:
+    id: test_inst2
+    launch_version: fabric-loader-0.16.10-1.21.3
+    minecraft_version: 1.21.3
+    worlds:
+      World1:
+        name: World1
+        minecraft_version: 1.21.3
+        seed: '4959444364238547049'
+world_storage:
+  World1:
+    name: World1
+    minecraft_version: 1.21.3
+    seed: '4959444364238547049'
+  World2:
+    name: World2
+    minecraft_version: 1.21.3
+    seed: '6517405637264311576'
+  World1cpy:
+    name: World1
+    minecraft_version: 1.21.3
+    seed: '4959444364238547049'
+servers:
+  1.21.3:
+    minecraft_version: 1.21.3
+    jvm_version: java-runtime-delta
