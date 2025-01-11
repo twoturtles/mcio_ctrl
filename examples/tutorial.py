@@ -12,7 +12,11 @@ from mcio_remote.mcio_env.envs import mcio_env
 
 def tutorial(steps: int, instance_name: str | None, world_name: str | None) -> None:
     opts = mcio.types.RunOptions(
-        instance_name=instance_name, world_name=world_name, mcio_mode="sync"
+        instance_name=instance_name,
+        world_name=world_name,
+        mcio_mode="sync",
+        width=640,
+        height=480,
     )
     launch = True if instance_name is not None else False
     env = mcio_env.MCioEnv(opts, launch=launch, render_mode="human")
