@@ -9,13 +9,11 @@ description = "Python interface to connect to the MCio Minecraft mod"
 readme = "README.md"
 requires-python = ">=3.12"
 license = "MIT"
-authors = [
-    {name = "TwoTurtles"}
-]
+authors = [{ name = "TwoTurtles" }]
 classifiers = [
     "Programming Language :: Python :: 3",
     "License :: OSI Approved :: MIT License",
-    "Operating System :: OS Independent"
+    "Operating System :: OS Independent",
 ]
 dependencies = [
     "pyzmq>=26.2.0",
@@ -24,7 +22,7 @@ dependencies = [
     "PyOpenGL>=3.1.7",
     "gymnasium>=1.0.0",
     "pillow>=11.0.0",
-    "minecraft-launcher-lib>=6.5",
+    "minecraft-launcher-lib>=7.1",
     "tqdm>=4.67.1",
     "requests>=2.32.3",
     "ruamel.yaml>=0.18.6",
@@ -54,7 +52,7 @@ dependencies = [
 scripts.check = [
     "ruff check --diff .",
     "black --check --diff .",
-    "mypy --strict ."
+    "mypy --strict .",
 ]
 scripts.test = "pytest"
 

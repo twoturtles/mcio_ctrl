@@ -87,10 +87,6 @@ class Installer:
         for mod in REQUIRED_MODS:
             self._install_mod(mod, self.instance_dir, self.mc_version)
 
-        # XXX https://codeberg.org/JakobDev/minecraft-launcher-lib/issues/143
-        err_path = self.instance_dir / "libraries/org/ow2/asm/asm/9.3/asm-9.3.jar"
-        err_path.unlink()
-
         # Disable narrator
         with util.OptionsTxt(self.instance_dir / "options.txt", save=True) as opts:
             opts["narrator"] = "0"
