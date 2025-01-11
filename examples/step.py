@@ -32,6 +32,7 @@ def parse_args() -> argparse.Namespace:
         description=textwrap.dedent(""" """),
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
+    mcio.util.logging_add_arg(parser)
     parser.add_argument(
         "--steps", "-s", type=int, default=1, help="Number of steps, 0 for forever"
     )
@@ -41,7 +42,9 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="Wait for enter between steps. Overrides -s",
     )
-    return parser.parse_args()
+    args = parser.parse_args()
+    mcio.util.logging_init(args=args)
+    return args
 
 
 def main() -> None:

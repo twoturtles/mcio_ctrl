@@ -6,7 +6,7 @@ import sys
 import textwrap
 
 import mcio_remote as mcio
-from mcio_remote import controller
+from mcio_remote import controller, util
 
 
 def step(n_steps: int, wait: bool = False) -> None:
@@ -36,6 +36,7 @@ def parse_args() -> argparse.Namespace:
         description=textwrap.dedent(""" """),
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
+    util.logging_add_arg(parser)
     parser.add_argument(
         "--steps", "-s", type=int, default=1, help="Number of steps, 0 for forever"
     )
@@ -45,7 +46,9 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="Wait for enter between steps. Overrides -s",
     )
-    return parser.parse_args()
+    args = parser.parse_args()
+    util.logging_init(args=args)
+    return args
 
 
 def main() -> None:

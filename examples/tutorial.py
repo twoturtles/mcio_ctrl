@@ -6,12 +6,12 @@ import pprint
 import sys
 import textwrap
 
-import mcio_remote
+import mcio_remote as mcio
 from mcio_remote.mcio_env.envs import mcio_env
 
 
 def tutorial(steps: int, instance_name: str | None, world_name: str | None) -> None:
-    opts = mcio_remote.types.RunOptions(
+    opts = mcio.types.RunOptions(
         instance_name=instance_name, world_name=world_name, mcio_mode="sync"
     )
     launch = True if instance_name is not None else False
@@ -85,7 +85,7 @@ def parse_args() -> argparse.Namespace:
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
 
-    mcio_remote.util.logging_add_arg(parser)
+    mcio.util.logging_add_arg(parser)
 
     parser.add_argument(
         "--steps", "-s", type=int, default=100, help="Number of steps, 0 for forever"
@@ -99,7 +99,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--world", "-w", type=str, help="World name")
 
     args = parser.parse_args()
-    mcio_remote.util.logging_init(args=args)
+    mcio.util.logging_init(args=args)
     return args
 
 

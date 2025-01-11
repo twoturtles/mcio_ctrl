@@ -73,14 +73,16 @@ def parse_args():
         description=textwrap.dedent(""" Demonstrate actions and observations """),
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
+    mcio.util.logging_add_arg(parser)
     parser.add_argument(
         "--steps", "-s", type=int, default=100, help="Number of steps, 0 for forever"
     )
-    return parser.parse_args()
+    args = parser.parse_args()
+    mcio.util.logging_init(args=args)
+    return args
 
 
 if __name__ == "__main__":
     args = parse_args()
-    # mcio.LOG.setLevel(mcio.logging.WARNING)
 
     tutorial_classic(args.steps)

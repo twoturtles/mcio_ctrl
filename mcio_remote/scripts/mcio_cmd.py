@@ -6,7 +6,7 @@ import typing
 from pathlib import Path
 from typing import Any, Final, Protocol
 
-from mcio_remote import config, instance, mcio_gui, types, world
+from mcio_remote import config, instance, mcio_gui, types, util, world
 
 LOG = logging.getLogger(__name__)
 
@@ -434,6 +434,7 @@ def base_parse_args() -> tuple[argparse.Namespace, list[Any]]:
     parser = argparse.ArgumentParser(
         description="Minecraft Instance Manager and Launcher"
     )
+    util.logging_add_arg(parser)
 
     # Subparsers for different modes
     subparsers = parser.add_subparsers(dest="command", metavar="command", required=True)
@@ -449,7 +450,9 @@ def base_parse_args() -> tuple[argparse.Namespace, list[Any]]:
     for cmd in cmd_objects:
         cmd.add(subparsers)
 
-    return parser.parse_args(), cmd_objects
+    args = parser.parse_args()
+    util.logging_init(args=args)
+    return args, cmd_objects
 
 
 def base_run(args: argparse.Namespace, cmd_objects: list[Any]) -> None:
