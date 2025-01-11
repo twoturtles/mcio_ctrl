@@ -15,6 +15,7 @@ LocationType = StorageType | config.InstanceName
 
 class WorldManager:
 
+    # XXX It might be better to make storage just a special instance
     INSTANCE_WORLDS_SUBDIR: Final[str] = "saves"
     WORLD_STORAGE_SUBDIR: Final[str] = "world_storage"
 
@@ -101,13 +102,28 @@ class WorldManager:
         nbt_data["Data"]["allowCommands"].value = 1
         nbt_data.write_file()
 
-    def delete_from_storage(self, world_name: config.WorldName) -> None:
-        """Delete a world from storage"""
-        print(f"Deleting world from storage: {world_name}")
-        world_dir = self.storage_dir / world_name
+    def delete_cmd(self, loc_world: str) -> None:
+        loc, world = loc_world.split(":", 1)
+        self.delete(loc, world)
+
+    def delete(self, location: LocationType, world_name: config.WorldName) -> None:
+        im = instance.InstanceManager(self.mcio_dir)
+        if location == STORAGE_LOCATION:
+            loc_dir = self.storage_dir
+        else:
+            if im.instance_exists(location):
+                loc_dir = im.get_saves_dir(instance_name=location)
+            else:
+                raise ValueError(f"Invalid instance: {location}")
+        world_dir = loc_dir / world_name
+
+        # Just rmrf without checking it exists
         util.rmrf(world_dir)
         with config.ConfigManager(self.mcio_dir, save=True) as cm:
-            cm.config.world_storage.pop(world_name, None)
+            if location == STORAGE_LOCATION:
+                cm.config.world_storage.pop(world_name, None)
+            else:
+                cm.config.instances[location].worlds.pop(world_name, None)
 
     def copy_cmd(self, src: str, dst: str) -> None:
         """Copy world for command line interface"""

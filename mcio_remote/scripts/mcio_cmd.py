@@ -63,7 +63,7 @@ class WorldCmd(Cmd):
                 args.world_name, args.version, seed=args.seed, gamemode=args.gamemode
             )
         elif args.world_command == "rm":
-            wm.delete_from_storage(args.world_name)
+            wm.delete_cmd(args.world_location)
 
     def add(self, parent_subparsers: "argparse._SubParsersAction[Any]") -> None:
         """Add the world command subparser"""
@@ -125,11 +125,10 @@ class WorldCmd(Cmd):
         rm_parser = world_subparsers.add_parser(
             "rm", help="Delete a world from storage"
         )
-        rm_parser.add_argument(
-            "world_name",
-            metavar="world-name",
+        cp_parser.add_argument(
+            "world-location",
             type=str,
-            help="Name of the world",
+            help="storage:<world-name> or <instance-name>:<world-name>",
         )
         _add_mcio_dir_arg(rm_parser)
 
