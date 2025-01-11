@@ -15,7 +15,7 @@ def test_config(tmp_path: Path) -> Path:
     """Write test config to tmp_path dir. Returns tmp mcio_dir."""
     with mcio.config.ConfigManager(tmp_path, save=True) as cm:
         cm.config.instances[INST_NAME] = mcio.config.InstanceConfig(
-            id=INST_NAME,
+            name=INST_NAME,
             launch_version="test-launch-version",
             minecraft_version="test-mc-version",
         )

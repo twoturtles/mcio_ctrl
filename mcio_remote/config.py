@@ -25,7 +25,7 @@ DEFAULT_MINECRAFT_VERSION: Final[str] = "1.21.3"
 # XXX Consider saving necessary config in each entity's directory
 
 CONFIG_FILENAME: Final[str] = "mcio.yaml"
-CONFIG_VERSION: Final[int] = 0
+CONFIG_VERSION: Final[int] = 1
 InstanceName: TypeAlias = str
 WorldName: TypeAlias = str
 MinecraftVersion: TypeAlias = str
@@ -40,7 +40,7 @@ class WorldConfig:
 
 @dataclass
 class InstanceConfig:
-    id: InstanceName = ""
+    name: InstanceName = ""
     launch_version: MinecraftVersion = ""
     minecraft_version: MinecraftVersion = ""
     worlds: dict[WorldName, WorldConfig] = field(default_factory=dict)

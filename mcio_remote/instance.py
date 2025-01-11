@@ -97,7 +97,7 @@ class Installer:
 
         with config.ConfigManager(self.mcio_dir, save=True) as cfg_mgr:
             cfg_mgr.config.instances[self.instance_name] = config.InstanceConfig(
-                id=self.instance_name,
+                name=self.instance_name,
                 launch_version=fabric_minecraft_version,
                 minecraft_version=self.mc_version,
             )

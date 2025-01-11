@@ -1,12 +1,12 @@
 config_version: 0
 instances:
   Inst1:
-    id: Inst1
+    name: Inst1
     launch_version: fabric-loader-0.16.9-1.21.3
     minecraft_version: 1.21.3
     worlds: {}
   Inst2:
-    id: Inst2
+    name: Inst2
     launch_version: fabric-loader-0.16.9-1.21.3
     minecraft_version: 1.21.3
     worlds:
