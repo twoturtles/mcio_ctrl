@@ -122,11 +122,10 @@ class WorldCmd(Cmd):
             ),
         )
 
-        rm_parser = world_subparsers.add_parser(
-            "rm", help="Delete a world from storage"
-        )
-        cp_parser.add_argument(
-            "world-location",
+        rm_parser = world_subparsers.add_parser("rm", help="Delete a world")
+        rm_parser.add_argument(
+            "world_location",
+            metavar="world-location",
             type=str,
             help="storage:<world-name> or <instance-name>:<world-name>",
         )
@@ -195,9 +194,8 @@ class InstanceLaunchCmd(Cmd):
             help="Name of the Minecraft instance",
         )
         launch_parser.add_argument(
-            "--mcio_mode",
+            "--mcio-mode",
             "-m",
-            metavar="mcio-mode",
             type=str,
             choices=typing.get_args(types.McioMode),
             default="async",
