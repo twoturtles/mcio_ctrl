@@ -19,7 +19,7 @@ from . import util
 
 LOG = logging.getLogger(__name__)
 
-MCIO_PROTOCOL_VERSION: Final[int] = 1
+MCIO_PROTOCOL_VERSION: Final[int] = 2
 
 DEFAULT_HOST = "localhost"
 DEFAULT_ACTION_PORT = 4001  # 4ction
