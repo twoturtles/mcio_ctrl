@@ -15,17 +15,11 @@ import zmq.utils.monitor as zmon
 from numpy.typing import NDArray
 from PIL import Image, ImageDraw
 
-from . import util
+from . import types, util
 
 LOG = logging.getLogger(__name__)
 
 MCIO_PROTOCOL_VERSION: Final[int] = 2
-
-DEFAULT_HOST = "localhost"
-DEFAULT_ACTION_PORT = 4001  # 4ction
-DEFAULT_OBSERVATION_PORT = 8001  # 8bservation
-DEFAULT_ACTION_ADDR = f"tcp://{DEFAULT_HOST}:{DEFAULT_ACTION_PORT}"
-DEFAULT_OBSERVATION_ADDR = f"tcp://{DEFAULT_HOST}:{DEFAULT_OBSERVATION_PORT}"
 
 
 @dataclass
@@ -152,13 +146,17 @@ class _Connection:
 
     def __init__(
         self,
-        action_addr: str = DEFAULT_ACTION_ADDR,
-        observation_addr: str = DEFAULT_OBSERVATION_ADDR,
+        *,
+        action_port: int | None = None,
+        observation_port: int | None = None,
         wait_for_connection: bool = True,  # Block until connection is established
         connection_timeout: (
             float | None
         ) = None,  # Only used when wait_for_connection is True
     ):
+        action_port = action_port or types.DEFAULT_ACTION_PORT
+        observation_port = observation_port or types.DEFAULT_OBSERVATION_PORT
+
         LOG.info("Connecting to Minecraft")
         # Initialize ZMQ context
         self.zmq_context = zmq.Context()
@@ -166,13 +164,15 @@ class _Connection:
         # Socket to send commands
         self.action_socket = self.zmq_context.socket(zmq.PUSH)
         action_monitor = self.action_socket.get_monitor_socket()
-        self.action_socket.connect(action_addr)
+        self.action_socket.connect(f"tcp://{types.DEFAULT_HOST}:{action_port}")
         self.action_connected = threading.Event()
 
         # Socket to receive observation updates
         self.observation_socket = self.zmq_context.socket(zmq.PULL)
         observation_monitor = self.observation_socket.get_monitor_socket()
-        self.observation_socket.connect(observation_addr)
+        self.observation_socket.connect(
+            f"tcp://{types.DEFAULT_HOST}:{observation_port}"
+        )
         self.observation_connected = threading.Event()
 
         # Start monitor thread

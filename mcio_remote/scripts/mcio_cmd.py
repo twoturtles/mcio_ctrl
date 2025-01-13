@@ -136,7 +136,12 @@ class GuiCmd(Cmd):
     CMD = "gui"
 
     def run(self, args: argparse.Namespace) -> None:
-        gui = mcio_gui.MCioGUI(scale=args.scale, fps=args.fps)
+        gui = mcio_gui.MCioGUI(
+            scale=args.scale,
+            fps=args.fps,
+            action_port=args.action_port,
+            observation_port=args.observation_port,
+        )
         gui.run()
 
     def add(self, parent_subparsers: "argparse._SubParsersAction[Any]") -> None:
@@ -159,6 +164,18 @@ class GuiCmd(Cmd):
             help="Window scale factor",
         )
         gui_parser.add_argument("--fps", type=int, default=60, help="Set fps limit")
+        gui_parser.add_argument(
+            "--action-port",
+            type=int,
+            default=types.DEFAULT_ACTION_PORT,
+            help=f"Port for the action connection. Default {types.DEFAULT_ACTION_PORT}",
+        )
+        gui_parser.add_argument(
+            "--observation-port",
+            type=int,
+            default=types.DEFAULT_OBSERVATION_PORT,
+            help=f"Port for the observation connection. Default {types.DEFAULT_OBSERVATION_PORT}",
+        )
 
 
 class InstanceLaunchCmd(Cmd):
@@ -170,6 +187,8 @@ class InstanceLaunchCmd(Cmd):
             width=args.width,
             height=args.height,
             mcio_mode=args.mcio_mode,
+            action_port=args.action_port,
+            observation_port=args.observation_port,
             mcio_dir=args.mcio_dir,
             mc_username=args.username,
             world_name=args.world,
@@ -229,6 +248,18 @@ class InstanceLaunchCmd(Cmd):
             "-j",
             type=str,
             help="Path to java executable (defaults to Mojang's java installed with the instance)",
+        )
+        launch_parser.add_argument(
+            "--action-port",
+            type=int,
+            default=types.DEFAULT_ACTION_PORT,
+            help=f"Port for the action connection. Default {types.DEFAULT_ACTION_PORT}",
+        )
+        launch_parser.add_argument(
+            "--observation-port",
+            type=int,
+            default=types.DEFAULT_OBSERVATION_PORT,
+            help=f"Port for the observation connection. Default {types.DEFAULT_OBSERVATION_PORT}",
         )
 
         launch_group = launch_parser.add_mutually_exclusive_group()

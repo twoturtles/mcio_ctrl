@@ -30,10 +30,17 @@ class ControllerSync(ControllerCommon):
     """
 
     def __init__(
-        self, wait_for_connection: bool = True, connection_timeout: float | None = None
+        self,
+        *,
+        action_port: int | None = None,
+        observation_port: int | None = None,
+        wait_for_connection: bool = True,
+        connection_timeout: float | None = None,
     ):
         self._action_sequence_last_sent = 0
         self._mcio_conn = network._Connection(
+            action_port=action_port,
+            observation_port=observation_port,
             wait_for_connection=wait_for_connection,
             connection_timeout=connection_timeout,
         )
@@ -59,7 +66,12 @@ class ControllerAsync(ControllerCommon):
     """
 
     def __init__(
-        self, wait_for_connection: bool = True, connection_timeout: float | None = None
+        self,
+        *,
+        action_port: int | None = None,
+        observation_port: int | None = None,
+        wait_for_connection: bool = True,
+        connection_timeout: float | None = None,
     ):
         self._action_sequence_last_sent = 0
 
@@ -72,6 +84,8 @@ class ControllerAsync(ControllerCommon):
 
         self._observation_queue = util.LatestItemQueue[network.ObservationPacket]()
         self._mcio_conn = network._Connection(
+            action_port=action_port,
+            observation_port=observation_port,
             wait_for_connection=wait_for_connection,
             connection_timeout=connection_timeout,
         )

@@ -21,13 +21,17 @@ class MCioGUI:
         name: str = "MCio GUI",
         scale: float = 1.0,
         fps: int = 60,
+        action_port: int | None = None,
+        observation_port: int | None = None,
     ):
         self.scale = scale
         self.fps = fps if fps > 0 else 60
         self.running = True
         self.gui: gui.ImageStreamGui | None = None
         self.gui = gui.ImageStreamGui(name, scale=scale, width=800, height=600)
-        self.controller = controller.ControllerAsync()
+        self.controller = controller.ControllerAsync(
+            action_port=action_port, observation_port=observation_port
+        )
 
         # Set callbacks. Defaults are good enough for resize and focus.
         self.gui.set_callbacks(

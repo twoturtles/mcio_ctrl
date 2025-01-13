@@ -214,13 +214,21 @@ class Launcher:
 
     def get_show_command(self) -> list[str]:
         """For testing, return the command that will be run"""
-        cmd = [f"MCIO_MODE={self.run_options.mcio_mode}"]
+        env = self._get_env_options()
+        cmd = [f"{key}={value}" for key, value in env.items()]
         cmd += self.get_command()
         return cmd
 
     def _get_env(self) -> dict[str, str]:
         env = os.environ.copy()
+        env.update(self._get_env_options())
+        return env
+
+    def _get_env_options(self) -> dict[str, str]:
+        env: dict[str, str] = {}
         env["MCIO_MODE"] = self.run_options.mcio_mode
+        env["MCIO_ACTION_PORT"] = str(self.run_options.action_port)
+        env["MCIO_OBSERVATION_PORT"] = str(self.run_options.observation_port)
         return env
 
     def _update_option_argument(
