@@ -96,9 +96,6 @@ class ObservationPacket:
     def get_frame_with_cursor(self) -> NDArray[np.uint8]:
         # Convert frame PNG/JPEG bytes to image
         frame = Image.open(io.BytesIO(self.frame))
-        print(
-            frame.format, frame.mode, len(self.frame), frame.size[0] * frame.size[1] * 3
-        )
         if self.cursor_mode == glfw.CURSOR_NORMAL:
             # Add simulated cursor.
             draw = ImageDraw.Draw(frame)
