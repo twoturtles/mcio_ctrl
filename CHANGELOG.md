@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.3.0 - 2025-01-18
+## 0.3.0 - 2025-01-14
 - Breaking config change: instance id -> instance name
 - Set gamerule allowCommands to true in generated worlds
 - Add gamemode selection to world create
