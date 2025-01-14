@@ -3,7 +3,7 @@
 import uuid
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Final, Literal
+from typing import Annotated, Final, Literal, TypeAlias
 
 from . import config
 
@@ -15,8 +15,13 @@ DEFAULT_ACTION_PORT: Final[int] = 4001  # 4ction
 DEFAULT_OBSERVATION_PORT: Final[int] = 8001  # 8bservation
 DEFAULT_HOST = "localhost"  # For security, only localhost
 
-McioMode = Literal["off", "async", "sync"]
-DEFAULT_MCIO_MODE: Final[McioMode] = "async"
+MCioMode = Literal["off", "async", "sync"]
+DEFAULT_MCIO_MODE: Final[MCioMode] = "async"
+
+MCioFrameType = Literal["PNG", "JPEG"]
+DEFAULT_MCIO_FRAME_TYPE: Final[MCioFrameType] = "PNG"
+MCioFrameQuality: TypeAlias = Annotated[int, lambda x: 1 <= x <= 100]
+DEFAULT_MCIO_FRAME_QUALITY: Final[MCioFrameQuality] = 90
 
 
 @dataclass(kw_only=True)
@@ -28,6 +33,8 @@ class RunOptions:
         world_name: Launch directly into a world
         width: Frame width
         height: Frame height
+        frame_type: PNG/JPEG
+        frame_quality: JPEG quality setting
         mcio_mode: sync/async
         action_port: port for action connection
         observation_port: port for observation connection
@@ -41,7 +48,9 @@ class RunOptions:
 
     width: int = DEFAULT_WINDOW_WIDTH
     height: int = DEFAULT_WINDOW_HEIGHT
-    mcio_mode: McioMode = DEFAULT_MCIO_MODE
+    frame_type: MCioFrameType = DEFAULT_MCIO_FRAME_TYPE
+    frame_quality: MCioFrameQuality = DEFAULT_MCIO_FRAME_QUALITY
+    mcio_mode: MCioMode = DEFAULT_MCIO_MODE
 
     action_port: int = DEFAULT_ACTION_PORT
     observation_port: int = DEFAULT_OBSERVATION_PORT

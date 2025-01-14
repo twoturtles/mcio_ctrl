@@ -10,6 +10,7 @@
 - Send commands through env.step()
 - Minor command and logging changes
 - Configurable action/observation ports
+- Option to receive frames as JPEG
 - MCIO_PROTOCOL_VERSION = 2
 
 ## 0.2.0 - 2024-12-22

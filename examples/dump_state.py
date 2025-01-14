@@ -26,8 +26,8 @@ def recv_loop() -> None:
 
         pkt = cbor2.loads(pbytes)
         # The frame is too big to print, so replace with its length.
-        if "frame_png" in pkt:
-            pkt["frame_png"] = len(pkt["frame_png"])
+        if "frame" in pkt:
+            pkt["frame"] = len(pkt["frame"])
         pprint.pprint(pkt)
 
         # Print a PPS rate every second.

@@ -229,6 +229,8 @@ class Launcher:
         env["MCIO_MODE"] = self.run_options.mcio_mode
         env["MCIO_ACTION_PORT"] = str(self.run_options.action_port)
         env["MCIO_OBSERVATION_PORT"] = str(self.run_options.observation_port)
+        env["MCIO_FRAME_TYPE"] = str(self.run_options.frame_type)
+        env["MCIO_FRAME_QUALITY"] = str(self.run_options.frame_quality)
         return env
 
     def _update_option_argument(

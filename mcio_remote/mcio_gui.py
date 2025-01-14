@@ -76,7 +76,7 @@ class MCioGUI:
 
     def show(self, observation: network.ObservationPacket) -> None:
         """Show frame to the user"""
-        if observation.frame_png:
+        if observation.frame:
             # Link cursor mode to Minecraft.
             assert self.gui is not None
             self.gui.set_cursor_mode(observation.cursor_mode)

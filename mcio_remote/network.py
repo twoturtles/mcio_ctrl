@@ -34,22 +34,20 @@ class InventorySlot:
 class ObservationPacket:
     ## Control ##
     version: int = MCIO_PROTOCOL_VERSION
-    mode: str = ""  # "SYNC" or "ASYNC"
     sequence: int = 0
+    mode: str = ""  # "SYNC" or "ASYNC"
     last_action_sequence: int = (
         0  # This is the last action sequenced before this observation was generated
     )
     frame_sequence: int = 0  # Frame number since Minecraft started
 
     ## Observation ##
-    frame_png: bytes = field(
-        repr=False, default=b""
-    )  # Exclude the frame from repr output.
-    health: float = 0.0
+    frame: bytes = field(repr=False, default=b"")  # Exclude the frame from repr output.
     cursor_mode: int = (
         glfw.CURSOR_NORMAL
     )  # Either glfw.CURSOR_NORMAL (212993) or glfw.CURSOR_DISABLED (212995)
     cursor_pos: tuple[int, int] = field(default=(0, 0))  # x, y
+    health: float = 0.0
     # Minecraft uses float player positions. This indicates the position within the block.
     player_pos: tuple[float, float, float] = field(default=(0.0, 0.0, 0.0))
     player_pitch: float = 0
@@ -72,10 +70,8 @@ class ObservationPacket:
             # This means the received packet doesn't match ObservationPacket.
             # It may not even be a dict.
             LOG.error(f"ObservationPacket decode error: {type(e).__name__}: {e}")
-            if isinstance(decoded_dict, dict) and "frame_png" in decoded_dict:
-                decoded_dict["frame_png"] = (
-                    f"Frame len: {len(decoded_dict['frame_png'])}"
-                )
+            if isinstance(decoded_dict, dict) and "frame" in decoded_dict:
+                decoded_dict["frame"] = f"Frame len: {len(decoded_dict['frame'])}"
             LOG.error("Raw packet follows:")
             LOG.error(pprint.pformat(decoded_dict))
             return None
@@ -89,13 +85,20 @@ class ObservationPacket:
         return obs
 
     def __str__(self) -> str:
-        # frame_png is excluded from repr. Add its size to str. Slow?
-        frame = Image.open(io.BytesIO(self.frame_png))
+        # frame is excluded from repr. Add its size to str. Slow?
+        frame = Image.open(io.BytesIO(self.frame))
         return f"{repr(self)} frame.size={frame.size}"
 
+    def get_frame_type(self) -> str | None:
+        img = Image.open(io.BytesIO(self.frame))
+        return img.format  # "PNG" / "JPEG"
+
     def get_frame_with_cursor(self) -> NDArray[np.uint8]:
-        # Convert PNG bytes to image
-        frame = Image.open(io.BytesIO(self.frame_png))
+        # Convert frame PNG/JPEG bytes to image
+        frame = Image.open(io.BytesIO(self.frame))
+        print(
+            frame.format, frame.mode, len(self.frame), frame.size[0] * frame.size[1] * 3
+        )
         if self.cursor_mode == glfw.CURSOR_NORMAL:
             # Add simulated cursor.
             draw = ImageDraw.Draw(frame)

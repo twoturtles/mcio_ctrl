@@ -186,6 +186,8 @@ class InstanceLaunchCmd(Cmd):
             instance_name=args.instance_name,
             width=args.width,
             height=args.height,
+            frame_type=args.frame_type,
+            frame_quality=args.frame_quality,
             mcio_mode=args.mcio_mode,
             action_port=args.action_port,
             observation_port=args.observation_port,
@@ -216,9 +218,9 @@ class InstanceLaunchCmd(Cmd):
             "--mcio-mode",
             "-m",
             type=str,
-            choices=typing.get_args(types.McioMode),
-            default="async",
-            help="MCio mode: (default: async)",
+            choices=typing.get_args(types.MCioMode),
+            default=types.DEFAULT_MCIO_MODE,
+            help=f"MCio mode: (default: {types.DEFAULT_MCIO_FRAME_TYPE})",
         )
         _add_mcio_dir_arg(launch_parser)
         launch_parser.add_argument("--world", "-w", type=str, help="World name")
@@ -236,6 +238,21 @@ class InstanceLaunchCmd(Cmd):
             default=types.DEFAULT_WINDOW_HEIGHT,
             help=f"Window height (default: {types.DEFAULT_WINDOW_HEIGHT})",
         )
+
+        launch_parser.add_argument(
+            "--frame-type",
+            type=str,
+            choices=typing.get_args(types.MCioFrameType),
+            default=types.DEFAULT_MCIO_FRAME_TYPE,
+            help=f"Frame Type: (default: {types.DEFAULT_MCIO_FRAME_TYPE})",
+        )
+        launch_parser.add_argument(
+            "--frame-quality",
+            type=int,
+            default=types.DEFAULT_MCIO_FRAME_QUALITY,
+            help=f"JPEG quality (default: {types.DEFAULT_MCIO_FRAME_QUALITY})",
+        )
+
         launch_parser.add_argument(
             "--username",
             "-u",
