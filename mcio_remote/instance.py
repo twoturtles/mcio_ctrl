@@ -9,9 +9,7 @@ from typing import Any, Final
 import minecraft_launcher_lib as mll
 import requests
 
-from mcio_remote.types import RunOptions
-
-from . import config, util
+from . import config, types, util
 
 LOG = logging.getLogger(__name__)
 
@@ -140,7 +138,7 @@ class Installer:
 class Launcher:
     """Launch Minecraft"""
 
-    def __init__(self, run_options: RunOptions) -> None:
+    def __init__(self, run_options: types.RunOptions) -> None:
 
         self.run_options = run_options
         if self.run_options.instance_name is None:
@@ -233,7 +231,9 @@ class Launcher:
         env["MCIO_ACTION_PORT"] = str(self.run_options.action_port)
         env["MCIO_OBSERVATION_PORT"] = str(self.run_options.observation_port)
         env["MCIO_FRAME_TYPE"] = str(self.run_options.frame_type)
-        env["MCIO_FRAME_QUALITY"] = str(self.run_options.frame_quality)
+        if self.run_options.frame_type == "JPEG":
+            env["MCIO_FRAME_QUALITY"] = str(self.run_options.frame_quality)
+        env["MCIO_HIDE_WINDOW"] = str(self.run_options.hide_window)
         return env
 
     def _update_option_argument(
