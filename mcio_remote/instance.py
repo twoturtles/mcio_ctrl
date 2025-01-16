@@ -48,6 +48,9 @@ class Installer:
     def install(self) -> None:
         print(f"Installing Minecraft {self.mc_version} in {self.instance_dir}...")
         progress = util.InstallProgress()
+        # mll install uses more threads than connections, so urllib3 gives a warning.
+        # It's harmless, so silence the warning.
+        logging.getLogger("urllib3.connectionpool").setLevel(logging.ERROR)
         mll.install.install_minecraft_version(
             self.mc_version, self.instance_dir, callback=progress.get_callbacks()
         )
