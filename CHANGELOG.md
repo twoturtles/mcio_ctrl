@@ -1,7 +1,12 @@
 # Changelog
 
+## 0.3.2 - 2025-01-15
+- Silence log warning during install
+- MCIO_PROTOCOL_VERSION = 2
+
 ## 0.3.1 - 2025-01-14
 - Remove debug print
+- MCIO_PROTOCOL_VERSION = 2
 
 ## 0.3.0 - 2025-01-14
 - Breaking config change: instance id -> instance name
