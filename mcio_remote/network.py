@@ -19,7 +19,7 @@ from . import types, util
 
 LOG = logging.getLogger(__name__)
 
-MCIO_PROTOCOL_VERSION: Final[int] = 2
+MCIO_PROTOCOL_VERSION: Final[int] = 3
 
 
 @dataclass
@@ -116,6 +116,7 @@ class ActionPacket:
     commands: list[str] = field(
         default_factory=list
     )  # Server commands to execute (teleport, time set, etc.). Do not include the /
+    clear_input: bool = False  # Clear all previous key/button presses
     stop: bool = False  # Tell Minecraft to exit
 
     ## Action ##

@@ -2,6 +2,8 @@
 
 ## 0.4.0 - 2025-01-XX
 - Add option to hide Minecraft window
+- Add clear_input action
+- MCIO_PROTOCOL_VERSION = 3
 
 ## 0.3.2 - 2025-01-15
 - Silence log warning during install
