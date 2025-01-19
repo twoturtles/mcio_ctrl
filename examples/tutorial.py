@@ -1,24 +1,28 @@
-"""Similar to the MineRL "Hello World" tutorial
-"""
+"""Similar to the MineRL "Hello World" tutorial.
+Just do random steps and display the results"""
 
 import argparse
 import pprint
 import sys
-import textwrap
 
 import mcio_remote as mcio
 from mcio_remote.mcio_env.envs import mcio_env
+
+# import gymnasium as gym
 
 
 def tutorial(steps: int, instance_name: str | None, world_name: str | None) -> None:
     opts = mcio.types.RunOptions(
         instance_name=instance_name,
         world_name=world_name,
+        hide_window=True,
         mcio_mode="sync",
         width=640,
         height=480,
     )
     launch = True if instance_name is not None else False
+    # gym.make() works, but I prefer just creating the env instance directly.
+    # env = gym.make("mcio_env/MCioEnv-v0", render_mode="human", run_options=opts, launch=launch)
     env = mcio_env.MCioEnv(opts, launch=launch, render_mode="human")
 
     if steps == 0:
@@ -26,7 +30,7 @@ def tutorial(steps: int, instance_name: str | None, world_name: str | None) -> N
     step = 0
     setup_commands = [
         "time set day",
-        "teleport @s 14 135 140 180 0",
+        # "teleport @s 14 135 140 180 0",
         "summon minecraft:sheep ~2 ~2 ~2",
         "summon minecraft:cow ~-2 ~2 ~-2",
     ]
@@ -85,14 +89,7 @@ def obs_to_string(obs: mcio_env.MCioObservation) -> str:
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(
-        description=textwrap.dedent(
-            """
-            Demonstrate actions and observations
-                                    """
-        ),
-        formatter_class=argparse.RawDescriptionHelpFormatter,
-    )
+    parser = argparse.ArgumentParser(description="Demonstrate actions and observations")
 
     mcio.util.logging_add_arg(parser)
 
