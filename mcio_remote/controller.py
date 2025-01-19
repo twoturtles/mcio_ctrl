@@ -159,6 +159,7 @@ class ControllerAsync(ControllerCommon):
                 # This means the main (processing) thread isn't reading fast enough.
                 # The first few are always dropped, presumably as we empty the initial zmq buffer
                 # that built up during pause for "slow joiner syndrome".
+                # XXX This should not longer happen since we're using push/pull? Change log level?
                 LOG.debug("Dropped observation packet from processing queue")
                 pass
 

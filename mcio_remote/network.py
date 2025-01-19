@@ -230,10 +230,14 @@ class _Connection:
                 if not block:
                     # Non-blocking, nothing available
                     return None
-                # Blocking, need to try again.
-                # Doing our own sleep so we can do a clean shutdown on close()
-                # XXX Turn into poll
-                time.sleep(0.01)
+                # Blocking mode - we don't want to block in recv or poll because that
+                # prevents a clean exit when self._running is cleared.
+                # Do a short poll so we're not busy waiting then try again.
+                try:
+                    self.observation_socket.poll(10, zmq.POLLIN)
+                except zmq.error.ZMQError:
+                    # This can happen on close because the main thread closes the socket.
+                    pass
             else:
                 # recv returned
                 # This may also return None if there was an unpack error.
