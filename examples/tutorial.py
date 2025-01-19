@@ -36,16 +36,21 @@ def tutorial(steps: int, instance_name: str | None, world_name: str | None) -> N
     done = False
 
     while not done and step < steps:
+        action = env.action_space.sample()
+
         # Cycle jumping on and off
         cycle = (steps // 50) % 2
-        action = env.action_space.sample()
         if cycle == 0:
             action["keys"]["SPACE"] = mcio_env.PRESS
         elif cycle == 1:
             action["keys"]["SPACE"] = mcio_env.NO_PRESS
 
-        # Go forward and press attack button
+        # Limit some actions
+        action["cursor_pos_rel"] = action["cursor_pos_rel"].clip(-20, 20)
         action["keys"]["E"] = mcio_env.NO_PRESS
+        action["keys"]["S"] = mcio_env.NO_PRESS
+
+        # Go forward and press attack button
         action["keys"]["W"] = mcio_env.PRESS
         action["mouse_buttons"]["LEFT"] = mcio_env.PRESS
         observation, reward, terminated, truncated, info = env.step(action)
