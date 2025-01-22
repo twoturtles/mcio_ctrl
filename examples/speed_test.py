@@ -87,7 +87,7 @@ def main() -> None:
 
     env.close()
     print(
-        f"mode=SPEED-TEST {args.mode} steps={args.steps} setup={setup_time:.2f} "
+        f"SPEED-TEST mode={args.mode} steps={args.steps} setup={setup_time:.2f} "
         f"run={run_time:.2f} steps_per_sec={args.steps/run_time:.2f}"
     )
 
