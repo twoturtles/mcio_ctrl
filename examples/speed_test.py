@@ -5,7 +5,7 @@ import time
 from collections import defaultdict
 from typing import Any
 
-from mcio_remote import types
+import mcio_remote as mcio
 from mcio_remote.mcio_env.envs import mcio_env
 
 
@@ -24,7 +24,7 @@ def minerl_setup() -> Any:
 def mcio_setup() -> mcio_env.MCioEnv:
     # mcio inst launch DemoInstance -m sync -w Survival1 -W 640 -H 360
     # env = mcio_env.MCioEnv(render_mode=None, width=640, height=360)
-    opts = types.RunOptions(
+    opts = mcio.types.RunOptions(
         instance_name="DemoInstance",
         world_name="DemoWorld",
         width=640,
@@ -57,11 +57,13 @@ def mcio_run(env: mcio_env.MCioEnv, num_steps: int) -> None:
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
+    mcio.util.logging_add_arg(parser)
 
     parser.add_argument("mode", type=str, choices=["mcio", "minerl"], help="Test mode")
     parser.add_argument("--steps", "-s", type=int, default=1000, help="Number of steps")
 
     args = parser.parse_args()
+    mcio.util.logging_init(args=args)
     return args
 
 
@@ -82,8 +84,11 @@ def main() -> None:
     else:
         mcio_run(env, args.steps)
     run_time = time.perf_counter() - start
+
+    env.close()
     print(
-        f"steps={args.steps} setup={setup_time} run={run_time} steps_per_sec={args.steps/run_time:.2f}"
+        f"mode=SPEED-TEST {args.mode} steps={args.steps} setup={setup_time:.2f} "
+        f"run={run_time:.2f} steps_per_sec={args.steps/run_time:.2f}"
     )
 
 
