@@ -11,7 +11,9 @@ def minerl_setup() -> Any:
     # gym version 0.23.1
     import gym  # type: ignore
 
-    # import minerl  # minerl version 1.0.2
+    # minerl version 1.0.2
+    import minerl  # type: ignore # noqa: F401  # needed for gym registration
+
     # logging.basicConfig(level=logging.DEBUG)
     # Defaults to frame shape (360, 640, 3)
     env = gym.make("MineRLBasaltFindCave-v0")
@@ -19,7 +21,7 @@ def minerl_setup() -> Any:
     return env
 
 
-def mcio_setup() -> Any:
+def mcio_setup(render: bool) -> Any:
     import mcio_remote as mcio
     from mcio_remote.mcio_env.envs import mcio_env
 
@@ -33,12 +35,13 @@ def mcio_setup() -> Any:
         mcio_mode="sync",
         hide_window=True,
     )
-    env = mcio_env.MCioEnv(opts, launch=True)
+    render_mode = "human" if render else None
+    env = mcio_env.MCioEnv(opts, launch=True, render_mode=render_mode)
     env.reset()
     return env
 
 
-def minerl_run(env: Any, num_steps: int) -> None:
+def minerl_run(env: Any, num_steps: int, render: bool) -> None:
     action: dict[str, Any] = defaultdict(
         int
     )  # This will return 0 for any unspecified key
@@ -46,9 +49,11 @@ def minerl_run(env: Any, num_steps: int) -> None:
         if step % 50 == 0:
             print(f"Step {step + 1}: {action}")
         env.step(action)
+        if render:
+            env.render()
 
 
-def mcio_run(env: Any, num_steps: int) -> None:
+def mcio_run(env: Any, num_steps: int, render: bool) -> None:
     from mcio_remote.mcio_env.envs import mcio_env
 
     assert isinstance(env, mcio_env.MCioEnv)
@@ -57,6 +62,8 @@ def mcio_run(env: Any, num_steps: int) -> None:
         if step % 50 == 0:
             print(f"Step {step + 1}: {action}")
         env.step(action)
+        if render:
+            env.render()
 
 
 def parse_args() -> argparse.Namespace:
@@ -64,6 +71,9 @@ def parse_args() -> argparse.Namespace:
 
     parser.add_argument("mode", type=str, choices=["mcio", "minerl"], help="Test mode")
     parser.add_argument("--steps", "-s", type=int, default=1000, help="Number of steps")
+    parser.add_argument(
+        "--render", "-r", action="store_true", help="render (show output frames)"
+    )
 
     args = parser.parse_args()
     return args
@@ -77,14 +87,14 @@ def main() -> None:
     if args.mode == "minerl":
         env = minerl_setup()
     else:
-        env = mcio_setup()
+        env = mcio_setup(args.render)
     setup_time = time.perf_counter() - start
 
     start = time.perf_counter()
     if args.mode == "minerl":
-        minerl_run(env, args.steps)
+        minerl_run(env, args.steps, args.render)
     else:
-        mcio_run(env, args.steps)
+        mcio_run(env, args.steps, args.render)
     run_time = time.perf_counter() - start
 
     env.close()
