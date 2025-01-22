@@ -1,12 +1,10 @@
 """Basic step speed test"""
 
 import argparse
+import logging
 import time
 from collections import defaultdict
 from typing import Any
-
-import mcio_remote as mcio
-from mcio_remote.mcio_env.envs import mcio_env
 
 
 def minerl_setup() -> Any:
@@ -21,7 +19,10 @@ def minerl_setup() -> Any:
     return env
 
 
-def mcio_setup() -> mcio_env.MCioEnv:
+def mcio_setup() -> Any:
+    import mcio_remote as mcio
+    from mcio_remote.mcio_env.envs import mcio_env
+
     # mcio inst launch DemoInstance -m sync -w Survival1 -W 640 -H 360
     # env = mcio_env.MCioEnv(render_mode=None, width=640, height=360)
     opts = mcio.types.RunOptions(
@@ -47,7 +48,10 @@ def minerl_run(env: Any, num_steps: int) -> None:
         env.step(action)
 
 
-def mcio_run(env: mcio_env.MCioEnv, num_steps: int) -> None:
+def mcio_run(env: Any, num_steps: int) -> None:
+    from mcio_remote.mcio_env.envs import mcio_env
+
+    assert isinstance(env, mcio_env.MCioEnv)
     action = env.get_noop_action()
     for step in range(num_steps):
         if step % 50 == 0:
@@ -57,20 +61,18 @@ def mcio_run(env: mcio_env.MCioEnv, num_steps: int) -> None:
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
-    mcio.util.logging_add_arg(parser)
 
     parser.add_argument("mode", type=str, choices=["mcio", "minerl"], help="Test mode")
     parser.add_argument("--steps", "-s", type=int, default=1000, help="Number of steps")
 
     args = parser.parse_args()
-    mcio.util.logging_init(args=args)
     return args
 
 
 def main() -> None:
+    logging.basicConfig(level=logging.INFO)
     args = parse_args()
 
-    env: mcio_env.MCioEnv | Any
     start = time.perf_counter()
     if args.mode == "minerl":
         env = minerl_setup()
