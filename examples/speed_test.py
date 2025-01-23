@@ -23,7 +23,7 @@ def minerl_setup() -> Any:
     return env
 
 
-def mcio_setup(render: bool) -> Any:
+def mcio_setup(render: bool, connect: bool) -> Any:
     import mcio_remote as mcio
     from mcio_remote.mcio_env.envs import mcio_env
 
@@ -38,7 +38,8 @@ def mcio_setup(render: bool) -> Any:
         hide_window=True,
     )
     render_mode = "human" if render else None
-    env = mcio_env.MCioEnv(opts, launch=True, render_mode=render_mode)
+    launch = not connect
+    env = mcio_env.MCioEnv(opts, launch=launch, render_mode=render_mode)
     env.reset()
     return env
 
@@ -74,6 +75,12 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--render", "-r", action="store_true", help="render (show output frames)"
     )
+    parser.add_argument(
+        "--connect",
+        "-c",
+        action="store_true",
+        help="Connect to a separately launched Minecraft (mcio only)",
+    )
 
     args = parser.parse_args()
     return args
@@ -87,7 +94,7 @@ def main() -> None:
     if args.mode == "minerl":
         env = minerl_setup()
     else:
-        env = mcio_setup(args.render)
+        env = mcio_setup(args.render, args.connect)
     setup_time = time.perf_counter() - start
 
     start = time.perf_counter()
