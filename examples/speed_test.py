@@ -6,6 +6,8 @@ import time
 from collections import defaultdict
 from typing import Any
 
+from tqdm import tqdm
+
 
 def minerl_setup() -> Any:
     # gym version 0.23.1
@@ -45,9 +47,8 @@ def minerl_run(env: Any, num_steps: int, render: bool) -> None:
     action: dict[str, Any] = defaultdict(
         int
     )  # This will return 0 for any unspecified key
-    for step in range(num_steps):
-        if step % 50 == 0:
-            print(f"Step {step + 1}: {action}")
+    # action["camera"] = [0, 10]
+    for _ in tqdm(range(num_steps)):
         env.step(action)
         if render:
             env.render()
@@ -58,9 +59,8 @@ def mcio_run(env: Any, num_steps: int, render: bool) -> None:
 
     assert isinstance(env, mcio_env.MCioEnv)
     action = env.get_noop_action()
-    for step in range(num_steps):
-        if step % 50 == 0:
-            print(f"Step {step + 1}: {action}")
+    # action["cursor_pos_rel"] = [10, 0]
+    for _ in tqdm(range(num_steps)):
         env.step(action)
         if render:
             env.render()
