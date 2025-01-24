@@ -43,6 +43,9 @@ class ObservationPacket:
 
     ## Observation ##
     frame: bytes = field(repr=False, default=b"")  # Exclude the frame from repr output.
+    frame_width: int = 0
+    frame_height: int = 0
+    frame_type: str = "RAW"
     cursor_mode: int = (
         glfw.CURSOR_NORMAL
     )  # Either glfw.CURSOR_NORMAL (212993) or glfw.CURSOR_DISABLED (212995)
@@ -90,18 +93,22 @@ class ObservationPacket:
         return f"{repr(self)} frame.size={frame.size}"
 
     def get_frame_type(self) -> str | None:
-        img = Image.open(io.BytesIO(self.frame))
-        return img.format  # "PNG" / "JPEG"
+        return self.frame_type  # "PNG" / "JPEG" / "RAW"
 
     def get_frame_with_cursor(self) -> NDArray[np.uint8]:
-        # Convert frame PNG/JPEG bytes to image
-        frame = Image.open(io.BytesIO(self.frame))
-        if self.cursor_mode == glfw.CURSOR_NORMAL:
-            # Add simulated cursor.
-            draw = ImageDraw.Draw(frame)
-            x, y = self.cursor_pos[0], self.cursor_pos[1]
-            radius = 5
-            draw.ellipse([x - radius, y - radius, x + radius, y + radius], fill="red")
+        if self.get_frame_type().upper() == "RAW":
+            frame = np.frombuffer(self.frame, dtype=np.uint8)
+            frame = frame.reshape((self.frame_height, self.frame_width, 3))
+            # TODO: We need a faster way drawing cursor without PIL
+        else:
+            # Convert frame PNG/JPEG bytes to image
+            frame = Image.open(io.BytesIO(self.frame))
+            if self.cursor_mode == glfw.CURSOR_NORMAL:
+                # Add simulated cursor.
+                draw = ImageDraw.Draw(frame)
+                x, y = self.cursor_pos[0], self.cursor_pos[1]
+                radius = 5
+                draw.ellipse([x - radius, y - radius, x + radius, y + radius], fill="red")
         return np.ascontiguousarray(frame)
 
 
