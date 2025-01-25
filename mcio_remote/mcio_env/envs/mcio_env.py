@@ -38,6 +38,7 @@ PRESS = np.int64(1)
 
 CURSOR_REL_BOUND_DEFAULT = 1000
 NO_CURSOR_REL = np.array((0.0, 0.0), dtype=np.float32)
+NO_CURSOR_REL.flags.writeable = False
 
 # XXX gymnasium.utils.env_checker.check_env
 
@@ -155,7 +156,7 @@ class MCioEnv(gym.Env[MCioObservation, MCioAction]):
         for name in MINECRAFT_MOUSE_BUTTONS.keys():
             action["mouse_buttons"][name] = NO_PRESS
 
-        action["cursor_pos_rel"] = NO_CURSOR_REL
+        action["cursor_pos_rel"] = NO_CURSOR_REL.copy()
 
         assert action in self.action_space
         return action
