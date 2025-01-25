@@ -15,9 +15,8 @@ def recv_loop() -> None:
     zmq_context = zmq.Context()
 
     # Socket to receive observation updates
-    observation_socket = zmq_context.socket(zmq.SUB)
+    observation_socket = zmq_context.socket(zmq.PULL)
     observation_socket.connect(f"tcp://localhost:{OBSERVATION_PORT}")
-    observation_socket.setsockopt_string(zmq.SUBSCRIBE, "")
 
     start = time.time()
     pkt_count = 0
