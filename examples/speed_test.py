@@ -44,27 +44,36 @@ def mcio_setup(render: bool, connect: bool) -> Any:
     return env
 
 
-def minerl_run(env: Any, num_steps: int, render: bool) -> None:
+def minerl_run(
+    env: Any, num_steps: int, render: bool, steps_completed: list[int]
+) -> None:
     action: dict[str, Any] = defaultdict(
         int
     )  # This will return 0 for any unspecified key
-    # action["camera"] = [0, 10]
+    action["camera"] = [0, 10]
+    print(action)
     for _ in tqdm(range(num_steps)):
         env.step(action)
         if render:
             env.render()
+        steps_completed[0] += 1
 
 
-def mcio_run(env: Any, num_steps: int, render: bool) -> None:
+def mcio_run(
+    env: Any, num_steps: int, render: bool, steps_completed: list[int]
+) -> None:
     from mcio_remote.mcio_env.envs import mcio_env
 
     assert isinstance(env, mcio_env.MCioEnv)
     action = env.get_noop_action()
-    # action["cursor_pos_rel"] = [10, 0]
+    # No-op action is slower?
+    action["cursor_pos_rel"][:] = [10, 0]
+    print(action)
     for _ in tqdm(range(num_steps)):
         env.step(action)
         if render:
             env.render()
+        steps_completed[0] += 1
 
 
 def parse_args() -> argparse.Namespace:
@@ -98,16 +107,21 @@ def main() -> None:
     setup_time = time.perf_counter() - start
 
     start = time.perf_counter()
-    if args.mode == "minerl":
-        minerl_run(env, args.steps, args.render)
-    else:
-        mcio_run(env, args.steps, args.render)
+    steps_completed = [0]
+    try:
+        if args.mode == "minerl":
+            minerl_run(env, args.steps, args.render, steps_completed)
+        else:
+            mcio_run(env, args.steps, args.render, steps_completed)
+    except KeyboardInterrupt:
+        print("Exiting...")
     run_time = time.perf_counter() - start
-
     env.close()
+
+    steps = steps_completed[0]
     print(
-        f"SPEED-TEST mode={args.mode} steps={args.steps} setup={setup_time:.2f} "
-        f"run={run_time:.2f} steps_per_sec={args.steps/run_time:.2f}"
+        f"SPEED-TEST mode={args.mode} steps={steps} setup={setup_time:.2f} "
+        f"run={run_time:.2f} steps_per_sec={steps/run_time:.2f}"
     )
 
 
