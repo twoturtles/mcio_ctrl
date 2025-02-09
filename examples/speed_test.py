@@ -50,7 +50,7 @@ def minerl_run(
     action: dict[str, Any] = defaultdict(
         int
     )  # This will return 0 for any unspecified key
-    action["camera"] = [0, 10]
+    # action["camera"] = [0, 10]
     print(action)
     for _ in tqdm(range(num_steps)):
         env.step(action)
@@ -66,10 +66,12 @@ def mcio_run(
 
     assert isinstance(env, mcio_env.MCioEnv)
     action = env.get_noop_action()
-    # No-op action is slower?
-    action["cursor_pos_rel"][:] = [10, 0]
+    # action["cursor_pos_rel"][:] = [10, 0]
     print(action)
+    # flip = 0
     for _ in tqdm(range(num_steps)):
+        # action["mouse_buttons"]["RIGHT"] = flip
+        # flip = 1 - flip
         env.step(action)
         if render:
             env.render()

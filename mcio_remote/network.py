@@ -1,4 +1,6 @@
-# Code for communicating with the MCio mod
+""" Packet definitions and low-level connection code."""
+
+import enum
 import io
 import logging
 import pprint
@@ -29,6 +31,18 @@ class InventorySlot:
     count: int
 
 
+class FrameType(enum.StrEnum):
+    @staticmethod
+    def _generate_next_value_(
+        name: str, start: int, count: int, last_values: list[str]
+    ) -> str:
+        return name
+
+    RAW = enum.auto()
+    PNG = enum.auto()
+    JPEG = enum.auto()
+
+
 # Observation packets received from MCio
 @dataclass
 class ObservationPacket:
@@ -45,7 +59,7 @@ class ObservationPacket:
     frame: bytes = field(repr=False, default=b"")  # Exclude the frame from repr output.
     frame_width: int = 0
     frame_height: int = 0
-    frame_type: str = "RAW"
+    frame_type: FrameType = FrameType.RAW  # RAW, PNG, JPEG
     cursor_mode: int = (
         glfw.CURSOR_NORMAL
     )  # Either glfw.CURSOR_NORMAL (212993) or glfw.CURSOR_DISABLED (212995)
@@ -88,27 +102,31 @@ class ObservationPacket:
         return obs
 
     def __str__(self) -> str:
-        # frame is excluded from repr. Add its size to str. Slow?
-        frame = Image.open(io.BytesIO(self.frame))
-        return f"{repr(self)} frame.size={frame.size}"
+        # frame is excluded from repr. Add its shape to str.
+        return f"{repr(self)} frame.shape=({self.frame_height}, {self.frame_width})"
 
     def get_frame_type(self) -> str | None:
         return self.frame_type  # "PNG" / "JPEG" / "RAW"
 
     def get_frame_with_cursor(self) -> NDArray[np.uint8]:
-        if self.get_frame_type().upper() == "RAW":
+        frame: NDArray[np.uint8]
+        if self.frame_type == FrameType.RAW:
             frame = np.frombuffer(self.frame, dtype=np.uint8)
             frame = frame.reshape((self.frame_height, self.frame_width, 3))
             # TODO: We need a faster way drawing cursor without PIL
         else:
             # Convert frame PNG/JPEG bytes to image
-            frame = Image.open(io.BytesIO(self.frame))
+            img_frame = Image.open(io.BytesIO(self.frame))
             if self.cursor_mode == glfw.CURSOR_NORMAL:
                 # Add simulated cursor.
-                draw = ImageDraw.Draw(frame)
+                draw = ImageDraw.Draw(img_frame)
                 x, y = self.cursor_pos[0], self.cursor_pos[1]
                 radius = 5
-                draw.ellipse([x - radius, y - radius, x + radius, y + radius], fill="red")
+                draw.ellipse(
+                    [x - radius, y - radius, x + radius, y + radius], fill="red"
+                )
+            frame = np.array(img_frame, dtype=np.uint8)
+
         return np.ascontiguousarray(frame)
 
 

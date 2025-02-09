@@ -3,6 +3,8 @@
 ## 0.4.0 - 2025-01-XX
 - Add option to hide Minecraft window
 - Add clear_input action
+- Add raw frame support and make it the default
+- Support other MCio 0.4.0 changes
 - MCIO_PROTOCOL_VERSION = 3
 
 ## 0.3.2 - 2025-01-15
