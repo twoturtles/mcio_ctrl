@@ -7,7 +7,7 @@ import pprint
 import threading
 import time
 from dataclasses import asdict, dataclass, field
-from typing import Final, Optional
+from typing import Final, Union
 
 import cbor2
 import glfw  # type: ignore
@@ -74,7 +74,7 @@ class ObservationPacket:
     inventory_offhand: list[InventorySlot] = field(default_factory=list)
 
     @classmethod
-    def unpack(cls, data: bytes) -> Optional["ObservationPacket"]:
+    def unpack(cls, data: bytes) -> Union["ObservationPacket", None]:
         try:
             decoded_dict = cbor2.loads(data)
         except Exception as e:
@@ -100,6 +100,12 @@ class ObservationPacket:
             return None
 
         return obs
+
+    def pack(self) -> bytes:
+        """For testing"""
+        pkt_dict = asdict(self)
+        LOG.debug(pkt_dict)
+        return cbor2.dumps(pkt_dict)
 
     def __str__(self) -> str:
         # frame is excluded from repr. Add its shape to str.
@@ -165,6 +171,12 @@ class ActionPacket:
         LOG.debug(pkt_dict)
         return cbor2.dumps(pkt_dict)
 
+    @classmethod
+    def unpack(cls, data: bytes) -> "ActionPacket":
+        """For testing"""
+        decoded_dict = cbor2.loads(data)
+        return cls(**decoded_dict)
+
 
 class _Connection:
     """Connections to MCio mod. Used by Controller.
@@ -179,7 +191,7 @@ class _Connection:
         connection_timeout: (
             float | None
         ) = None,  # Only used when wait_for_connection is True
-    ):
+    ) -> None:
         action_port = action_port or types.DEFAULT_ACTION_PORT
         observation_port = observation_port or types.DEFAULT_OBSERVATION_PORT
 
@@ -368,3 +380,34 @@ def get_zmq_event_names() -> dict[int, str]:
             value = getattr(zmq, name)
             events[value] = name
     return events
+
+
+class MockMinecraft:
+    """Provide the Minecraft side of the MCio connection for testing."""
+
+    def __init__(self) -> None:
+        self.zmq_context = zmq.Context()
+        self.action_socket = self.zmq_context.socket(zmq.PULL)
+        self.action_socket.bind(
+            f"tcp://{types.DEFAULT_HOST}:{types.DEFAULT_ACTION_PORT}"
+        )
+        self.observation_socket = self.zmq_context.socket(zmq.PUSH)
+        self.observation_socket.bind(
+            f"tcp://{types.DEFAULT_HOST}:{types.DEFAULT_OBSERVATION_PORT}"
+        )
+
+    def recv_action(self, raw: bool = False) -> ActionPacket | bytes:
+        pbytes = self.action_socket.recv()
+        if raw:
+            return pbytes
+        else:
+            return ActionPacket.unpack(pbytes)
+
+    def send_observation(
+        self, obs: ObservationPacket | bytes, raw: bool = False
+    ) -> None:
+        if raw:
+            self.observation_socket.send(obs)
+        else:
+            assert isinstance(obs, ObservationPacket)
+            self.observation_socket.send(obs.pack())

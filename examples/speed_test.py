@@ -1,4 +1,4 @@
-"""Basic step speed test"""
+"""Basic step speed test. Drives MCio in sync mode as fast as possible."""
 
 import argparse
 import logging
