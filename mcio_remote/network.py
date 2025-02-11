@@ -7,7 +7,7 @@ import pprint
 import threading
 import time
 from dataclasses import asdict, dataclass, field
-from typing import Final, Union
+from typing import Callable, Final, Union
 
 import cbor2
 import glfw  # type: ignore
@@ -51,7 +51,7 @@ class ObservationPacket:
     sequence: int = 0
     mode: str = ""  # "SYNC" or "ASYNC"
     last_action_sequence: int = (
-        0  # This is the last action sequenced before this observation was generated
+        0  # This is the last action sequence processed by Minecraft before this observation was generated
     )
     frame_sequence: int = 0  # Frame number since Minecraft started
 
@@ -59,7 +59,7 @@ class ObservationPacket:
     frame: bytes = field(repr=False, default=b"")  # Exclude the frame from repr output.
     frame_width: int = 0
     frame_height: int = 0
-    frame_type: FrameType = FrameType.RAW  # RAW, PNG, JPEG
+    frame_type: FrameType = FrameType.RAW
     cursor_mode: int = (
         glfw.CURSOR_NORMAL
     )  # Either glfw.CURSOR_NORMAL (212993) or glfw.CURSOR_DISABLED (212995)
@@ -383,9 +383,19 @@ def get_zmq_event_names() -> dict[int, str]:
 
 
 class MockMinecraft:
-    """Provide the Minecraft side of the MCio connection for testing."""
+    """Provide the Minecraft side of the MCio connection for testing"""
 
-    def __init__(self) -> None:
+    def __init__(
+        self,
+        use_threads: bool = True,
+        get_observation_cb: Callable[[], ObservationPacket] | None = None,
+        process_action_cb: Callable[[ActionPacket], None] | None = None,
+    ) -> None:
+        # Callback functions
+        self.observation_generator = get_observation_cb or (lambda: ObservationPacket())
+        self.action_processor = process_action_cb or (lambda x: None)
+
+        # ZMQ setup
         self.zmq_context = zmq.Context()
         self.action_socket = self.zmq_context.socket(zmq.PULL)
         self.action_socket.bind(
@@ -396,18 +406,49 @@ class MockMinecraft:
             f"tcp://{types.DEFAULT_HOST}:{types.DEFAULT_OBSERVATION_PORT}"
         )
 
-    def recv_action(self, raw: bool = False) -> ActionPacket | bytes:
-        pbytes = self.action_socket.recv()
-        if raw:
-            return pbytes
-        else:
-            return ActionPacket.unpack(pbytes)
+        if use_threads:
+            self._thread_init()
 
-    def send_observation(
-        self, obs: ObservationPacket | bytes, raw: bool = False
-    ) -> None:
-        if raw:
-            self.observation_socket.send(obs)
-        else:
-            assert isinstance(obs, ObservationPacket)
-            self.observation_socket.send(obs.pack())
+    def _thread_init(self) -> None:
+        # Thread setup
+        self.running = threading.Event()
+        self.running.set()
+
+        self._obs_thread = threading.Thread(
+            target=self._obs_thread_fn, name="MockGenObservationThread"
+        )
+        self._obs_thread.daemon = True
+        self._obs_thread.start()
+
+        self._act_thread = threading.Thread(
+            target=self._act_thread_fn, name="MockProcessActionThread"
+        )
+        self._act_thread.daemon = True
+        self._act_thread.start()
+
+    def recv_action(self) -> ActionPacket:
+        pbytes = self.action_socket.recv()
+        return ActionPacket.unpack(pbytes)
+
+    def send_observation(self, obs: ObservationPacket) -> None:
+        self.observation_socket.send(obs.pack())
+
+    def _obs_thread_fn(self) -> None:
+        LOG.info(f"{threading.current_thread().name} started")
+        while self.running.is_set():
+            try:
+                obs = self.observation_generator()
+                self.send_observation(obs)
+            except Exception as e:
+                LOG.error(f"Error in observation generation: {e}")
+        LOG.info(f"{threading.current_thread().name} done")
+
+    def _act_thread_fn(self) -> None:
+        LOG.info(f"{threading.current_thread().name} started")
+        while self.running.is_set():
+            try:
+                act = self.recv_action()
+                self.action_processor(act)
+            except Exception as e:
+                LOG.error(f"Error in action processing: {e}")
+        LOG.info(f"{threading.current_thread().name} done")
