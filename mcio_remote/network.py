@@ -391,9 +391,18 @@ class MockMinecraft:
         get_observation_cb: Callable[[], ObservationPacket] | None = None,
         process_action_cb: Callable[[ActionPacket], None] | None = None,
     ) -> None:
+        """_summary_
+
+        Args:
+            use_threads - Send and recv using threads
+            get_observation_cb - Callback to generate observation packets. Defaults to empty packet.
+                Only used if use_threads is True.
+            process_action_cb - Callback to process action packets. Defaults to no-op.
+                Only used if use_threads is True.
+        """
         # Callback functions
-        self.observation_generator = get_observation_cb or (lambda: ObservationPacket())
-        self.action_processor = process_action_cb or (lambda x: None)
+        self.get_observation_cb = get_observation_cb or (lambda: ObservationPacket())
+        self.process_action_cb = process_action_cb or (lambda x: None)
 
         # ZMQ setup
         self.zmq_context = zmq.Context()
@@ -437,7 +446,7 @@ class MockMinecraft:
         LOG.info(f"{threading.current_thread().name} started")
         while self.running.is_set():
             try:
-                obs = self.observation_generator()
+                obs = self.get_observation_cb()
                 self.send_observation(obs)
             except Exception as e:
                 LOG.error(f"Error in observation generation: {e}")
@@ -448,7 +457,7 @@ class MockMinecraft:
         while self.running.is_set():
             try:
                 act = self.recv_action()
-                self.action_processor(act)
+                self.process_action_cb(act)
             except Exception as e:
                 LOG.error(f"Error in action processing: {e}")
         LOG.info(f"{threading.current_thread().name} done")
