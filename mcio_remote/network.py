@@ -7,7 +7,7 @@ import pprint
 import threading
 import time
 from dataclasses import asdict, dataclass, field
-from typing import Callable, Final, Union
+from typing import Final, Union
 
 import cbor2
 import glfw  # type: ignore
@@ -380,84 +380,3 @@ def get_zmq_event_names() -> dict[int, str]:
             value = getattr(zmq, name)
             events[value] = name
     return events
-
-
-class MockMinecraft:
-    """Provide the Minecraft side of the MCio connection for testing"""
-
-    def __init__(
-        self,
-        use_threads: bool = True,
-        get_observation_cb: Callable[[], ObservationPacket] | None = None,
-        process_action_cb: Callable[[ActionPacket], None] | None = None,
-    ) -> None:
-        """_summary_
-
-        Args:
-            use_threads - Send and recv using threads
-            get_observation_cb - Callback to generate observation packets. Defaults to empty packet.
-                Only used if use_threads is True.
-            process_action_cb - Callback to process action packets. Defaults to no-op.
-                Only used if use_threads is True.
-        """
-        # Callback functions
-        self.get_observation_cb = get_observation_cb or (lambda: ObservationPacket())
-        self.process_action_cb = process_action_cb or (lambda x: None)
-
-        # ZMQ setup
-        self.zmq_context = zmq.Context()
-        self.action_socket = self.zmq_context.socket(zmq.PULL)
-        self.action_socket.bind(
-            f"tcp://{types.DEFAULT_HOST}:{types.DEFAULT_ACTION_PORT}"
-        )
-        self.observation_socket = self.zmq_context.socket(zmq.PUSH)
-        self.observation_socket.bind(
-            f"tcp://{types.DEFAULT_HOST}:{types.DEFAULT_OBSERVATION_PORT}"
-        )
-
-        if use_threads:
-            self._thread_init()
-
-    def _thread_init(self) -> None:
-        # Thread setup
-        self.running = threading.Event()
-        self.running.set()
-
-        self._obs_thread = threading.Thread(
-            target=self._obs_thread_fn, name="MockGenObservationThread"
-        )
-        self._obs_thread.daemon = True
-        self._obs_thread.start()
-
-        self._act_thread = threading.Thread(
-            target=self._act_thread_fn, name="MockProcessActionThread"
-        )
-        self._act_thread.daemon = True
-        self._act_thread.start()
-
-    def recv_action(self) -> ActionPacket:
-        pbytes = self.action_socket.recv()
-        return ActionPacket.unpack(pbytes)
-
-    def send_observation(self, obs: ObservationPacket) -> None:
-        self.observation_socket.send(obs.pack())
-
-    def _obs_thread_fn(self) -> None:
-        LOG.info(f"{threading.current_thread().name} started")
-        while self.running.is_set():
-            try:
-                obs = self.get_observation_cb()
-                self.send_observation(obs)
-            except Exception as e:
-                LOG.error(f"Error in observation generation: {e}")
-        LOG.info(f"{threading.current_thread().name} done")
-
-    def _act_thread_fn(self) -> None:
-        LOG.info(f"{threading.current_thread().name} started")
-        while self.running.is_set():
-            try:
-                act = self.recv_action()
-                self.process_action_cb(act)
-            except Exception as e:
-                LOG.error(f"Error in action processing: {e}")
-        LOG.info(f"{threading.current_thread().name} done")
