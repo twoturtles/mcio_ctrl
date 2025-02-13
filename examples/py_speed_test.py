@@ -2,8 +2,9 @@
 
 import argparse
 import sys
+from typing import Any
 
-import numpy as np
+# import numpy as np
 from tqdm import tqdm
 
 import mcio_remote as mcio
@@ -26,33 +27,19 @@ class SpeedTest:
         self.process_frames = process_frames or display_frames
         self.display_frames = display_frames
 
-        # Prepare the fake observation as much as possible outside the loop
-        self.obs_sequence = 0
-        self.base_obs = mcio.network.ObservationPacket()
-        self.base_obs.frame_height = frame_height
-        self.base_obs.frame_width = frame_width
-        self.frame_array = np.zeros((frame_height * frame_width * 3,), dtype=np.uint8)
-        self.base_obs.frame = self.frame_array.tobytes()
-        self.base_obs.frame_type = mcio.network.FrameType.RAW
-
         if self.display_frames:
             self.gui = mcio.gui.ImageStreamGui(
                 height=self.frame_height, width=self.frame_width
             )
 
-    def run_multi(self) -> None:
+    def run(self) -> None:
         # frame_shape = (0, 0, 3)  # 10754.7 fps
         # frame_shape = (480, 854, 3)  # 1370.8 fps
         # frame_shape = (1000, 2000, 3)  # 59.3 fps
 
-        # For multi-threaded
-        self.obs_counter = mcio.util.TrackPerSecond("ObsPerSecond")
-        self.act_counter = mcio.util.TrackPerSecond("ActPerSecond")
-
-        mm = mcio.network.MockMinecraft(
-            use_threads=True,
-            get_observation_cb=self.get_obs,
-            process_action_cb=self.process_action,
+        mm = mcio.mc_mock.MockMinecraft(
+            generate_observation_class=GenerateObservation,
+            process_action_class=ProcessAction,
         )
         self.ctrl = mcio.controller.ControllerSync()
 
@@ -60,43 +47,43 @@ class SpeedTest:
         for i in tqdm(range(self.steps)):
             self.ctrl.send_action(mcio.network.ActionPacket())
 
-            mm.recv_action()
-            mm.send_observation(self.base_obs)
-
             obs_recv = self.ctrl.recv_observation()
             if self.process_frames:
                 frame = obs_recv.get_frame_with_cursor()
             if self.display_frames:
                 self.gui.show(frame)
 
-    def run_single(self) -> None:
-        mm = mcio.network.MockMinecraft(use_threads=False)
-        self.ctrl = mcio.controller.ControllerSync()
+        mm.close()
+        self.ctrl.close()
 
-        for i in tqdm(range(self.steps)):
-            self.ctrl.send_action(mcio.network.ActionPacket())
 
-            mm.recv_action()
-            mm.send_observation(self.base_obs)
+class GenerateObservation(mcio.mc_mock.GenerateObservation):
+    def initialize(self, options: dict[Any, Any] | None) -> None:
+        self.counter = mcio.util.TrackPerSecond("GenerateObservationPPS")
 
-            obs_recv = self.ctrl.recv_observation()
-            if self.process_frames:
-                frame = obs_recv.get_frame_with_cursor()
-            if self.display_frames:
-                self.gui.show(frame)
+        # # Prepare the fake observation as much as possible outside the loop
+        # self.obs_sequence = 0
+        # self.base_obs = mcio.network.ObservationPacket()
+        # self.base_obs.frame_height = frame_height
+        # self.base_obs.frame_width = frame_width
+        # self.frame_array = np.zeros((frame_height * frame_width * 3,), dtype=np.uint8)
+        # self.base_obs.frame = self.frame_array.tobytes()
+        # self.base_obs.frame_type = mcio.network.FrameType.RAW
 
-    def get_obs(self) -> mcio.network.ObservationPacket:
-        """Generate a fake observation as Minecraft"""
+    def generate_observation(self) -> mcio.network.ObservationPacket:
+        self.counter.count()
         # self.frame_array[self.obs_sequence % self.frame_array.size] = 0xFF
         # self.obs_sequence += 1
         # self.base_obs.frame = self.frame_array.tobytes()
-        self.obs_counter.count()
-        return self.base_obs
+        return mcio.network.ObservationPacket()
+
+
+class ProcessAction(mcio.mc_mock.ProcessAction):
+    def initialize(self, options: dict[Any, Any] | None) -> None:
+        self.counter = mcio.util.TrackPerSecond("ProcessActionPPS")
 
     def process_action(self, action: mcio.network.ActionPacket) -> None:
-        """Process an action as Minecraft"""
-        self.act_counter.count()
-        pass
+        self.counter.count()
 
 
 def parse_args() -> argparse.Namespace:
@@ -129,10 +116,7 @@ def main() -> None:
         process_frames=not args.no_frames,
         display_frames=args.gui,
     )
-    if args.multi:
-        speed_test.run_multi()
-    else:
-        speed_test.run_single()
+    speed_test.run()
 
 
 if __name__ == "__main__":

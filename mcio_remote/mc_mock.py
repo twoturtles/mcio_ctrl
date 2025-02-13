@@ -1,5 +1,6 @@
 """Used for testing. Simulate MCio running on Minecraft."""
 
+import enum
 import logging
 import multiprocessing as mp
 from multiprocessing.synchronize import Event as mpEvent
@@ -12,39 +13,83 @@ from . import network, types, util
 LOG = logging.getLogger(__name__)
 
 
-class GenerateObservation(mp.Process):
-    """Inherit from this class to generate custom observations"""
+class _SocketProcessor(mp.Process):
+    """
+    Base class for fake Minecraft processes handling ZMQ communication.
+    Don't use this directly. Subclass from GenerateObservation or ProcessAction instead.
+    """
+
+    class ProcessType(enum.Enum):
+        OBSERVATION = enum.auto()
+        ACTION = enum.auto()
+
+    # Assigned in module subclasses
+    _process_type: ProcessType
 
     def __init__(
         self,
         mp_ctx: mp.context.BaseContext,
         running: mpEvent,
         log_level: int,
-        options: dict[Any, Any] | None = None,
+        initialize_options: dict[Any, Any] | None = None,
     ) -> None:
         super().__init__()
-        self.running = running
         self.mp_ctx = mp_ctx
+        self.running = running
         self.log_level = log_level
-        self.initialize(options)
+
+        self.initialize(initialize_options)
 
     def run(self) -> None:
         util.logging_init(level=self.log_level)
-        context = zmq.Context()
-        socket = context.socket(zmq.PUSH)
-        socket.bind(f"tcp://{types.DEFAULT_HOST}:{types.DEFAULT_OBSERVATION_PORT}")
-
         LOG.info(f"{mp.current_process().name} started")
+
+        match self._process_type:
+            case self.ProcessType.OBSERVATION:
+                socket_type = zmq.PUSH
+                port = types.DEFAULT_OBSERVATION_PORT
+            case self.ProcessType.ACTION:
+                socket_type = zmq.PULL
+                port = types.DEFAULT_ACTION_PORT
+            case _:
+                raise ValueError(f"Invalid process type: {self._process_type}")
+
+        context = zmq.Context()
+        socket = context.socket(socket_type)
+        socket.bind(f"tcp://{types.DEFAULT_HOST}:{port}")
+
         while self.running.is_set():
             try:
-                obs = self.generate_observation()
-                socket.send(obs.pack())
+                self._process(socket)
             except Exception as e:
-                LOG.error(f"Error in observation generation: {e}")
+                LOG.error(f"Error in process loop: {e}")
 
         socket.close()
         context.term()
         LOG.info(f"{mp.current_process().name} done")
+
+    def _process(self, socket: zmq.SyncSocket) -> None:
+        match self._process_type:
+            case self.ProcessType.OBSERVATION:
+                obs = self.generate_observation()
+                socket.send(obs.pack())
+            case self.ProcessType.ACTION:
+                pbytes = socket.recv()
+                act = network.ActionPacket.unpack(pbytes)
+                self.process_action(act)
+
+    def initialize(self, options: dict[Any, Any] | None) -> None:
+        raise NotImplementedError()
+
+    def generate_observation(self) -> network.ObservationPacket:
+        raise NotImplementedError()
+
+    def process_action(self, action: network.ActionPacket) -> None:
+        raise NotImplementedError()
+
+
+class GenerateObservation(_SocketProcessor):
+    _process_type = _SocketProcessor.ProcessType.OBSERVATION
 
     def initialize(self, options: dict[Any, Any] | None) -> None:
         """Override for custom initialization"""
@@ -55,40 +100,8 @@ class GenerateObservation(mp.Process):
         return network.ObservationPacket()
 
 
-class ProcessAction(mp.Process):
-    """Inherit from this class to do custom processing of actions"""
-
-    def __init__(
-        self,
-        mp_ctx: mp.context.BaseContext,
-        running: mpEvent,
-        log_level: int,
-        options: dict[Any, Any] | None = None,
-    ) -> None:
-        super().__init__()
-        self.running = running
-        self.mp_ctx = mp_ctx
-        self.log_level = log_level
-        self.initialize(options)
-
-    def run(self) -> None:
-        util.logging_init(level=self.log_level)
-        context = zmq.Context()
-        socket = context.socket(zmq.PULL)
-        socket.bind(f"tcp://{types.DEFAULT_HOST}:{types.DEFAULT_ACTION_PORT}")
-
-        LOG.info(f"{mp.current_process().name} started")
-        while self.running.is_set():
-            try:
-                pbytes = socket.recv()
-                act = network.ActionPacket.unpack(pbytes)
-                self.process_action(act)
-            except Exception as e:
-                LOG.error(f"Error in action processing: {e}")
-
-        socket.close()
-        context.term()
-        LOG.info(f"{mp.current_process().name} done")
+class ProcessAction(_SocketProcessor):
+    _process_type = _SocketProcessor.ProcessType.ACTION
 
     def initialize(self, options: dict[Any, Any] | None) -> None:
         """Override for custom initialization"""
@@ -128,10 +141,10 @@ class MockMinecraft:
         # Use the provided classes to create sub-processes
         log_level = LOG.getEffectiveLevel()
         self.obs_process = generate_observation_class(
-            mp_ctx, self.running, log_level, options=observation_options
+            mp_ctx, self.running, log_level, initialize_options=observation_options
         )
         self.action_process = process_action_class(
-            mp_ctx, self.running, log_level, options=action_options
+            mp_ctx, self.running, log_level, initialize_options=action_options
         )
 
         # spawn start calls run() in process class instance
