@@ -49,6 +49,7 @@ class SpeedTest:
         obs_options = {
             "frame_height": self.frame_height,
             "frame_width": self.frame_width,
+            "update_frames": self.display_frames,
         }
         self.mm = mcio.mc_mock.MockMinecraft(
             generate_observation_class=GenerateObservation,
@@ -88,6 +89,7 @@ class GenerateObservation(mcio.mc_mock.GenerateObservation):
 
         height = options["frame_height"]
         width = options["frame_width"]
+        self.update_frames = options["update_frames"]
 
         # # Prepare the fake observation as much as possible outside the loop
         self.obs_sequence = 0
@@ -101,9 +103,13 @@ class GenerateObservation(mcio.mc_mock.GenerateObservation):
 
     def generate_observation(self) -> mcio.network.ObservationPacket:
         self.counter.count()
-        # self.frame_array[self.obs_sequence % self.frame_array.size] = 0xFF
-        # self.obs_sequence += 1
-        # self.base_obs.frame = self.frame_array.tobytes()
+        if self.update_frames:
+            # This isn't really necessary and is actually somewhat expensive, so only do it
+            # if we're going to display the frame. (Displaying the frame is much more expensive,
+            # so it doesn't matter in that case)
+            self.frame_array[self.obs_sequence % self.frame_array.size] = 0xFF
+            self.obs_sequence += 1
+            self.base_obs.frame = self.frame_array.tobytes()
         return self.base_obs
 
 
