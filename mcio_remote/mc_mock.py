@@ -3,7 +3,7 @@
 import enum
 import logging
 import multiprocessing as mp
-from multiprocessing.synchronize import Event as mpEvent
+import os
 from typing import Any
 
 import zmq
@@ -29,20 +29,19 @@ class _SocketProcessor(mp.Process):
     def __init__(
         self,
         mp_ctx: mp.context.BaseContext,
-        running: mpEvent,
         log_level: int,
         initialize_options: dict[Any, Any] | None = None,
     ) -> None:
         super().__init__()
         self.mp_ctx = mp_ctx
-        self.running = running
         self.log_level = log_level
 
         self.initialize(initialize_options)
 
     def run(self) -> None:
         util.logging_init(level=self.log_level)
-        LOG.info(f"{mp.current_process().name} started")
+        name = mp.current_process().name
+        LOG.info(f"Starting-Subprocess name={name} pid={os.getpid()}")
 
         match self._process_type:
             case self.ProcessType.OBSERVATION:
@@ -58,15 +57,18 @@ class _SocketProcessor(mp.Process):
         socket = context.socket(socket_type)
         socket.bind(f"tcp://{types.DEFAULT_HOST}:{port}")
 
-        while self.running.is_set():
-            try:
-                self._process(socket)
-            except Exception as e:
-                LOG.error(f"Error in process loop: {e}")
-
-        socket.close()
-        context.term()
-        LOG.info(f"{mp.current_process().name} done")
+        try:
+            while True:
+                try:
+                    self._process(socket)
+                except Exception as e:
+                    LOG.error(f"Error in process loop: {e}")
+        except KeyboardInterrupt:
+            pass
+        finally:
+            LOG.info(f"Stopping-Subprocess name={name} pid={os.getppid()}")
+            socket.close()
+            context.term()
 
     def _process(self, socket: zmq.SyncSocket) -> None:
         match self._process_type:
@@ -135,23 +137,23 @@ class MockMinecraft:
         """
         mp_ctx = mp.get_context("spawn")
 
-        self.running = mp_ctx.Event()
-        self.running.set()
-
         # Use the provided classes to create sub-processes
         log_level = LOG.getEffectiveLevel()
         self.obs_process = generate_observation_class(
-            mp_ctx, self.running, log_level, initialize_options=observation_options
+            mp_ctx, log_level, initialize_options=observation_options
         )
         self.action_process = process_action_class(
-            mp_ctx, self.running, log_level, initialize_options=action_options
+            mp_ctx, log_level, initialize_options=action_options
         )
 
         # spawn start calls run() in process class instance
+        LOG.info(f"Starting-Mock-Minecraft parent-pid={os.getpid()}")
         self.obs_process.start()
         self.action_process.start()
 
     def close(self) -> None:
-        self.running.clear()
+        LOG.info("Stopping-Mock-Minecraft")
+        self.obs_process.terminate()
         self.obs_process.join()
+        self.action_process.terminate()
         self.action_process.join()
