@@ -1,4 +1,9 @@
-"""Basic step speed test. Drives MCio in sync mode as fast as possible."""
+"""
+Basic step speed test. Drives MCio in sync mode as fast as possible.
+
+mcio inst launch DemoInstance -m sync -w DemoWorld -W 640 -H 360
+SPEED-TEST mode=mcio steps=5000 setup=0.37 run=36.62 steps_per_sec=136.53
+"""
 
 import argparse
 import logging
@@ -27,7 +32,7 @@ def mcio_setup(render: bool, connect: bool) -> Any:
     import mcio_remote as mcio
     from mcio_remote.mcio_env.envs import mcio_env
 
-    # mcio inst launch DemoInstance -m sync -w Survival1 -W 640 -H 360
+    # mcio inst launch DemoInstance -m sync -w DemoWorld -W 640 -H 360
     # env = mcio_env.MCioEnv(render_mode=None, width=640, height=360)
     opts = mcio.types.RunOptions(
         instance_name="DemoInstance",

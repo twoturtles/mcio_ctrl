@@ -19,8 +19,8 @@ DEFAULT_HIDE_WINDOW = False
 MCioMode = Literal["off", "async", "sync"]
 DEFAULT_MCIO_MODE: Final[MCioMode] = "async"
 
-MCioFrameType = Literal["PNG", "JPEG"]
-DEFAULT_FRAME_TYPE: Final[MCioFrameType] = "PNG"
+MCioFrameType = Literal["RAW", "PNG", "JPEG"]
+DEFAULT_FRAME_TYPE: Final[MCioFrameType] = "RAW"
 MCioFrameQuality: TypeAlias = Annotated[int, lambda x: 1 <= x <= 100]
 DEFAULT_FRAME_QUALITY: Final[MCioFrameQuality] = 85
 
@@ -34,7 +34,7 @@ class RunOptions:
         world_name: Launch directly into a world
         width: Frame width
         height: Frame height
-        frame_type: PNG/JPEG
+        frame_type: RAW/PNG/JPEG
         frame_quality: JPEG quality setting
         mcio_mode: sync/async
         hide_window: Don't show Minecraft window
