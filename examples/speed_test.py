@@ -2,7 +2,7 @@
 Basic step speed test. Drives MCio in sync mode as fast as possible.
 
 mcio inst launch DemoInstance -m sync -w DemoWorld -W 640 -H 360
-SPEED-TEST mode=mcio steps=5000 setup=0.37 run=36.62 steps_per_sec=136.53
+SPEED-TEST mode=mcio steps=5000 setup=0.19 run=16.92 steps_per_sec=295.50
 """
 
 import argparse

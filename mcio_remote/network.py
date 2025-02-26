@@ -144,7 +144,7 @@ class ObservationPacket:
             frame = frame.reshape((self.frame_height, self.frame_width, 3))
             frame = np.flipud(frame)
             if self.cursor_mode == glfw.CURSOR_NORMAL:
-                frame = frame.copy()
+                frame = frame.copy()  # The buffer from cbor is not writable
                 self.draw_cross_cursor(frame, self.cursor_pos)
         else:
             # Convert frame PNG/JPEG bytes to image
