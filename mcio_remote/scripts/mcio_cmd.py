@@ -186,8 +186,6 @@ class InstanceLaunchCmd(Cmd):
             instance_name=args.instance_name,
             width=args.width,
             height=args.height,
-            frame_type=args.frame_type,
-            frame_quality=args.frame_quality,
             mcio_mode=args.mcio_mode,
             hide_window=args.hide_window,
             action_port=args.action_port,
@@ -240,19 +238,6 @@ class InstanceLaunchCmd(Cmd):
             help=f"Window height (default: {types.DEFAULT_WINDOW_HEIGHT})",
         )
 
-        launch_parser.add_argument(
-            "--frame-type",
-            type=str,
-            choices=typing.get_args(types.MCioFrameType),
-            default=types.DEFAULT_FRAME_TYPE,
-            help=f"Frame Type: (default: {types.DEFAULT_FRAME_TYPE})",
-        )
-        launch_parser.add_argument(
-            "--frame-quality",
-            type=int,
-            default=types.DEFAULT_FRAME_QUALITY,
-            help=f"JPEG quality (default: {types.DEFAULT_FRAME_QUALITY})",
-        )
         launch_parser.add_argument(
             "--hide-window",
             action="store_true",

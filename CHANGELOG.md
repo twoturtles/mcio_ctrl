@@ -4,6 +4,7 @@
 - Add option to hide Minecraft window
 - Add clear_input action
 - Add raw frame support and make it the default
+- Remove png and jpeg frame types
 - Support other MCio 0.4.0 changes
 - MCIO_PROTOCOL_VERSION = 3
 

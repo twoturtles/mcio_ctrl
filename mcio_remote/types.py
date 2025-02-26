@@ -3,7 +3,7 @@
 import uuid
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Annotated, Final, Literal, TypeAlias
+from typing import Final, Literal
 
 from . import config
 
@@ -19,11 +19,6 @@ DEFAULT_HIDE_WINDOW = False
 MCioMode = Literal["off", "async", "sync"]
 DEFAULT_MCIO_MODE: Final[MCioMode] = "async"
 
-MCioFrameType = Literal["RAW", "PNG", "JPEG"]
-DEFAULT_FRAME_TYPE: Final[MCioFrameType] = "RAW"
-MCioFrameQuality: TypeAlias = Annotated[int, lambda x: 1 <= x <= 100]
-DEFAULT_FRAME_QUALITY: Final[MCioFrameQuality] = 85
-
 
 @dataclass(kw_only=True)
 class RunOptions:
@@ -34,8 +29,6 @@ class RunOptions:
         world_name: Launch directly into a world
         width: Frame width
         height: Frame height
-        frame_type: RAW/PNG/JPEG
-        frame_quality: JPEG quality setting
         mcio_mode: sync/async
         hide_window: Don't show Minecraft window
         action_port: port for action connection
@@ -50,8 +43,6 @@ class RunOptions:
 
     width: int = DEFAULT_WINDOW_WIDTH
     height: int = DEFAULT_WINDOW_HEIGHT
-    frame_type: MCioFrameType = DEFAULT_FRAME_TYPE
-    frame_quality: MCioFrameQuality = DEFAULT_FRAME_QUALITY
     mcio_mode: MCioMode = DEFAULT_MCIO_MODE
     hide_window: bool = DEFAULT_HIDE_WINDOW
 

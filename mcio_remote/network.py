@@ -1,7 +1,6 @@
 """ Packet definitions and low-level connection code."""
 
 import enum
-import io
 import logging
 import pprint
 import threading
@@ -15,7 +14,6 @@ import numpy as np
 import zmq
 import zmq.utils.monitor as zmon
 from numpy.typing import NDArray
-from PIL import Image, ImageDraw
 
 from . import types, util
 
@@ -38,9 +36,8 @@ class FrameType(enum.StrEnum):
     ) -> str:
         return name
 
+    # Currently just RAW
     RAW = enum.auto()
-    PNG = enum.auto()
-    JPEG = enum.auto()
 
 
 # Observation packets received from MCio
@@ -139,25 +136,16 @@ class ObservationPacket:
 
     def get_frame_with_cursor(self) -> NDArray[np.uint8]:
         frame: NDArray[np.uint8]
-        if self.frame_type == FrameType.RAW:
-            frame = np.frombuffer(self.frame, dtype=np.uint8)
-            frame = frame.reshape((self.frame_height, self.frame_width, 3))
-            frame = np.flipud(frame)
-            if self.cursor_mode == glfw.CURSOR_NORMAL:
-                frame = frame.copy()  # The buffer from cbor is not writable
-                self.draw_cross_cursor(frame, self.cursor_pos)
-        else:
-            # Convert frame PNG/JPEG bytes to image
-            img_frame = Image.open(io.BytesIO(self.frame))
-            if self.cursor_mode == glfw.CURSOR_NORMAL:
-                # Add simulated cursor.
-                draw = ImageDraw.Draw(img_frame)
-                x, y = self.cursor_pos[0], self.cursor_pos[1]
-                radius = 5
-                draw.ellipse(
-                    [x - radius, y - radius, x + radius, y + radius], fill="red"
-                )
-            frame = np.array(img_frame, dtype=np.uint8)
+        match self.frame_type:
+            case FrameType.RAW:
+                frame = np.frombuffer(self.frame, dtype=np.uint8)
+                frame = frame.reshape((self.frame_height, self.frame_width, 3))
+                frame = np.flipud(frame)
+                if self.cursor_mode == glfw.CURSOR_NORMAL:
+                    frame = frame.copy()  # The buffer from cbor is not writable
+                    self.draw_cross_cursor(frame, self.cursor_pos)
+            case _:
+                raise ValueError(f"Invalid frame_type: {self.frame_type}")
 
         return np.ascontiguousarray(frame)
 
