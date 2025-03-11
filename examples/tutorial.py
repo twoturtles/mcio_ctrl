@@ -16,7 +16,7 @@ def tutorial(steps: int, instance_name: str | None, world_name: str | None) -> N
         instance_name=instance_name,
         world_name=world_name,
         hide_window=True,
-        mcio_mode="sync",
+        mcio_mode=mcio.types.MCioMode.SYNC,
         width=640,
         height=480,
     )

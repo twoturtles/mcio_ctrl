@@ -1,9 +1,10 @@
 """Defines some common types for the module"""
 
+import enum
 import uuid
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Final, Literal
+from typing import Final
 
 from . import config
 
@@ -16,8 +17,32 @@ DEFAULT_OBSERVATION_PORT: Final[int] = 8001  # 8bservation
 DEFAULT_HOST = "localhost"  # For security, only localhost
 DEFAULT_HIDE_WINDOW = False
 
-MCioMode = Literal["off", "async", "sync"]
-DEFAULT_MCIO_MODE: Final[MCioMode] = "async"
+
+class StrEnumUpper(enum.StrEnum):
+    """Like StrEnum, but the values are same as the enum rather than lowercase."""
+
+    @staticmethod
+    def _generate_next_value_(
+        name: str, start: int, count: int, last_values: list[str]
+    ) -> str:
+        return name
+
+
+class FrameType(StrEnumUpper):
+    """Observation frame type. Currently just RAW."""
+
+    RAW = enum.auto()
+
+
+class MCioMode(StrEnumUpper):
+    """MCio Mode"""
+
+    OFF = enum.auto()
+    ASYNC = enum.auto()
+    SYNC = enum.auto()
+
+
+DEFAULT_MCIO_MODE: Final[MCioMode] = MCioMode.ASYNC
 
 
 @dataclass(kw_only=True)

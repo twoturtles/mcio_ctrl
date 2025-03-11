@@ -3,14 +3,13 @@ from unittest.mock import MagicMock
 import numpy as np
 import pytest
 
-from mcio_remote import network
+from mcio_remote import network, types
 from mcio_remote.mcio_env.envs import mcio_env
-from mcio_remote.types import RunOptions
 
 
 @pytest.fixture
 def default_mcio_env() -> mcio_env.MCioEnv:
-    return mcio_env.MCioEnv(RunOptions())
+    return mcio_env.MCioEnv(types.RunOptions())
 
 
 @pytest.fixture
@@ -46,7 +45,9 @@ def test_action_fixture_is_valid(
 def test_env_smoke(
     mock_controller: dict[str, MagicMock], action_space_sample1: mcio_env.MCioAction
 ) -> None:
-    env = mcio_env.MCioEnv(RunOptions(mcio_mode="sync"), launch=False)
+    env = mcio_env.MCioEnv(
+        types.RunOptions(mcio_mode=types.MCioMode.SYNC), launch=False
+    )
     obs, info = env.reset()
     assert isinstance(obs, dict)  # mcio_env.MCioObservation
     assert "frame" in obs
@@ -58,7 +59,9 @@ def test_env_smoke(
 def test_step_assert(
     mock_controller: dict[str, MagicMock], action_space_sample1: mcio_env.MCioAction
 ) -> None:
-    env = mcio_env.MCioEnv(RunOptions(mcio_mode="sync"), launch=False)
+    env = mcio_env.MCioEnv(
+        types.RunOptions(mcio_mode=types.MCioMode.SYNC), launch=False
+    )
     with pytest.raises(AssertionError):
         env.step(action_space_sample1)  # No controller because reset hasn't been called
 
@@ -67,7 +70,9 @@ def test_env_with_commands(
     mock_controller: dict[str, MagicMock], action_space_sample1: mcio_env.MCioAction
 ) -> None:
     mock_ctrl_class: MagicMock = mock_controller["ctrl_sync"]
-    env = mcio_env.MCioEnv(RunOptions(mcio_mode="sync"), launch=False)
+    env = mcio_env.MCioEnv(
+        types.RunOptions(mcio_mode=types.MCioMode.SYNC), launch=False
+    )
     cmds = ["command one", "command two"]
 
     def _check_send_action(send_action_mock: MagicMock) -> None:

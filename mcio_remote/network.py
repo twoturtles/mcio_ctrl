@@ -1,6 +1,5 @@
 """ Packet definitions and low-level connection code."""
 
-import enum
 import logging
 import pprint
 import threading
@@ -29,17 +28,6 @@ class InventorySlot:
     count: int
 
 
-class FrameType(enum.StrEnum):
-    @staticmethod
-    def _generate_next_value_(
-        name: str, start: int, count: int, last_values: list[str]
-    ) -> str:
-        return name
-
-    # Currently just RAW
-    RAW = enum.auto()
-
-
 # Observation packets received from MCio
 @dataclass
 class ObservationPacket:
@@ -56,7 +44,7 @@ class ObservationPacket:
     frame: bytes = field(repr=False, default=b"")  # Exclude the frame from repr output.
     frame_width: int = 0
     frame_height: int = 0
-    frame_type: FrameType = FrameType.RAW
+    frame_type: types.FrameType = types.FrameType.RAW
     cursor_mode: int = (
         glfw.CURSOR_NORMAL
     )  # Either glfw.CURSOR_NORMAL (212993) or glfw.CURSOR_DISABLED (212995)
@@ -137,7 +125,7 @@ class ObservationPacket:
     def get_frame_with_cursor(self) -> NDArray[np.uint8]:
         frame: NDArray[np.uint8]
         match self.frame_type:
-            case FrameType.RAW:
+            case types.FrameType.RAW:
                 frame = np.frombuffer(self.frame, dtype=np.uint8)
                 frame = frame.reshape((self.frame_height, self.frame_width, 3))
                 frame = np.flipud(frame)
