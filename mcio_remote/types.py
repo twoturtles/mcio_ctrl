@@ -1,9 +1,10 @@
 """Defines some common types for the module"""
 
+import enum
 import uuid
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Annotated, Final, Literal, TypeAlias
+from typing import Final
 
 from . import config
 
@@ -14,14 +15,34 @@ DEFAULT_WINDOW_HEIGHT: Final[int] = 480
 DEFAULT_ACTION_PORT: Final[int] = 4001  # 4ction
 DEFAULT_OBSERVATION_PORT: Final[int] = 8001  # 8bservation
 DEFAULT_HOST = "localhost"  # For security, only localhost
+DEFAULT_HIDE_WINDOW = False
 
-MCioMode = Literal["off", "async", "sync"]
-DEFAULT_MCIO_MODE: Final[MCioMode] = "async"
 
-MCioFrameType = Literal["PNG", "JPEG"]
-DEFAULT_MCIO_FRAME_TYPE: Final[MCioFrameType] = "PNG"
-MCioFrameQuality: TypeAlias = Annotated[int, lambda x: 1 <= x <= 100]
-DEFAULT_MCIO_FRAME_QUALITY: Final[MCioFrameQuality] = 90
+class StrEnumUpper(enum.StrEnum):
+    """Like StrEnum, but the values are same as the enum rather than lowercase."""
+
+    @staticmethod
+    def _generate_next_value_(
+        name: str, start: int, count: int, last_values: list[str]
+    ) -> str:
+        return name
+
+
+class FrameType(StrEnumUpper):
+    """Observation frame type. Currently just RAW."""
+
+    RAW = enum.auto()
+
+
+class MCioMode(StrEnumUpper):
+    """MCio Mode"""
+
+    OFF = enum.auto()
+    ASYNC = enum.auto()
+    SYNC = enum.auto()
+
+
+DEFAULT_MCIO_MODE: Final[MCioMode] = MCioMode.ASYNC
 
 
 @dataclass(kw_only=True)
@@ -33,9 +54,8 @@ class RunOptions:
         world_name: Launch directly into a world
         width: Frame width
         height: Frame height
-        frame_type: PNG/JPEG
-        frame_quality: JPEG quality setting
         mcio_mode: sync/async
+        hide_window: Don't show Minecraft window
         action_port: port for action connection
         observation_port: port for observation connection
         mcio_dir: Top-level data directory
@@ -48,9 +68,8 @@ class RunOptions:
 
     width: int = DEFAULT_WINDOW_WIDTH
     height: int = DEFAULT_WINDOW_HEIGHT
-    frame_type: MCioFrameType = DEFAULT_MCIO_FRAME_TYPE
-    frame_quality: MCioFrameQuality = DEFAULT_MCIO_FRAME_QUALITY
     mcio_mode: MCioMode = DEFAULT_MCIO_MODE
+    hide_window: bool = DEFAULT_HIDE_WINDOW
 
     action_port: int = DEFAULT_ACTION_PORT
     observation_port: int = DEFAULT_OBSERVATION_PORT

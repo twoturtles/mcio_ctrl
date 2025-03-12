@@ -186,9 +186,8 @@ class InstanceLaunchCmd(Cmd):
             instance_name=args.instance_name,
             width=args.width,
             height=args.height,
-            frame_type=args.frame_type,
-            frame_quality=args.frame_quality,
             mcio_mode=args.mcio_mode,
+            hide_window=args.hide_window,
             action_port=args.action_port,
             observation_port=args.observation_port,
             mcio_dir=args.mcio_dir,
@@ -220,7 +219,7 @@ class InstanceLaunchCmd(Cmd):
             type=str,
             choices=typing.get_args(types.MCioMode),
             default=types.DEFAULT_MCIO_MODE,
-            help=f"MCio mode: (default: {types.DEFAULT_MCIO_FRAME_TYPE})",
+            help=f"MCio mode: (default: {types.DEFAULT_MCIO_MODE})",
         )
         _add_mcio_dir_arg(launch_parser)
         launch_parser.add_argument("--world", "-w", type=str, help="World name")
@@ -240,17 +239,10 @@ class InstanceLaunchCmd(Cmd):
         )
 
         launch_parser.add_argument(
-            "--frame-type",
-            type=str,
-            choices=typing.get_args(types.MCioFrameType),
-            default=types.DEFAULT_MCIO_FRAME_TYPE,
-            help=f"Frame Type: (default: {types.DEFAULT_MCIO_FRAME_TYPE})",
-        )
-        launch_parser.add_argument(
-            "--frame-quality",
-            type=int,
-            default=types.DEFAULT_MCIO_FRAME_QUALITY,
-            help=f"JPEG quality (default: {types.DEFAULT_MCIO_FRAME_QUALITY})",
+            "--hide-window",
+            action="store_true",
+            default=types.DEFAULT_HIDE_WINDOW,
+            help=f"Hide Minecraft window (default: {types.DEFAULT_HIDE_WINDOW})",
         )
 
         launch_parser.add_argument(

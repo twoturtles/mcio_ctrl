@@ -1,11 +1,11 @@
-# Code for communicating with the MCio mod
-import io
+""" Packet definitions and low-level connection code."""
+
 import logging
 import pprint
 import threading
 import time
 from dataclasses import asdict, dataclass, field
-from typing import Final, Optional
+from typing import Final, Union
 
 import cbor2
 import glfw  # type: ignore
@@ -13,13 +13,12 @@ import numpy as np
 import zmq
 import zmq.utils.monitor as zmon
 from numpy.typing import NDArray
-from PIL import Image, ImageDraw
 
 from . import types, util
 
 LOG = logging.getLogger(__name__)
 
-MCIO_PROTOCOL_VERSION: Final[int] = 2
+MCIO_PROTOCOL_VERSION: Final[int] = 3
 
 
 @dataclass
@@ -37,12 +36,15 @@ class ObservationPacket:
     sequence: int = 0
     mode: str = ""  # "SYNC" or "ASYNC"
     last_action_sequence: int = (
-        0  # This is the last action sequenced before this observation was generated
+        0  # This is the last action sequence processed by Minecraft before this observation was generated
     )
     frame_sequence: int = 0  # Frame number since Minecraft started
 
     ## Observation ##
     frame: bytes = field(repr=False, default=b"")  # Exclude the frame from repr output.
+    frame_width: int = 0
+    frame_height: int = 0
+    frame_type: types.FrameType = types.FrameType.RAW
     cursor_mode: int = (
         glfw.CURSOR_NORMAL
     )  # Either glfw.CURSOR_NORMAL (212993) or glfw.CURSOR_DISABLED (212995)
@@ -57,7 +59,7 @@ class ObservationPacket:
     inventory_offhand: list[InventorySlot] = field(default_factory=list)
 
     @classmethod
-    def unpack(cls, data: bytes) -> Optional["ObservationPacket"]:
+    def unpack(cls, data: bytes) -> Union["ObservationPacket", None]:
         try:
             decoded_dict = cbor2.loads(data)
         except Exception as e:
@@ -84,24 +86,55 @@ class ObservationPacket:
 
         return obs
 
+    def pack(self) -> bytes:
+        """For testing"""
+        pkt_dict = asdict(self)
+        LOG.debug(pkt_dict)
+        return cbor2.dumps(pkt_dict)
+
     def __str__(self) -> str:
-        # frame is excluded from repr. Add its size to str. Slow?
-        frame = Image.open(io.BytesIO(self.frame))
-        return f"{repr(self)} frame.size={frame.size}"
+        # frame is excluded from repr. Add its shape to str.
+        return f"{repr(self)} frame.shape=({self.frame_height}, {self.frame_width})"
 
     def get_frame_type(self) -> str | None:
-        img = Image.open(io.BytesIO(self.frame))
-        return img.format  # "PNG" / "JPEG"
+        return self.frame_type  # "PNG" / "JPEG" / "RAW"
+
+    def draw_cross_cursor(
+        self,
+        frame: NDArray[np.uint8],
+        cursor_pos: tuple[int, int],
+        color: tuple[int, int, int] = (255, 0, 0),
+        arm_length: int = 5,
+    ) -> None:
+        """Draw a crosshair cursor on a raw frame"""
+        x, y = cursor_pos
+        h, w = frame.shape[:2]
+
+        if x < 0 or x >= w or y < 0 or y >= h:
+            return  # Cursor out of frame
+
+        # Bounds checks
+        x_min = max(0, x - arm_length)
+        x_max = min(w, x + arm_length + 1)
+        y_min = max(0, y - arm_length)
+        y_max = min(h, y + arm_length + 1)
+
+        frame[y, x_min:x_max] = color  # Horizontal line
+        frame[y_min:y_max, x] = color  # Vertical line
 
     def get_frame_with_cursor(self) -> NDArray[np.uint8]:
-        # Convert frame PNG/JPEG bytes to image
-        frame = Image.open(io.BytesIO(self.frame))
-        if self.cursor_mode == glfw.CURSOR_NORMAL:
-            # Add simulated cursor.
-            draw = ImageDraw.Draw(frame)
-            x, y = self.cursor_pos[0], self.cursor_pos[1]
-            radius = 5
-            draw.ellipse([x - radius, y - radius, x + radius, y + radius], fill="red")
+        frame: NDArray[np.uint8]
+        match self.frame_type:
+            case types.FrameType.RAW:
+                frame = np.frombuffer(self.frame, dtype=np.uint8)
+                frame = frame.reshape((self.frame_height, self.frame_width, 3))
+                frame = np.flipud(frame)
+                if self.cursor_mode == glfw.CURSOR_NORMAL:
+                    frame = frame.copy()  # The buffer from cbor is not writable
+                    self.draw_cross_cursor(frame, self.cursor_pos)
+            case _:
+                raise ValueError(f"Invalid frame_type: {self.frame_type}")
+
         return np.ascontiguousarray(frame)
 
 
@@ -116,6 +149,7 @@ class ActionPacket:
     commands: list[str] = field(
         default_factory=list
     )  # Server commands to execute (teleport, time set, etc.). Do not include the /
+    clear_input: bool = False  # Clear all previous key/button presses
     stop: bool = False  # Tell Minecraft to exit
 
     ## Action ##
@@ -139,6 +173,12 @@ class ActionPacket:
         LOG.debug(pkt_dict)
         return cbor2.dumps(pkt_dict)
 
+    @classmethod
+    def unpack(cls, data: bytes) -> "ActionPacket":
+        """For testing"""
+        decoded_dict = cbor2.loads(data)
+        return cls(**decoded_dict)
+
 
 class _Connection:
     """Connections to MCio mod. Used by Controller.
@@ -153,7 +193,7 @@ class _Connection:
         connection_timeout: (
             float | None
         ) = None,  # Only used when wait_for_connection is True
-    ):
+    ) -> None:
         action_port = action_port or types.DEFAULT_ACTION_PORT
         observation_port = observation_port or types.DEFAULT_OBSERVATION_PORT
 
@@ -229,10 +269,14 @@ class _Connection:
                 if not block:
                     # Non-blocking, nothing available
                     return None
-                # Blocking, need to try again.
-                # Doing our own sleep so we can do a clean shutdown on close()
-                # XXX Turn into poll
-                time.sleep(0.01)
+                # Blocking mode - we don't want to block in recv or poll because that
+                # prevents a clean exit when self._running is cleared.
+                # Do a short poll so we're not busy waiting then try again.
+                try:
+                    self.observation_socket.poll(10, zmq.POLLIN)
+                except zmq.error.ZMQError:
+                    # This can happen on close because the main thread closes the socket.
+                    pass
             else:
                 # recv returned
                 # This may also return None if there was an unpack error.

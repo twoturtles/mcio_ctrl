@@ -98,21 +98,30 @@ class LatestItemQueue(queue.Queue[T]):
 
 
 class TrackPerSecond:
-    def __init__(self, name: str, log_time: float = 10.0):
+    def __init__(self, name: str, log_time: float | None = 10.0):
         self.name = name
-        self.log_time = log_time
         self.start = time.time()
+        self.end = self.start
         self.item_count = 0
+
+        self.log_start = self.start
+        self.log_time = log_time
+        self.log_count = 0
 
     def count(self) -> None:
         """Increment the counter and log every log_time"""
-        end = time.time()
+        self.end = time.time()
         self.item_count += 1
-        if end - self.start >= self.log_time:
-            per_sec = self.item_count / (end - self.start)
+        self.log_count += 1
+        if self.log_time is not None and self.end - self.log_start >= self.log_time:
+            per_sec = self.log_count / (self.end - self.log_start)
             LOG.info(f"{self.name}: {per_sec:.1f}")
-            self.item_count = 0
-            self.start = end
+            self.log_count = 0
+            self.log_start = self.end
+
+    def avg_rate(self) -> float:
+        """Return the average rate"""
+        return self.item_count / (self.end - self.start)
 
 
 class OptionsTxt:

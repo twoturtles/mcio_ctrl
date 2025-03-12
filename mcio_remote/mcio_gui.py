@@ -81,7 +81,7 @@ class MCioGUI:
             assert self.gui is not None
             self.gui.set_cursor_mode(observation.cursor_mode)
             frame = observation.get_frame_with_cursor()
-            self.gui.show(frame)
+            self.gui.show(frame, poll=False)
 
     def run(self, launcher: instance.Launcher | None = None) -> None:
         """Main application loop
@@ -95,10 +95,14 @@ class MCioGUI:
             try:
                 observation = self.controller.recv_observation(block=False)
             except queue.Empty:
-                self.gui.poll()
+                # No new frame. Just poll gui and continue.
+                pass
             else:
                 LOG.debug(observation)
                 self.show(observation)
+
+            # Always poll. This keeps the window from being frozen.
+            self.gui.poll()
 
             if launcher is not None:
                 ret = launcher.poll()

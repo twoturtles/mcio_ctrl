@@ -1,4 +1,7 @@
-""" ImageStreamGui class for displaying frames in a window using glfw and opengl (gym render) """
+"""
+ImageStreamGui class for displaying frames in a window using glfw and opengl.
+Used for gym render.
+"""
 
 import time
 from typing import Any, Callable
@@ -23,6 +26,7 @@ class ImageStreamGui:
         scale: float = 1.0,
         width: int = 800,
         height: int = 600,
+        vsync: bool = False,
     ):
         """Create ImageStreamGui. Use show() to stream images to the window.
 
@@ -31,8 +35,9 @@ class ImageStreamGui:
             scale (float, optional): Allows you to use a window larger or smaller than the Minecraft window. Defaults to 1.0.
             width (int, optional): Initial window width in pixels. Defaults to 800.
             height (int, optional): Initial window height in pixels. Defaults to 600.
+            vsync (bool, optional): Enable vsync. Defaults to False.
         """
-        self.window = self._glfw_init(width, height, name)
+        self.window = self._glfw_init(width, height, name, vsync)
         self.set_callbacks()
         self.is_focused = bool(glfw.get_window_attrib(self.window, glfw.FOCUSED))
 
@@ -47,7 +52,8 @@ class ImageStreamGui:
     def show(self, frame: NDArray[np.uint8], poll: bool = True) -> bool:
         """Display the next frame
         Args:
-            frame (NDArray[np.uint8]): The new frame image
+            frame: The new frame image
+            poll: Poll during show
         Returns:
             bool: should_close - received request to quit / close the window
         """
@@ -144,7 +150,7 @@ class ImageStreamGui:
     # Internal functions
     #
 
-    def _glfw_init(self, width: int, height: int, name: str) -> Any:
+    def _glfw_init(self, width: int, height: int, name: str, vsync: bool) -> Any:
         # Initialize GLFW
         if not glfw.init():
             raise Exception("GLFW initialization failed")
@@ -159,6 +165,10 @@ class ImageStreamGui:
 
         # Set up OpenGL context
         glfw.make_context_current(window)
+
+        if not vsync:
+            # Disable vsync to avoid frame rate limiting
+            glfw.swap_interval(0)
 
         return window
 
