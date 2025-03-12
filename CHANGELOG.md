@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.4.0 - 2025-01-XX
+## 0.4.0 - 2025-03-11
 - Add option to hide Minecraft window
 - Add clear_input action
 - Add raw frame support and make it the default
