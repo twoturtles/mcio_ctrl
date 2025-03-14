@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+Debug logging config for Minecraft. Pass through mcio_remote using the MCIO_LOG_CFG env var.
+E.g., MCIO_LOG_CFG=log4j2.xml
+-->
+<Configuration name="Dev">
+  <Appenders>
+    <Console name="SysOut" target="SYSTEM_OUT">
+      <PatternLayout pattern="[%d{HH:mm:ss}] [%t/%level]: %msg{nolookups}%n" />
+    </Console>
+  </Appenders>
+
+  <Loggers>
+    <!-- Lower Minecraft base logging to warnings -->
+    <Logger name="net.minecraft" level="warn" />
+    
+    <!-- Enable DEBUG for all mod classes -->
+    <Logger name="net.twoturtles" level="info" additivity="false">
+      <AppenderRef ref="SysOut" />
+    </Logger>
+
+    <!-- Example specific class -->
+    <Logger name="net.twoturtles.MCioSyncUtil" level="debug" additivity="false">
+      <AppenderRef ref="SysOut" />
+    </Logger>
+
+    <!-- Catch-all root logger -->
+    <Root level="info">
+      <AppenderRef ref="SysOut" />
+    </Root>
+  </Loggers>
+</Configuration>

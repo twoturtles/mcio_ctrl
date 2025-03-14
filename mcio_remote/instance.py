@@ -165,6 +165,13 @@ class Launcher:
             mll_opts["quickPlaySingleplayer"] = self.run_options.world_name
         if self.run_options.java_path is not None:
             mll_opts["executablePath"] = self.run_options.java_path
+
+        # XXX Hack in a way to pass a log4j config file to Minecraft
+        log_cfg = os.environ.get("MCIO_LOG_CFG")
+        if log_cfg is not None:
+            log_path = Path(log_cfg).resolve()
+            mll_opts["jvmArguments"] = [f"-Dlog4j.configurationFile={log_path}"]
+
         self.mll_opts = mll_opts
 
         self._process: subprocess.Popen[str] | None = None
