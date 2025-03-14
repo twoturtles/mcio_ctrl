@@ -19,6 +19,10 @@ class ControllerCommon(Protocol):
         action.sequence = self._action_sequence_last_sent
         self._mcio_conn.send_action(action)
 
+    def send_stop(self) -> None:
+        """Send a stop packet to Minecraft. This should cause Minecraft to cleanly exit."""
+        self._mcio_conn.send_stop()
+
     def recv_observation(self) -> network.ObservationPacket: ...
     def close(self) -> None: ...
 

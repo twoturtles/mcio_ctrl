@@ -288,8 +288,16 @@ class _Connection:
         # Loop exited
         return None
 
+    def send_stop(self) -> None:
+        """Send a stop packet to Minecraft. This should cause Minecraft to cleanly exit."""
+        LOG.info("Sending-Stop")
+        self.send_action(ActionPacket(stop=True))
+        # Give Minecraft a chance to receive the packet before closing the connection. Seems like
+        # ZMQ should handle this.
+        time.sleep(0.5)
+
     def close(self) -> None:
-        LOG.info("Closing connections")
+        LOG.info("Closing-Connections")
         self._running.clear()
         self.action_socket.close()
         self.observation_socket.close()

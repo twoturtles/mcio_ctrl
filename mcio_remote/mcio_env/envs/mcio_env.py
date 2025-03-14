@@ -374,6 +374,9 @@ class MCioEnv(gym.Env[MCioObservation, MCioAction]):
             self.gui.close()
             self.gui = None
         if self.ctrl is not None:
+            if self.launcher is not None:
+                # If we launched Minecraft, try for a clean exit.
+                self.ctrl.send_stop()
             self.ctrl.close()
             self.ctrl = None
         if self.launcher is not None:

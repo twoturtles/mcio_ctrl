@@ -186,13 +186,13 @@ class Launcher:
             self._process = None
 
     def close(self) -> None:
-        # XXX Cleaner way to stop?
         if self._process is not None:
             try:
                 self._process.terminate()
                 self._process.wait(timeout=5)
-            except TimeoutError:
+            except subprocess.TimeoutExpired:
                 self._process.kill()
+                self._process.wait()
         self._process = None
 
     def poll(self) -> int | None:
