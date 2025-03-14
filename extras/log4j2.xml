@@ -14,12 +14,12 @@ E.g., MCIO_LOG_CFG=log4j2.xml
     <!-- Lower Minecraft base logging to warnings -->
     <Logger name="net.minecraft" level="warn" />
     
-    <!-- Enable DEBUG for all mod classes -->
+    <!-- Set level for all MCio classes -->
     <Logger name="net.twoturtles" level="info" additivity="false">
       <AppenderRef ref="SysOut" />
     </Logger>
 
-    <!-- Example specific class -->
+    <!-- Example for a specific class -->
     <Logger name="net.twoturtles.MCioSyncUtil" level="debug" additivity="false">
       <AppenderRef ref="SysOut" />
     </Logger>
