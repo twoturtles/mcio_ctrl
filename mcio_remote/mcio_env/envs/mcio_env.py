@@ -98,7 +98,7 @@ class MCioEnv(gym.Env[MCioObservation, MCioAction]):
         self.keys_pressed: set[str] = set()
         self.mouse_buttons_pressed: set[str] = set()
 
-        # These need closing when done.
+        # These need closing when done. Handled in close().
         self.gui: gui.ImageStreamGui | None = None
         self.ctrl: controller.ControllerCommon | None = None
         self.launcher: instance.Launcher | None = None
