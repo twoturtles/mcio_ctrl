@@ -65,62 +65,6 @@ Dict({
 
 OrderedDict([('ESC', array(0)), ('attack', array(1)), ('back', array(0)), ('camera', array([-21.149803,  41.296047], dtype=float32)), ('drop', array(1)), ('forward', array(1)), ('hotbar.1', array(0)), ('hotbar.2', array(1)), ('hotbar.3', array(0)), ('hotbar.4', array(1)), ('hotbar.5', array(1)), ('hotbar.6', array(1)), ('hotbar.7', array(0)), ('hotbar.8', array(1)), ('hotbar.9', array(0)), ('inventory', array(1)), ('jump', array(1)), ('left', array(0)), ('pickItem', array(1)), ('right', array(0)), ('sneak', array(0)), ('sprint', array(0)), ('swapHands', array(1)), ('use', array(1))])
 
-Camera is a relative movement:
-"This action changes the orientation of the agent’s heading by the corresponding
-number of degrees. The head changes its orientation pitch by the first component
-and its yaw by the second component. Both components are limited to [-180, 180]
-inclusive."
-[pitch, yaw] - [-180, 180] for both.
-absolute pitch is limited to -90 (up) to 90 (down). Relative motion past these limits is ignored.
-yaw will wrap around. positive = right, negative = left
-
-Mouse Sensitivity 0.0 - 1.0, default is 0.5
-
-// Code from Mouse.java:updateMouse()
-double d = this.client.options.getMouseSensitivity().getValue() * 0.6F + 0.2F;
-double e = d * d * d;
-double f = e * 8.0;
-
-// Explanation
-// Scale [0, 1] to [.2, .8]
-double sensitivityScale = this.client.options.getMouseSensitivity().getValue() * 0.6F + 0.2F;
-// Cube - Low sensitivity values increase very gradually, while high values increase more dramatically
-// Scale is now [0.008, .512]
-double cubicSensitivity = sensitivityScale * sensitivityScale * sensitivityScale;
-// Scale to final range [0.064, 4.096]
-double finalSensitivityMultiplier = cubicSensitivity * 8.0;
-
-For default: .5 *.6 + .2 = .5; .5 * .5 * .5 = .125; .125 * 8 = 1
-
-changeLookDirection() hardcodes degreesPerPixel = 0.15
-		float f = (float)cursorDeltaY * 0.15F;
-		float g = (float)cursorDeltaX * 0.15F;
-
-        pitch = clamp((pitch + f) % 360, -90, 90)
-        yaw = yaw + g
-
-        
-
-Summary
-Mouse.updateMouse():
-    mouseSensitivity (s) = [0, 1], default is 0.5
-    finalScale = (s * 0.6 + 0.2)^3 * 8 = [0.008, 0.512], default = 1
-    deltaX = finalScale * cursorDeltaX
-    deltaY = finalScale * cursorDeltaY
-
-
-Entity.changeLookDirection(cursorDeltaX, cursorDeltaY):
-    degreesPerPixel = 0.15
-    pitchDelta = cursorDeltaY * degreesPerPixel
-    yawDelta = cursorDeltaX * degreesPerPixel
-
-    pitch = clamp((pitch + pitchDelta) % 360, -90, 90)
-    yaw = yaw + yawDelta
-
-
-
-
-
 """
 
 
