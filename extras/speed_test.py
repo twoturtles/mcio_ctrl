@@ -30,7 +30,7 @@ def minerl_setup() -> Any:
 
 def mcio_setup(render: bool, connect: bool) -> Any:
     import mcio_remote as mcio
-    from mcio_remote.mcio_env.envs import mcio_env
+    from mcio_remote.envs import mcio_env
 
     # mcio inst launch DemoInstance -m sync -w DemoWorld -W 640 -H 360
     # env = mcio_env.MCioEnv(render_mode=None, width=640, height=360)
@@ -67,7 +67,7 @@ def minerl_run(
 def mcio_run(
     env: Any, num_steps: int, render: bool, steps_completed: list[int]
 ) -> None:
-    from mcio_remote.mcio_env.envs import mcio_env
+    from mcio_remote.envs import mcio_env
 
     assert isinstance(env, mcio_env.MCioEnv)
     action = env.get_noop_action()

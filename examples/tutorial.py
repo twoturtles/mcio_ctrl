@@ -6,7 +6,7 @@ import pprint
 import sys
 
 import mcio_remote as mcio
-from mcio_remote.mcio_env.envs import mcio_env
+from mcio_remote.envs import mcio_env
 
 # import gymnasium as gym
 

@@ -4,7 +4,7 @@ import numpy as np
 import pytest
 
 from mcio_remote import network, types
-from mcio_remote.mcio_env.envs import mcio_env
+from mcio_remote.envs import mcio_env
 
 
 @pytest.fixture
