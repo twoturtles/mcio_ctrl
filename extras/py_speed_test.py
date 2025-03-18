@@ -99,7 +99,7 @@ class GenerateObservation(mcio.mc_mock.GenerateObservation):
         frame_size = height * width * 3
         self.frame_array = np.zeros((frame_size,), dtype=np.uint8)
         self.base_obs.frame = self.frame_array.tobytes()
-        self.base_obs.frame_type = mcio.network.FrameType.RAW
+        self.base_obs.frame_type = mcio.types.FrameType.RAW
 
     def generate_observation(self) -> mcio.network.ObservationPacket:
         self.counter.count()

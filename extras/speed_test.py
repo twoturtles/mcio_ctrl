@@ -39,7 +39,7 @@ def mcio_setup(render: bool, connect: bool) -> Any:
         world_name="DemoWorld",
         width=640,
         height=360,
-        mcio_mode="sync",
+        mcio_mode=mcio.types.MCioMode.SYNC,
         hide_window=True,
     )
     render_mode = "human" if render else None
