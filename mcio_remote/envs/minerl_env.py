@@ -7,13 +7,13 @@ from dataclasses import dataclass
 from typing import Any
 
 import glfw  # type: ignore
-import gymnasium as gym
 import numpy as np
 from gymnasium import spaces
 from numpy.typing import NDArray
 
-from mcio_remote import controller, gui, instance
-from mcio_remote.types import RunOptions
+import mcio_remote as mcio
+
+from .base_env import McioBaseEnv
 
 """
 Notes:
@@ -62,6 +62,18 @@ Dict({
     "swapHands": "Discrete(2)", F
     "use": "Discrete(2)"
 })
+
+Notes:
+    - inventory must be released before it toggles the inventory screen. mcio gui behaves the same,
+    so this must be a Minecraft behavior. E.g.:
+        - step 1 inventory=1 -- opens inventory
+        - step 2 inventory=1 -- inventory stays open
+        - step 3 inventory=0 -- inventory stays open
+        - step 4 inventory=1 -- inventory closes
+    - swap hands has the same behavior
+
+    - sneak=1 to crouch, sneak=0 to stand
+
 
 OrderedDict([('ESC', array(0)), ('attack', array(1)), ('back', array(0)), ('camera', array([-21.149803,  41.296047], dtype=float32)), ('drop', array(1)), ('forward', array(1)), ('hotbar.1', array(0)), ('hotbar.2', array(1)), ('hotbar.3', array(0)), ('hotbar.4', array(1)), ('hotbar.5', array(1)), ('hotbar.6', array(1)), ('hotbar.7', array(0)), ('hotbar.8', array(1)), ('hotbar.9', array(0)), ('inventory', array(1)), ('jump', array(1)), ('left', array(0)), ('pickItem', array(1)), ('right', array(0)), ('sneak', array(0)), ('sprint', array(0)), ('swapHands', array(1)), ('use', array(1))])
 
@@ -112,14 +124,14 @@ KEYMAP: dict[str, Input] = {
 }
 
 
-class MinerlEnv(gym.Env[MinerlObservation, MinerlAction]):
+class MinerlEnv(McioBaseEnv[MinerlObservation, MinerlAction]):
     metadata = {
         "render_modes": ["human", "rgb_array"],
     }
 
     def __init__(
         self,
-        run_options: RunOptions,
+        run_options: mcio.types.RunOptions,
         *,
         launch: bool = False,
         render_mode: str | None = None,
@@ -151,9 +163,9 @@ class MinerlEnv(gym.Env[MinerlObservation, MinerlAction]):
         self.mouse_buttons_pressed: set[str] = set()
 
         # These need closing when done. Handled in close().
-        self.gui: gui.ImageStreamGui | None = None
-        self.ctrl: controller.ControllerCommon | None = None
-        self.launcher: instance.Launcher | None = None
+        self.gui: mcio.gui.ImageStreamGui | None = None
+        self.ctrl: mcio.controller.ControllerCommon | None = None
+        self.launcher: mcio.instance.Launcher | None = None
 
         self.observation_space = spaces.Dict(
             {
@@ -172,3 +184,14 @@ class MinerlEnv(gym.Env[MinerlObservation, MinerlAction]):
         }
         _action_space["camera"] = spaces.Box(low=-180.0, high=180.0, shape=(2,))
         self.action_space = spaces.Dict(_action_space)
+
+    def _packet_to_observation(
+        self, packet: mcio.network.ObservationPacket
+    ) -> MinerlObservation:
+        return {}
+
+    def _action_to_packet(
+        self, action: MinerlAction | None = None, commands: list[str] | None = None
+    ) -> mcio.network.ActionPacket:
+        """Convert from the environment action_space to an ActionPacket"""
+        return mcio.network.ActionPacket()

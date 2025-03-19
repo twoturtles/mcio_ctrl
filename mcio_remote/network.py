@@ -1,4 +1,4 @@
-""" Packet definitions and low-level connection code."""
+"""Packet definitions and low-level connection code."""
 
 import logging
 import pprint
