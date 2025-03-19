@@ -9,7 +9,6 @@ from typing import Any
 import glfw  # type: ignore
 import numpy as np
 from gymnasium import spaces
-from numpy.typing import NDArray
 
 import mcio_remote as mcio
 
@@ -90,10 +89,15 @@ class InputType(enum.Enum):
     MOUSE = 1
 
 
+class InputState(enum.IntEnum):
+    PRESS = glfw.PRESS
+    RELEASE = glfw.RELEASE
+
+
 @dataclass()
 class Input:
     type: InputType
-    code: int
+    code: int  # GLFW key/button code
 
 
 # Map from Minerl action name to Minecraft input
@@ -129,43 +133,13 @@ class MinerlEnv(McioBaseEnv[MinerlObservation, MinerlAction]):
         "render_modes": ["human", "rgb_array"],
     }
 
-    def __init__(
-        self,
-        run_options: mcio.types.RunOptions,
-        *,
-        launch: bool = False,
-        render_mode: str | None = None,
-    ):
+    def __init__(self, *args: Any, **kwargs: Any):
         """
         Attempt at Minerl 1.0 compatible environment. This only replicates the Minerl
         action and observation spaces.
-
-        Args:
-            run_options:
-                If you're not using this env to launch Minecraft, the only options
-                used are height, width, and mcio_mode.
-
-                The remaining options are used if the env is launching an instance. At least
-                instance_name is required in that case.
-
-            launch: Should the env launch Minecraft
-
-            render_mode: human, rgb_array
+        See McioBaseEnv for docs on parameters
         """
-        self.run_options = run_options
-        self.launch = launch
-        assert render_mode is None or render_mode in self.metadata["render_modes"]
-        self.render_mode = render_mode
-
-        self.last_frame: NDArray[np.uint8] | None = None
-        self.last_cursor_pos: tuple[int, int] = (0, 0)
-        self.keys_pressed: set[str] = set()
-        self.mouse_buttons_pressed: set[str] = set()
-
-        # These need closing when done. Handled in close().
-        self.gui: mcio.gui.ImageStreamGui | None = None
-        self.ctrl: mcio.controller.ControllerCommon | None = None
-        self.launcher: mcio.instance.Launcher | None = None
+        super().__init__(*args, **kwargs)
 
         self.observation_space = spaces.Dict(
             {
@@ -197,15 +171,20 @@ class MinerlEnv(McioBaseEnv[MinerlObservation, MinerlAction]):
     def _action_to_packet(
         self, action: MinerlAction, commands: list[str] | None = None
     ) -> mcio.network.ActionPacket:
-        """Convert from the environment action_space to an ActionPacket"""
+        """Convert from the environment action_space to an ActionPacket
+        Always populate the packet with all possible keys/buttons. Minecraft can
+        handle repeated PRESS and RELEASE actions. Not set in the action = RELEASE."""
         packet = mcio.network.ActionPacket()
-        for action_name, mc_input in KEYMAP.items():
-            if action_name not in action:
-                continue
-            if mc_input.type == InputType.KEY:
-                if action[action_name] == 1:
-                    packet.keys.append((mc_input.code, glfw.PRESS))
-                else:
-                    packet.keys.append((mc_input.code, glfw.RELEASE))
+        for action_name, input in KEYMAP.items():
+            state = action.get(action_name, InputState.RELEASE)
+            match input.type:
+                case InputType.KEY:
+                    packet.keys.append((input.code, state))
+                case InputType.MOUSE:
+                    packet.mouse_buttons.append((input.code, state))
+                case _:
+                    raise ValueError(f"Unknown input type: {input.type}")
 
-        return mcio.network.ActionPacket()
+        packet.cursor_pos
+        packet.commands = commands or []
+        return packet
