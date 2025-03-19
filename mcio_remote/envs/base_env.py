@@ -1,7 +1,7 @@
 """Base class for MCio environments"""
 
 from abc import ABC, abstractmethod
-from typing import Any, Dict, Generic, TypedDict, TypeVar
+from typing import Any, Generic, TypedDict, TypeVar
 
 import gymnasium as gym
 import numpy as np
@@ -12,8 +12,8 @@ from mcio_remote.types import RunOptions
 
 # Reusable types
 RenderFrame = TypeVar("RenderFrame")  # NDArray[np] shape = (height, width, channels)
-ObsType = TypeVar("ObsType", bound=Dict[str, Any])
-ActType = TypeVar("ActType", bound=Dict[str, Any])
+ObsType = TypeVar("ObsType", bound=dict[str, Any])
+ActType = TypeVar("ActType", bound=dict[str, Any])
 
 
 class ResetOptions(TypedDict, total=False):
@@ -67,12 +67,14 @@ class McioBaseEnv(gym.Env[ObsType, ActType], Generic[ObsType, ActType], ABC):
 
     @abstractmethod
     def _packet_to_observation(self, packet: network.ObservationPacket) -> ObsType:
+        """Implemented in subclasses. Convert an ObservationPacket to the environment observation_space"""
         pass
 
     @abstractmethod
     def _action_to_packet(
-        self, action: ActType | None = None, commands: list[str] | None = None
+        self, action: ActType, commands: list[str] | None = None
     ) -> network.ActionPacket:
+        """Implemented in subclasses. Convert from the environment action_space to an ActionPacket"""
         pass
 
     def _get_obs(self) -> ObsType:
@@ -82,9 +84,7 @@ class McioBaseEnv(gym.Env[ObsType, ActType], Generic[ObsType, ActType], ABC):
             return {}
         return self._packet_to_observation(packet)
 
-    def _send_action(
-        self, action: ActType | None = None, commands: list[str] | None = None
-    ) -> None:
+    def _send_action(self, action: ActType, commands: list[str] | None = None) -> None:
         packet = self._action_to_packet(action, commands)
         assert self.ctrl is not None
         self.ctrl.send_action(packet)

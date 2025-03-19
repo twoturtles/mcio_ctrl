@@ -169,7 +169,7 @@ class MCioEnv(gym.Env[MCioObservation, MCioAction]):
         return self._packet_to_observation(packet)
 
     def _send_action(
-        self, action: MCioAction | None = None, commands: list[str] | None = None
+        self, action: MCioAction, commands: list[str] | None = None
     ) -> None:
         packet = self._action_to_packet(action, commands)
         assert self.ctrl is not None
@@ -194,7 +194,7 @@ class MCioEnv(gym.Env[MCioObservation, MCioAction]):
     # XXX I think missing keys/buttons should translate to NO_PRESS. But what is noop then?
     # Convert action space values to MCio/Minecraft values. Allow for empty/noop actions.
     def _action_to_packet(
-        self, action: MCioAction | None = None, commands: list[str] | None = None
+        self, action: MCioAction, commands: list[str] | None = None
     ) -> network.ActionPacket:
         """Convert from the environment action_space to an ActionPacket"""
         packet = network.ActionPacket()

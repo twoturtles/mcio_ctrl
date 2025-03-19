@@ -188,10 +188,24 @@ class MinerlEnv(McioBaseEnv[MinerlObservation, MinerlAction]):
     def _packet_to_observation(
         self, packet: mcio.network.ObservationPacket
     ) -> MinerlObservation:
-        return {}
+        """Convert an ObservationPacket to the environment observation_space"""
+        obs: MinerlObservation = {
+            "pov": packet.get_frame_with_cursor(),
+        }
+        return obs
 
     def _action_to_packet(
-        self, action: MinerlAction | None = None, commands: list[str] | None = None
+        self, action: MinerlAction, commands: list[str] | None = None
     ) -> mcio.network.ActionPacket:
         """Convert from the environment action_space to an ActionPacket"""
+        packet = mcio.network.ActionPacket()
+        for action_name, mc_input in KEYMAP.items():
+            if action_name not in action:
+                continue
+            if mc_input.type == InputType.KEY:
+                if action[action_name] == 1:
+                    packet.keys.append((mc_input.code, glfw.PRESS))
+                else:
+                    packet.keys.append((mc_input.code, glfw.RELEASE))
+
         return mcio.network.ActionPacket()
