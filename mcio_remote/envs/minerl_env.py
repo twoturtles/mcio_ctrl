@@ -62,7 +62,7 @@ Dict({
     "use": "Discrete(2)"
 })
 
-Notes:
+Minerl behavior notes:
     - inventory must be released before it toggles the inventory screen. mcio gui behaves the same,
     so this must be a Minecraft behavior. E.g.:
         - step 1 inventory=1 -- opens inventory
@@ -84,14 +84,10 @@ type MinerlAction = dict[str, Any]
 type MinerlObservation = dict[str, Any]
 
 
+# Define types for key/button actions
 class InputType(enum.Enum):
     KEY = 0
     MOUSE = 1
-
-
-class InputState(enum.IntEnum):
-    PRESS = glfw.PRESS
-    RELEASE = glfw.RELEASE
 
 
 @dataclass()
@@ -110,7 +106,6 @@ KEYMAP: dict[str, Input] = {
     "right": Input(InputType.KEY, glfw.KEY_D),
     "back": Input(InputType.KEY, glfw.KEY_S),
     "drop": Input(InputType.KEY, glfw.KEY_Q),
-    "ESC": Input(InputType.KEY, glfw.KEY_ESCAPE),
     "inventory": Input(InputType.KEY, glfw.KEY_E),
     "jump": Input(InputType.KEY, glfw.KEY_SPACE),
     "sneak": Input(InputType.KEY, glfw.KEY_LEFT_SHIFT),
@@ -137,9 +132,13 @@ class MinerlEnv(McioBaseEnv[MinerlObservation, MinerlAction]):
         """
         Attempt at Minerl 1.0 compatible environment. This only replicates the Minerl
         action and observation spaces.
-        See McioBaseEnv for docs on parameters
+
+        See **McioBaseEnv** for docs on parameters
         """
         super().__init__(*args, **kwargs)
+
+        # Used for the ESC action
+        self.terminated = False
 
         self.observation_space = spaces.Dict(
             {
@@ -156,8 +155,20 @@ class MinerlEnv(McioBaseEnv[MinerlObservation, MinerlAction]):
         _action_space: dict[str, Any] = {
             key: spaces.Discrete(2) for key in KEYMAP.keys()
         }
+        # ESC is a special case in minerl. It's not passed to Minecraft. Instead
+        # it signals the environment to terminate.
+        _action_space["ESC"] = spaces.Discrete(2)
+        # camera is the change in degrees of (pitch, yaw)
         _action_space["camera"] = spaces.Box(low=-180.0, high=180.0, shape=(2,))
         self.action_space = spaces.Dict(_action_space)
+
+        self.cursor_map = mcio.util.DegreesToPixels()
+
+    def _process_step(
+        self, action: MinerlAction, observation: MinerlObservation
+    ) -> tuple[int, bool, bool]:
+        # reward, terminated, truncated
+        return 0, self.terminated, False
 
     def _packet_to_observation(
         self, packet: mcio.network.ObservationPacket
@@ -176,15 +187,26 @@ class MinerlEnv(McioBaseEnv[MinerlObservation, MinerlAction]):
         handle repeated PRESS and RELEASE actions. Not set in the action = RELEASE."""
         packet = mcio.network.ActionPacket()
         for action_name, input in KEYMAP.items():
-            state = action.get(action_name, InputState.RELEASE)
+            # These are Discrete(2), so either np.int64(0) or np.int64(1)
+            space_val = action.get(action_name)
+            input_val = glfw.PRESS if space_val else glfw.RELEASE
             match input.type:
                 case InputType.KEY:
-                    packet.keys.append((input.code, state))
+                    packet.keys.append((input.code, input_val))
                 case InputType.MOUSE:
-                    packet.mouse_buttons.append((input.code, state))
+                    packet.mouse_buttons.append((input.code, input_val))
                 case _:
                     raise ValueError(f"Unknown input type: {input.type}")
 
-        packet.cursor_pos
+        packet.cursor_pos = [
+            self.cursor_map.update(
+                pitch_delta=action["camera"][0], yaw_delta=action["camera"][1]
+            )
+        ]
         packet.commands = commands or []
+
+        if action["ESC"]:
+            # Signal termination
+            self.terminated = True
+
         return packet

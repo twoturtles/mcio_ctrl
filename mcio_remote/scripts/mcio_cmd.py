@@ -2,7 +2,6 @@ import argparse
 import logging
 import pprint
 import textwrap
-import typing
 from pathlib import Path
 from typing import Any, Final, Protocol
 
@@ -217,7 +216,7 @@ class InstanceLaunchCmd(Cmd):
             "--mcio-mode",
             "-m",
             type=str,
-            choices=typing.get_args(types.MCioMode),
+            choices=[str(x) for x in types.MCioMode],
             default=types.DEFAULT_MCIO_MODE,
             help=f"MCio mode: (default: {types.DEFAULT_MCIO_MODE})",
         )

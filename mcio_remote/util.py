@@ -254,11 +254,11 @@ class DegreesToPixels:
         self.x: int = 0
         self.y: int = 0
 
-    def update(self, pitch_delta: float, yaw_delta: float) -> None:
-        """delta arguments are in degrees"""
-        # minerl: [pitch, yaw]
-        self.y += int(pitch_delta * self.PIXELS_PER_DEGREE)
+    def update(self, *, yaw_delta: float, pitch_delta: float) -> tuple[int, int]:
+        """Delta arguments are in degrees. Returns the new cursor position in pixels."""
         self.x += int(yaw_delta * self.PIXELS_PER_DEGREE)
+        self.y += int(pitch_delta * self.PIXELS_PER_DEGREE)
+        return self.x, self.y
 
 
 ##

@@ -44,6 +44,12 @@ class McioBaseEnv(gym.Env[ObsType, ActType], Generic[ObsType, ActType], ABC):
             run_options: Configuration options for MCio
             launch: Whether to launch a new Minecraft instance
             render_mode: The rendering mode (human, rgb_array)
+
+        Notes for subclasses:
+         - Make sure you call super().__init__().
+         - Set self.action_space and self.observation_space in the constructor.
+         - Define _packet_to_observation() and _action_to_packet()
+         - Optionally define _get_info()
         """
         self.run_options = run_options
         self.launch = launch
@@ -52,9 +58,6 @@ class McioBaseEnv(gym.Env[ObsType, ActType], Generic[ObsType, ActType], ABC):
 
         # Common state tracking
         self.last_frame: NDArray[np.uint8] | None = None
-        self.last_cursor_pos: tuple[int, int] = (0, 0)
-        self.keys_pressed: set[str] = set()
-        self.mouse_buttons_pressed: set[str] = set()
 
         # These need closing when done. Handled in close().
         self.gui: gui.ImageStreamGui | None = None
@@ -64,6 +67,9 @@ class McioBaseEnv(gym.Env[ObsType, ActType], Generic[ObsType, ActType], ABC):
         # Define spaces in subclasses
         self.action_space: gym.spaces.Space[ActType]
         self.observation_space: gym.spaces.Space[ObsType]
+
+    ##
+    # Define in subclasses
 
     @abstractmethod
     def _packet_to_observation(self, packet: network.ObservationPacket) -> ObsType:
@@ -77,11 +83,31 @@ class McioBaseEnv(gym.Env[ObsType, ActType], Generic[ObsType, ActType], ABC):
         """Implemented in subclasses. Convert from the environment action_space to an ActionPacket"""
         pass
 
+    def _process_step(
+        self, action: ActType, observation: ObsType
+    ) -> tuple[int, bool, bool]:
+        """Override in the subclass. Called during step() after the observation has been received
+        Returns (reward, terminated, truncated)"""
+        reward = 0
+        terminated = False
+        truncated = False
+        return reward, terminated, truncated
+
+    def _get_info(self) -> dict[Any, Any]:
+        """Optionally override this in subclasses. Used to return extra info from reset() and step()"""
+        return {}
+
+    ##
+    # Internal methods
+
     def _get_obs(self) -> ObsType:
+        """Receive an observation and pass it to the subclass.
+        Sets self.last_frame to the most received frame."""
         assert self.ctrl is not None
         packet = self.ctrl.recv_observation()
         if packet is None:
             return {}
+        self.last_frame = packet.get_frame_with_cursor()
         return self._packet_to_observation(packet)
 
     def _send_action(self, action: ActType, commands: list[str] | None = None) -> None:
@@ -96,9 +122,6 @@ class McioBaseEnv(gym.Env[ObsType, ActType], Generic[ObsType, ActType], ABC):
         )
         assert self.ctrl is not None
         self.ctrl.send_action(packet)
-
-    def _get_info(self) -> dict[Any, Any]:
-        return {}
 
     def reset(
         self,
@@ -118,8 +141,8 @@ class McioBaseEnv(gym.Env[ObsType, ActType], Generic[ObsType, ActType], ABC):
         options = options or ResetOptions()
 
         if self.launch:
-            # For multiple resets, close the previous connections, etc.
             if self.launcher is not None:
+                # For multiple resets, close the previous connections, etc.
                 self.close()
             self.launcher = instance.Launcher(self.run_options)
             self.launcher.launch(wait=False)
@@ -129,15 +152,39 @@ class McioBaseEnv(gym.Env[ObsType, ActType], Generic[ObsType, ActType], ABC):
         else:
             self.ctrl = controller.ControllerSync()
 
-        # The reset action will trigger any initial observation
+        # The reset action will trigger an initial observation
         self._send_reset_action(options)
         observation = self._get_obs()
+        info = self._get_info()
+
+        # XXX This is from the official gymnasium template, but why
+        # is this here? Shouldn't the user just call render after reset?
+        if self.render_mode == "human":
+            self._render_frame_human()
+
+        return observation, info
+
+    def step(
+        self,
+        action: ActType,
+        *,
+        options: ResetOptions | None = None,
+    ) -> tuple[ObsType, int, bool, bool, dict[Any, Any]]:
+        """Env step function. Includes extra options arg to allow command to be sent during step."""
+        if action not in self.action_space:
+            raise ValueError(f"Invalid action: {action}")
+        options = options or ResetOptions()
+
+        self._send_action(action, options.get("commands"))
+
+        observation = self._get_obs()
+        reward, terminated, truncated = self._process_step(action, observation)
         info = self._get_info()
 
         if self.render_mode == "human":
             self._render_frame_human()
 
-        return observation, info
+        return observation, reward, terminated, truncated, info
 
     # NDArray[np.uint8] shape = (height, width, channels)
     # Gym's render returns a generic TypeVar("RenderFrame"), which is not very useful.
