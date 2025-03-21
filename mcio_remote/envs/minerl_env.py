@@ -18,20 +18,7 @@ from .base_env import McioBaseEnv
 Notes:
 
 Minerl Observation Space:
-Dict(pov:Box(low=0, high=255, shape=(360, 640, 3)))
-obs['pov'].shape
-(360, 640, 3)
-obs['pov'].dtype
-dtype('uint8')
-
-{'pov': array([[[17, 17, 17],
-        [17, 17, 17],
-        [17, 17, 17],
-        ...,
-        [16, 15, 14],
-        [21, 19, 17],
-        [21, 19, 16]],
-
+Dict(pov:Box(low=0, high=255, shape=(360, 640, 3))), dtype = 'uint8'
 
 
 Minerl Action Space:
@@ -62,6 +49,9 @@ Dict({
     "use": "Discrete(2)"
 })
 
+Sample action:
+OrderedDict([('ESC', array(0)), ('attack', array(1)), ('back', array(0)), ('camera', array([-21.149803,  41.296047], dtype=float32)), ('drop', array(1)), ('forward', array(1)), ('hotbar.1', array(0)), ('hotbar.2', array(1)), ('hotbar.3', array(0)), ('hotbar.4', array(1)), ('hotbar.5', array(1)), ('hotbar.6', array(1)), ('hotbar.7', array(0)), ('hotbar.8', array(1)), ('hotbar.9', array(0)), ('inventory', array(1)), ('jump', array(1)), ('left', array(0)), ('pickItem', array(1)), ('right', array(0)), ('sneak', array(0)), ('sprint', array(0)), ('swapHands', array(1)), ('use', array(1))])
+
 Minerl behavior notes:
     - inventory must be released before it toggles the inventory screen. mcio gui behaves the same,
     so this must be a Minecraft behavior. E.g.:
@@ -72,10 +62,6 @@ Minerl behavior notes:
     - swap hands has the same behavior
 
     - sneak=1 to crouch, sneak=0 to stand
-
-
-OrderedDict([('ESC', array(0)), ('attack', array(1)), ('back', array(0)), ('camera', array([-21.149803,  41.296047], dtype=float32)), ('drop', array(1)), ('forward', array(1)), ('hotbar.1', array(0)), ('hotbar.2', array(1)), ('hotbar.3', array(0)), ('hotbar.4', array(1)), ('hotbar.5', array(1)), ('hotbar.6', array(1)), ('hotbar.7', array(0)), ('hotbar.8', array(1)), ('hotbar.9', array(0)), ('inventory', array(1)), ('jump', array(1)), ('left', array(0)), ('pickItem', array(1)), ('right', array(0)), ('sneak', array(0)), ('sprint', array(0)), ('swapHands', array(1)), ('use', array(1))])
-
 """
 
 
@@ -97,7 +83,7 @@ class Input:
 
 
 # Map from Minerl action name to Minecraft input
-KEYMAP: dict[str, Input] = {
+INPUT_MAP: dict[str, Input] = {
     "attack": Input(InputType.MOUSE, glfw.MOUSE_BUTTON_LEFT),
     "use": Input(InputType.MOUSE, glfw.MOUSE_BUTTON_RIGHT),
     "pickItem": Input(InputType.MOUSE, glfw.MOUSE_BUTTON_MIDDLE),
@@ -153,7 +139,7 @@ class MinerlEnv(McioBaseEnv[MinerlObservation, MinerlAction]):
         )
 
         _action_space: dict[str, Any] = {
-            key: spaces.Discrete(2) for key in KEYMAP.keys()
+            key: spaces.Discrete(2) for key in INPUT_MAP.keys()
         }
         # ESC is a special case in minerl. It's not passed to Minecraft. Instead
         # it signals the environment to terminate.
@@ -186,7 +172,7 @@ class MinerlEnv(McioBaseEnv[MinerlObservation, MinerlAction]):
         Always populate the packet with all possible keys/buttons. Minecraft can
         handle repeated PRESS and RELEASE actions. Not set in the action = RELEASE."""
         packet = mcio.network.ActionPacket()
-        for action_name, input in KEYMAP.items():
+        for action_name, input in INPUT_MAP.items():
             # These are Discrete(2), so either np.int64(0) or np.int64(1)
             space_val = action.get(action_name)
             input_val = glfw.PRESS if space_val else glfw.RELEASE
