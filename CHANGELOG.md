@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.5.0 - 2025-04-06
+- Fix multiple resets
+- Improve exit handling
+- Easier env creating with a base env
+- Add minerl compatible env
+- MCIO_PROTOCOL_VERSION = 4
+
 ## 0.4.0 - 2025-03-11
 - Add option to hide Minecraft window
 - Add clear_input action
