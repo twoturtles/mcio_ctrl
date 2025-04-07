@@ -1,5 +1,6 @@
-""" Test that communication is working properly.
-Just sends noop actions and displays observations. Uses async mode to test async match"""
+"""Test that communication is working properly.
+Just sends noop actions and displays observations. Uses async mode to test async match
+"""
 
 import argparse
 import sys

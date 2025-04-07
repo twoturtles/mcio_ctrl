@@ -421,6 +421,8 @@ class DemoCmd(Cmd):
         if not wm.world_exists(self.inst_name, self.world_name):
             wm.copy(world.STORAGE_LOCATION, self.world_name, self.inst_name)
 
+        launch: instance.Launcher | None = None
+        gui: mcio_gui.MCioGUI | None = None
         try:
             # 5
             print("\nLaunching Minecraft...")
@@ -440,8 +442,10 @@ class DemoCmd(Cmd):
             pass
         finally:
             print("\nExiting...")
-            launch.close()
-            gui.close()
+            if launch:
+                launch.close()
+            if gui:
+                gui.close()
 
     def add(self, parent_subparsers: "argparse._SubParsersAction[Any]") -> None:
         demo_parser = parent_subparsers.add_parser(

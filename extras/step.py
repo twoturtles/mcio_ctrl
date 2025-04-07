@@ -1,4 +1,4 @@
-""" Test that communication is working properly.
+"""Test that communication is working properly.
 Just sends noop actions and displays observations"""
 
 import argparse
