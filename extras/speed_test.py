@@ -44,7 +44,13 @@ def mcio_setup(render: bool, connect: bool) -> Any:
 
     render_mode = "human" if render else None
     env = minerl_env.MinerlEnv(opts, render_mode=render_mode)
-    env.reset()
+    setup_commands = [
+        "time set day",
+        "teleport @s ~ ~ ~ -90 0",  # face East, straight ahead
+        "gamemode creative",  # Don't die. The death screen steps faster than the game.
+    ]
+    env.reset(options={"commands": setup_commands})
+    env.skip_ticks(25)  # Give the commands time to take effect
     return env
 
 
