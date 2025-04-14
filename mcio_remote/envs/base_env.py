@@ -162,11 +162,6 @@ class MCioBaseEnv(gym.Env[ObsType, ActType], Generic[ObsType, ActType], ABC):
         observation = self._get_obs()
         info = self._get_info()
 
-        # XXX This is from the official gymnasium template, but why
-        # is this here? Shouldn't the user just call render after reset?
-        if self.render_mode == "human":
-            self._render_frame_human()
-
         return observation, info
 
     def step(
@@ -184,9 +179,6 @@ class MCioBaseEnv(gym.Env[ObsType, ActType], Generic[ObsType, ActType], ABC):
 
         reward, terminated, truncated = self._process_step(action, observation)
         info = self._get_info()
-
-        if self.render_mode == "human":
-            self._render_frame_human()
 
         return observation, reward, terminated, truncated, info
 
