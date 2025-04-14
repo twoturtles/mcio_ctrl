@@ -1,5 +1,6 @@
 """
 Basic step speed test. Drives MCio in sync mode as fast as possible.
+Also, minerl mode as a comparison and sanity check.
 
 mcio inst launch DemoInstance -m sync -w DemoWorld -W 640 -H 360
 SPEED-TEST mode=mcio steps=5000 setup=0.19 run=16.92 steps_per_sec=295.50
@@ -30,7 +31,7 @@ def minerl_setup() -> Any:
 
 def mcio_setup(render: bool, connect: bool) -> Any:
     import mcio_remote as mcio
-    from mcio_remote.envs import mcio_env
+    from mcio_remote.envs import minerl_env
 
     if connect:
         # To launch an instance:
@@ -42,7 +43,7 @@ def mcio_setup(render: bool, connect: bool) -> Any:
         )
 
     render_mode = "human" if render else None
-    env = mcio_env.MCioEnv(opts, render_mode=render_mode)
+    env = minerl_env.MinerlEnv(opts, render_mode=render_mode)
     env.reset()
     return env
 
@@ -65,16 +66,16 @@ def minerl_run(
 def mcio_run(
     env: Any, num_steps: int, render: bool, steps_completed: list[int]
 ) -> None:
-    from mcio_remote.envs import mcio_env
+    from mcio_remote.envs import minerl_env
 
-    assert isinstance(env, mcio_env.MCioEnv)
-    action = env.get_noop_action()
-    # action["cursor_pos_rel"][:] = [10, 0]
+    assert isinstance(env, minerl_env.MinerlEnv)
+
+    action: dict[str, Any] = defaultdict(
+        int
+    )  # This will return 0 for any unspecified key
+    action["camera"] = [0, 0]
     print(action)
-    # flip = 0
     for _ in tqdm(range(num_steps)):
-        # action["mouse_buttons"]["RIGHT"] = flip
-        # flip = 1 - flip
         env.step(action)
         if render:
             env.render()
