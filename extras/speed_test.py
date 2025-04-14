@@ -62,6 +62,7 @@ def minerl_run(
     )  # This will return 0 for any unspecified key
     action["camera"] = [0, 1]
     print(action)
+    # Note: The minerl env seems to terminate after 3600 steps
     for _ in tqdm(range(num_steps)):
         env.step(action)
         if render:
