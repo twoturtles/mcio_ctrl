@@ -55,7 +55,11 @@ def mcio_setup(render: bool, connect: bool) -> Any:
 
 
 def minerl_run(
-    env: Any, num_steps: int, render: bool, steps_completed: list[int]
+    env: Any,
+    num_steps: int,
+    render: bool,
+    render_n: int | None,
+    steps_completed: list[int],
 ) -> None:
     action: dict[str, Any] = defaultdict(
         int
@@ -63,15 +67,21 @@ def minerl_run(
     action["camera"] = [0, 1]
     print(action)
     # Note: The minerl env seems to terminate after 3600 steps
-    for _ in tqdm(range(num_steps)):
+    for i in tqdm(range(num_steps)):
         env.step(action)
         if render:
+            env.render()
+        elif render_n is not None and i % render_n == 0:
             env.render()
         steps_completed[0] += 1
 
 
 def mcio_run(
-    env: Any, num_steps: int, render: bool, steps_completed: list[int]
+    env: Any,
+    num_steps: int,
+    render: bool,
+    render_n: int | None,
+    steps_completed: list[int],
 ) -> None:
     from mcio_remote.envs import minerl_env
 
@@ -82,9 +92,11 @@ def mcio_run(
     )  # This will return 0 for any unspecified key
     action["camera"] = [0, 1]
     print(action)
-    for _ in tqdm(range(num_steps)):
+    for i in tqdm(range(num_steps)):
         env.step(action)
         if render:
+            env.render()
+        elif render_n is not None and i % render_n == 0:
             env.render()
         steps_completed[0] += 1
 
@@ -97,6 +109,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--render", "-r", action="store_true", help="render (show output frames)"
     )
+    parser.add_argument("--render-n", "-R", type=int, help="show every n frames")
     parser.add_argument(
         "--connect",
         "-c",
@@ -111,21 +124,22 @@ def parse_args() -> argparse.Namespace:
 def main() -> None:
     logging.basicConfig(level=logging.INFO)
     args = parse_args()
+    do_render = args.render or args.render_n is not None
 
     start = time.perf_counter()
     if args.mode == "minerl":
         env = minerl_setup()
     else:
-        env = mcio_setup(args.render, args.connect)
+        env = mcio_setup(do_render, args.connect)
     setup_time = time.perf_counter() - start
 
     start = time.perf_counter()
     steps_completed = [0]
     try:
         if args.mode == "minerl":
-            minerl_run(env, args.steps, args.render, steps_completed)
+            minerl_run(env, args.steps, args.render, args.render_n, steps_completed)
         else:
-            mcio_run(env, args.steps, args.render, steps_completed)
+            mcio_run(env, args.steps, args.render, args.render_n, steps_completed)
     except KeyboardInterrupt:
         print("Exiting...")
     run_time = time.perf_counter() - start
