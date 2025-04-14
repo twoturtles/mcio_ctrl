@@ -54,7 +54,7 @@ def minerl_run(
     action: dict[str, Any] = defaultdict(
         int
     )  # This will return 0 for any unspecified key
-    # action["camera"] = [0, 10]
+    action["camera"] = [0, 1]
     print(action)
     for _ in tqdm(range(num_steps)):
         env.step(action)
@@ -73,7 +73,7 @@ def mcio_run(
     action: dict[str, Any] = defaultdict(
         int
     )  # This will return 0 for any unspecified key
-    action["camera"] = [0, 0]
+    action["camera"] = [0, 1]
     print(action)
     for _ in tqdm(range(num_steps)):
         env.step(action)
