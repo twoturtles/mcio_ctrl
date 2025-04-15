@@ -1,5 +1,6 @@
 """
-Speed test the python side (mcio_remote)
+Speed test the python side (mcio_remote). This sends packets in a loop through python.
+Python simulates the MCio/Minecraft portion.
 
 Results on my laptop:
 frame=0x0x3 (0 bytes), process_frames=True, display_frames=False, rate=60137.2 fps
