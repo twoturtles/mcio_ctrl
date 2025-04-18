@@ -24,6 +24,8 @@ DEFAULT_HIDE_WINDOW = False
 class StrEnumUpper(enum.StrEnum):
     """Like StrEnum, but the values are same as the enum rather than lowercase."""
 
+    # XXX Wait, why do we need this? Could just use Enum["FOO"] / Enum.FOO.name
+
     @staticmethod
     def _generate_next_value_(
         name: str, start: int, count: int, last_values: list[str]
@@ -269,6 +271,8 @@ class RunOptions:
                 return cast(T, float(env_val))
             elif typ is str:
                 return cast(T, env_val)
+            elif issubclass(typ, enum.Enum):
+                return cast(T, typ[env_val.upper()])
             else:
                 raise ValueError(f"Unsupported conversion: type={typ.__name__}")
         except Exception as e:
