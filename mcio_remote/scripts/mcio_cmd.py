@@ -185,8 +185,6 @@ class InstanceLaunchCmd(Cmd):
             instance_name=args.instance_name,
             width=args.width,
             height=args.height,
-            action_port=args.action_port,
-            observation_port=args.observation_port,
             mcio_dir=args.mcio_dir,
             mc_username=args.username,
             world_name=args.world,
@@ -239,18 +237,6 @@ class InstanceLaunchCmd(Cmd):
             "-j",
             type=str,
             help="Path to java executable (defaults to Mojang's java installed with the instance)",
-        )
-        launch_parser.add_argument(
-            "--action-port",
-            type=int,
-            default=types.DEFAULT_ACTION_PORT,
-            help=f"Port for the action connection. Default {types.DEFAULT_ACTION_PORT}",
-        )
-        launch_parser.add_argument(
-            "--observation-port",
-            type=int,
-            default=types.DEFAULT_OBSERVATION_PORT,
-            help=f"Port for the observation connection. Default {types.DEFAULT_OBSERVATION_PORT}",
         )
 
         launch_group = launch_parser.add_mutually_exclusive_group()
