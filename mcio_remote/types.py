@@ -1,10 +1,11 @@
 """Defines some common types for the module"""
 
 import enum
+import os
 import uuid
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
-from typing import Final, Self
+from typing import Final, Self, Type, TypeVar, cast
 
 import glfw  # type: ignore
 
@@ -28,6 +29,17 @@ class StrEnumUpper(enum.StrEnum):
         name: str, start: int, count: int, last_values: list[str]
     ) -> str:
         return name
+
+
+class MCioMode(StrEnumUpper):
+    """MCio Mode"""
+
+    OFF = enum.auto()
+    ASYNC = enum.auto()
+    SYNC = enum.auto()
+
+
+DEFAULT_MCIO_MODE: Final[MCioMode] = MCioMode.ASYNC
 
 
 ##
@@ -98,68 +110,171 @@ class InputEvent:
 
 
 ##
+# Env config RunOptions
 
 
-class MCioMode(StrEnumUpper):
-    """MCio Mode"""
+class _UnsetType:
+    """Sentinel class to distinguish Env fields with no explicit arg value"""
 
-    OFF = enum.auto()
-    ASYNC = enum.auto()
-    SYNC = enum.auto()
-
-
-DEFAULT_MCIO_MODE: Final[MCioMode] = MCioMode.ASYNC
+    def __repr__(self) -> str:
+        return "<UNSET>"
 
 
-@dataclass(kw_only=True)
+UNSET: Final = _UnsetType()
+
+T = TypeVar("T")
+
+
 class RunOptions:
-    """Options for running Minecraft
+    """
+    ## Options for running Minecraft
 
-    Args:
-        instance_name: Set to launch an instance. None if connecting to a running instance.
-        world_name: Launch directly into a world. You probably want to set this if instance_name is set.
-            Otherwise you'll launch to the main menu.
-        width: Frame width
-        height: Frame height
-        mcio_mode: sync/async
-        hide_window: Don't show the Minecraft app window
-        cleanup_on_signal: Kill the launched Minecraft and exit on SIGINT or SIGTERM
-        action_port: port for action connection
-        observation_port: port for observation connection
-        mcio_dir: Top-level data directory
-        java_path: Path to alternative java executable
-        mc_username: Minecraft username
+    All values have reasonable defaults. For common cases, use the provided
+    classmethods (`for_launch`, `for_connect`) to simplify setup.
+
+    Fields marked with "env" in the default can also be set via environment variable.
+    Launcher will pass non-default values to MCio/Minecraft.
+    The priority is: explicit `__init__` parameter > env > default.
+
+    ### Args:
+        #### Launching
+        - `mcio_dir` (default: ~/.mcio/): Top-level data directory.
+        - `instance_name` (default: None): Name of the instance to launch. Leave
+            None to connect to an existing instance.
+        - `world_name` (default: None): World to launch directly into.
+            Recommended if launching an instance; otherwise, Minecraft will open to
+            the main menu.
+
+        #### Common
+        - `mcio_mode` (default: env or async): Mode of communication (sync/async).
+        - `width` (default: 854): Frame width.
+        - `height` (default: 480): Frame height.
+        - `hide_window` (default: env or False): Whether to hide the Minecraft window.
+
+        #### Communication
+        - `action_port` (default: env or 4001): Port used for the action connection.
+        - `observation_port` (default: env or 8001): Port used for the observation connection.
+
+        #### Advanced / Misc
+        - `mc_username` (default: MCio): Local Minecraft username.
+        - `cleanup_on_signal` (default: True): Kill the launched Minecraft on SIGINT or SIGTERM (and exit).
+        - `java_path` (default: None): Path to alternative java executable (for debugging / dev)
+
+    ### Auto-generated fields
+        - `instance_dir`: Path to the selected instance directory, or None if not launching.
+        - `mc_uuid`: UUID derived from the Minecraft username.
     """
 
-    instance_name: config.InstanceName | None = None
-    world_name: config.WorldName | None = None
+    def __init__(
+        self,
+        # Launching
+        mcio_dir: Path | str = config.DEFAULT_MCIO_DIR,
+        instance_name: config.InstanceName | None = None,
+        world_name: config.WorldName | None = None,
+        # Common
+        mcio_mode: MCioMode | _UnsetType = UNSET,
+        width: int = DEFAULT_WINDOW_WIDTH,
+        height: int = DEFAULT_WINDOW_HEIGHT,
+        hide_window: bool | _UnsetType = UNSET,
+        # Communication
+        action_port: int | _UnsetType = UNSET,
+        observation_port: int | _UnsetType = UNSET,
+        # Advanced / Misc
+        mc_username: str = DEFAULT_MINECRAFT_USER,
+        cleanup_on_signal: bool = True,
+        mcio_log_cfg: Path | str | None = None,
+        java_path: str | None = None,
+    ) -> None:
 
-    width: int = DEFAULT_WINDOW_WIDTH
-    height: int = DEFAULT_WINDOW_HEIGHT
-    mcio_mode: MCioMode = DEFAULT_MCIO_MODE
-    hide_window: bool = DEFAULT_HIDE_WINDOW
-    cleanup_on_signal: bool = True
+        # This gets populated with env vars to pass to MCio/Minecraft. Only
+        # explicitly passed arguments are passed. If the origin is env then the
+        # variable will already be passed. Not passing things left as default.
+        self.env_vars: dict[str, str] = {}
 
-    action_port: int = DEFAULT_ACTION_PORT
-    observation_port: int = DEFAULT_OBSERVATION_PORT
+        # Launching
+        self.mcio_dir = Path(mcio_dir).expanduser()
+        self.instance_name = instance_name
+        self.world_name = world_name
 
-    mcio_dir: Path | str = config.DEFAULT_MCIO_DIR
-    java_path: str | None = None  # To use a different java executable
+        # Common
+        self.mcio_mode: MCioMode = self._resolve(
+            MCioMode, mcio_mode, "MCIO_MODE", DEFAULT_MCIO_MODE
+        )
+        self.width = width
+        self.height = height
+        self.hide_window: bool = self._resolve(
+            bool, hide_window, "MCIO_HIDE_WINDOW", DEFAULT_HIDE_WINDOW
+        )
 
-    mc_username: str = DEFAULT_MINECRAFT_USER
-    instance_dir: Path | None = field(init=False)  # Auto-generated
-    mc_uuid: uuid.UUID = field(init=False)  # Auto-generated
+        # Communication
+        self.action_port: int = self._resolve(
+            int, action_port, "MCIO_ACTION_PORT", DEFAULT_ACTION_PORT
+        )
+        self.observation_port: int = self._resolve(
+            int, observation_port, "MCIO_OBSERVATION_PORT", DEFAULT_OBSERVATION_PORT
+        )
 
-    def __post_init__(self) -> None:
+        # Advanced / Misc
+        self.mc_username = mc_username
+        self.cleanup_on_signal = cleanup_on_signal
+        self.java_path = java_path
+
+        # MCIO_LOG_CFG gives a way to adjust the Minecraft logging. It's passed
+        # to Minecraft via a java arg.
+        _mlc = mcio_log_cfg or os.getenv("MCIO_LOG_CFG")
+        if _mlc is not None:
+            _mlc = str(Path(_mlc).resolve())
+        self.mcio_log_cfg: str | None = _mlc
+
+        # Auto-generated
+        self.instance_dir: Path | None = self._instance_dir()
+        self.mc_uuid = uuid.uuid5(uuid.NAMESPACE_URL, self.mc_username)
+
+    def _instance_dir(self) -> Path | None:
+        if self.instance_name is None:
+            return None
+
         from . import instance
 
-        self.mc_uuid: uuid.UUID = uuid.uuid5(uuid.NAMESPACE_URL, self.mc_username)
-        self.mcio_dir = Path(self.mcio_dir).expanduser()
         im = instance.InstanceManager(self.mcio_dir)
-        if self.instance_name is not None:
-            self.instance_dir = im.get_instance_dir(self.instance_name)
-        else:
-            self.instance_dir = None
+        return im.get_instance_dir(self.instance_name)
+
+    def _resolve(
+        self,
+        typ: Type[T],
+        arg_val: T | _UnsetType,
+        env_key: str,
+        default: T,
+    ) -> T:
+        """
+        Pull field values from env variables and resolve based on priority.
+        Also sets self.env_vars
+        """
+        if not isinstance(arg_val, _UnsetType):
+            # Explicit arg_val. Save as env var to pass to MCio/Minecraft if
+            # launching
+            self.env_vars[env_key] = str(arg_val)
+            return arg_val
+
+        # Check for env val
+        env_val = os.getenv(env_key)
+        if env_val is None:
+            return default
+        try:
+            if typ is bool:
+                return cast(T, env_val.lower() in ("true", "1"))
+            elif typ is int:
+                return cast(T, int(env_val))
+            elif typ is float:
+                return cast(T, float(env_val))
+            elif typ is str:
+                return cast(T, env_val)
+            else:
+                raise ValueError(f"Unsupported conversion: type={typ.__name__}")
+        except Exception as e:
+            raise ValueError(
+                f"Could not convert env var {env_key}={env_val!r} to {typ.__name__}: {e}"
+            ) from e
 
     ##
     # Some simplified constructors for common cases

@@ -185,8 +185,6 @@ class InstanceLaunchCmd(Cmd):
             instance_name=args.instance_name,
             width=args.width,
             height=args.height,
-            mcio_mode=args.mcio_mode,
-            hide_window=args.hide_window,
             action_port=args.action_port,
             observation_port=args.observation_port,
             mcio_dir=args.mcio_dir,
@@ -212,14 +210,6 @@ class InstanceLaunchCmd(Cmd):
             type=str,
             help="Name of the Minecraft instance",
         )
-        launch_parser.add_argument(
-            "--mcio-mode",
-            "-m",
-            type=str,
-            choices=[str(x) for x in types.MCioMode],
-            default=types.DEFAULT_MCIO_MODE,
-            help=f"MCio mode: (default: {types.DEFAULT_MCIO_MODE})",
-        )
         _add_mcio_dir_arg(launch_parser)
         launch_parser.add_argument("--world", "-w", type=str, help="World name")
         launch_parser.add_argument(
@@ -235,13 +225,6 @@ class InstanceLaunchCmd(Cmd):
             type=int,
             default=types.DEFAULT_WINDOW_HEIGHT,
             help=f"Window height (default: {types.DEFAULT_WINDOW_HEIGHT})",
-        )
-
-        launch_parser.add_argument(
-            "--hide-window",
-            action="store_true",
-            default=types.DEFAULT_HIDE_WINDOW,
-            help=f"Hide Minecraft window (default: {types.DEFAULT_HIDE_WINDOW})",
         )
 
         launch_parser.add_argument(

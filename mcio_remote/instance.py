@@ -170,11 +170,11 @@ class Launcher:
         if self.run_options.java_path is not None:
             mll_opts["executablePath"] = self.run_options.java_path
 
-        # XXX Hack in a way to pass a log4j config file to Minecraft
-        log_cfg = os.environ.get("MCIO_LOG_CFG")
-        if log_cfg is not None:
-            log_path = Path(log_cfg).resolve()
-            mll_opts["jvmArguments"] = [f"-Dlog4j.configurationFile={log_path}"]
+        # Provide a way to pass a log4j config file to Minecraft
+        if self.run_options.mcio_log_cfg is not None:
+            mll_opts["jvmArguments"] = [
+                f"-Dlog4j.configurationFile={self.run_options.mcio_log_cfg}"
+            ]
 
         self.mll_opts = mll_opts
 
@@ -257,22 +257,14 @@ class Launcher:
 
     def get_show_command(self) -> list[str]:
         """For testing, return the command that will be run"""
-        env = self._get_env_options()
+        env = self.run_options.env_vars
         cmd = [f"{key}={value}" for key, value in env.items()]
         cmd += self.get_command()
         return cmd
 
     def _get_env(self) -> dict[str, str]:
         env = os.environ.copy()
-        env.update(self._get_env_options())
-        return env
-
-    def _get_env_options(self) -> dict[str, str]:
-        env: dict[str, str] = {}
-        env["MCIO_MODE"] = self.run_options.mcio_mode
-        env["MCIO_ACTION_PORT"] = str(self.run_options.action_port)
-        env["MCIO_OBSERVATION_PORT"] = str(self.run_options.observation_port)
-        env["MCIO_HIDE_WINDOW"] = str(self.run_options.hide_window)
+        env.update(self.run_options.env_vars)
         return env
 
     def _update_option_argument(
