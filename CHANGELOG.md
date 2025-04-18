@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.6.0 - 2025-04-XX
+- Better handling of env vars
+- Speed test updates
+- MCIO_PROTOCOL_VERSION = 4
+
 ## 0.5.0 - 2025-04-06
 - Fix multiple resets
 - Improve exit handling
