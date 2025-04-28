@@ -253,6 +253,7 @@ class Launcher:
             self.launch_version, self.run_options.instance_dir, self.mll_opts
         )
         mc_cmd = self._update_option_argument(mc_cmd, "--userType", "legacy")
+        mc_cmd = self._quote_option_string(mc_cmd)
         return mc_cmd
 
     def get_show_command(self) -> list[str]:
@@ -270,6 +271,8 @@ class Launcher:
     def _update_option_argument(
         self, command_list: list[str], option: str, new_argument: str
     ) -> list[str]:
+        """Find the specified option in the command list and replace the value
+        after it with new_argument"""
         try:
             new_list = command_list.copy()
             option_index = new_list.index(option)
@@ -281,6 +284,20 @@ class Launcher:
         except IndexError:
             print(f"Unexpected end of list after option {option}")
             raise
+
+    def _quote_option_string(self, command_list: list[str]) -> list[str]:
+        """Add quotes around special fabric option so I can copy/paste the
+        command. See https://github.com/FabricMC/fabric-meta for an explanation of the argument
+        """
+        option_match = "-DFabricMcEmu="
+        new_list = command_list.copy()
+        for i, arg in enumerate(new_list):
+            if arg.startswith(option_match):
+                prefix, value = arg.split("=", 1)
+                new_arg = f'{prefix}="{value}"'
+                new_list[i] = new_arg
+                break
+        return new_list
 
     def _signal_handler(self, signum: int, frame: FrameType | None) -> None:
         """I want to be able to ctrl-c the python process that launched Minecraft and have Minecraft exit"""
