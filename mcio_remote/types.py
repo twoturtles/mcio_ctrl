@@ -153,7 +153,7 @@ class RunOptions:
         - `height` (default: 480): Frame height.
         - `hide_window` (default: env or False): Whether to hide the Minecraft window.
         - `gpu_lib` (default: None): Set __GLX_VENDOR_LIBRARY_NAME env var.
-            Use to enable a gpu in headless mode. Possible values: nvida, amd, mesa
+            Use to enable a gpu in headless mode on Linux. Possible values: nvida, amd, mesa
 
         #### Communication
         - `action_port` (default: env or 4001): Port used for the action connection.
