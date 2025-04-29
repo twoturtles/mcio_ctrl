@@ -152,12 +152,15 @@ class RunOptions:
         - `width` (default: 854): Frame width.
         - `height` (default: 480): Frame height.
         - `hide_window` (default: env or False): Whether to hide the Minecraft window.
+        - `gpu_lib` (default: None): Set __GLX_VENDOR_LIBRARY_NAME env var.
+            Use to enable a gpu in headless mode. Possible values: nvida, amd, mesa
 
         #### Communication
         - `action_port` (default: env or 4001): Port used for the action connection.
         - `observation_port` (default: env or 8001): Port used for the observation connection.
 
         #### Advanced / Misc
+        - `env_extra` (default: {}): Extra env vars to pass to Minecraft. Intended for dev / testing.
         - `mc_username` (default: MCio): Local Minecraft username.
         - `cleanup_on_signal` (default: True): Kill the launched Minecraft on SIGINT or SIGTERM (and exit).
         - `java_path` (default: None): Path to alternative java executable (for debugging / dev)
@@ -169,6 +172,7 @@ class RunOptions:
 
     def __init__(
         self,
+        *,
         # Launching
         mcio_dir: Path | str = config.DEFAULT_MCIO_DIR,
         instance_name: config.InstanceName | None = None,
@@ -178,19 +182,23 @@ class RunOptions:
         width: int = DEFAULT_WINDOW_WIDTH,
         height: int = DEFAULT_WINDOW_HEIGHT,
         hide_window: bool | _UnsetType = UNSET,
+        gpu_lib: str | None = None,
         # Communication
         action_port: int | _UnsetType = UNSET,
         observation_port: int | _UnsetType = UNSET,
         # Advanced / Misc
+        env_extra: dict[str, str] | None = None,
         mc_username: str = DEFAULT_MINECRAFT_USER,
         cleanup_on_signal: bool = True,
         mcio_log_cfg: Path | str | None = None,
         java_path: str | None = None,
     ) -> None:
 
-        # This gets populated with env vars to pass to MCio/Minecraft. Only
-        # explicitly passed arguments are passed. If the origin is env then the
-        # variable will already be passed. Not passing things left as default.
+        # Environment variables passed to MCio/Minecraft.
+        # Only explicitly provided arguments are added to env_vars.
+        # If an option's origin is already the environment, then we don't need
+        # to set it again.
+        # Options left as UNSET are not passed and will use the MCio default.
         self.env_vars: dict[str, str] = {}
 
         # Launching
@@ -204,9 +212,12 @@ class RunOptions:
         )
         self.width = width
         self.height = height
+        # XXX hide_window doesn't need a member var? Like mcio_log_cfg.
         self.hide_window: bool = self._resolve(
             bool, hide_window, "MCIO_HIDE_WINDOW", DEFAULT_HIDE_WINDOW
         )
+        if gpu_lib is not None:
+            self.env_vars["__GLX_VENDOR_LIBRARY_NAME"] = gpu_lib
 
         # Communication
         self.action_port: int = self._resolve(
@@ -231,6 +242,9 @@ class RunOptions:
         # Auto-generated
         self.instance_dir: Path | None = self._instance_dir()
         self.mc_uuid = uuid.uuid5(uuid.NAMESPACE_URL, self.mc_username)
+
+        # Copy env_extra. These will override any set by arguments or env vars.
+        self.env_vars.update(env_extra or {})
 
     def _instance_dir(self) -> Path | None:
         if self.instance_name is None:

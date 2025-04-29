@@ -181,6 +181,7 @@ class InstanceLaunchCmd(Cmd):
     CMD = "launch"
 
     def run(self, args: argparse.Namespace) -> None:
+        env_extra = {"MCIO_HELP": "TRUE"} if args.mcio_help else None
         opts = types.RunOptions(
             instance_name=args.instance_name,
             width=args.width,
@@ -189,6 +190,7 @@ class InstanceLaunchCmd(Cmd):
             mc_username=args.username,
             world_name=args.world,
             java_path=args.java,
+            env_extra=env_extra,
         )
         launch = instance.Launcher(opts)
         if args.list:
@@ -207,6 +209,11 @@ class InstanceLaunchCmd(Cmd):
             metavar="instance-name",
             type=str,
             help="Name of the Minecraft instance",
+        )
+        launch_parser.add_argument(
+            "--mcio-help",
+            action="store_true",
+            help="Display MCio/Minecraft help message and exit",
         )
         _add_mcio_dir_arg(launch_parser)
         launch_parser.add_argument("--world", "-w", type=str, help="World name")

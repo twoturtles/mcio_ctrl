@@ -2,6 +2,7 @@
 
 ## 0.6.0 - 2025-04-XX
 - Better handling of env vars
+- Add headless gpu option
 - Speed test updates
 - MCIO_PROTOCOL_VERSION = 4
 

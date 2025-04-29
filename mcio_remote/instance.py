@@ -152,7 +152,7 @@ class Launcher:
             instance_config = cm.config.instances.get(self.run_options.instance_name)
         if instance_config is None:
             raise ValueError(
-                f"Instancd {self.run_options.instance_name} not found in {cm.config_file}"
+                f"Instance {self.run_options.instance_name} not found in {cm.config_file}"
             )
         self.launch_version = instance_config.launch_version
 
