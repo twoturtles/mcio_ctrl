@@ -86,7 +86,7 @@ class WorldManager:
         svr.delete_world_dir(world_name)
 
         # Enable commands in the world. This is disabled by default in survival worlds.
-        self._allow_commands(dst_dir)
+        self._nbt_config(dst_dir)
 
         with config.ConfigManager(self.mcio_dir, save=True) as cm:
             cm.config.world_storage[world_name] = config.WorldConfig(
@@ -95,12 +95,17 @@ class WorldManager:
 
         print(f"\nDone: World saved to storage: {dst_dir}")
 
-    def _allow_commands(self, world_dir: Path) -> None:
-        """Modifies level.dat to allow commands"""
+    def _nbt_config(self, world_dir: Path) -> None:
+        """Set values in level.dat nbt file
+        Enables allowCommands and doImmediateRespawn
+        """
         level_dat = world_dir / "level.dat"
-        nbt_data = nbt.NBTFile(level_dat)
-        nbt_data["Data"]["allowCommands"].value = 1
-        nbt_data.write_file()
+        nbt_root = nbt.NBTFile(level_dat)
+        # allowCommands is a Byte used as a bool
+        nbt_root["Data"]["allowCommands"].value = 1
+        # doImmediateRespawn is a String used as a bool
+        nbt_root["Data"]["GameRules"]["doImmediateRespawn"].value = "true"
+        nbt_root.write_file()
 
     def delete_cmd(self, loc_world: str) -> None:
         loc, world = loc_world.split(":", 1)
