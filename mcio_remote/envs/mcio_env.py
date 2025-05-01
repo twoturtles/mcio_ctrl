@@ -101,7 +101,7 @@ class MCioEnv(MCioBaseEnv[MCioObservation, MCioAction]):
         self, action: MCioAction, observation: MCioObservation
     ) -> tuple[int, bool, bool]:
         # reward, terminated, truncated
-        return 0, False, False
+        return 0, self.terminated, False
 
     def _packet_to_observation(
         self, packet: mcio.network.ObservationPacket

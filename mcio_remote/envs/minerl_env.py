@@ -54,9 +54,6 @@ class MinerlEnv(MCioBaseEnv[MinerlObservation, MinerlAction]):
         """
         super().__init__(run_options=run_options, render_mode=render_mode)
 
-        # Used for the ESC action
-        self.terminated = False
-
         self.observation_space = spaces.Dict(
             {
                 "pov": spaces.Box(

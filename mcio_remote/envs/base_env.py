@@ -63,9 +63,11 @@ class MCioBaseEnv(gym.Env[ObsType, ActType], Generic[ObsType, ActType], ABC):
         assert render_mode is None or render_mode in self.metadata["render_modes"]
         self.render_mode = render_mode
 
-        # Common state tracking
+        # Common state tracking. Remember to also reset in _reset_state()
         self.last_frame: NDArray[np.uint8] | None = None
         self.last_cursor_pos: tuple[int, int] = (0, 0)
+        self.health: float = 20.0
+        self.terminated: bool = True  # Signals that reset needs to be called
 
         # These need closing when done. Handled in close().
         self.gui: gui.ImageStreamGui | None = None
@@ -96,7 +98,9 @@ class MCioBaseEnv(gym.Env[ObsType, ActType], Generic[ObsType, ActType], ABC):
         self, action: ActType, observation: ObsType
     ) -> tuple[int, bool, bool]:
         """Called during step() after the observation has been received.
-        Returns (reward, terminated, truncated)"""
+        Returns (reward, terminated, truncated)
+        Note: the base env will automatically set self.terminated if health reaches 0
+        """
         pass
 
     def _get_info(self) -> dict[Any, Any]:
@@ -114,6 +118,9 @@ class MCioBaseEnv(gym.Env[ObsType, ActType], Generic[ObsType, ActType], ABC):
 
         self.last_frame = packet.get_frame_with_cursor()
         self.last_cursor_pos = packet.cursor_pos
+        self.health = packet.health
+        if self.health == 0.0:
+            self.terminated = True
 
         # Call to subclass
         obs = self._packet_to_observation(packet)
@@ -135,6 +142,13 @@ class MCioBaseEnv(gym.Env[ObsType, ActType], Generic[ObsType, ActType], ABC):
         assert self.ctrl is not None
         self.ctrl.send_action(packet)
 
+    def _reset_state(self) -> None:
+        """Reset common state"""
+        self.last_frame = None
+        self.last_cursor_pos = (0, 0)
+        self.health = 20.0
+        self.terminated = False
+
     def reset(
         self,
         seed: int | None = None,
@@ -147,6 +161,7 @@ class MCioBaseEnv(gym.Env[ObsType, ActType], Generic[ObsType, ActType], ABC):
 
         # For multiple resets, close any previous connections, etc.
         self.close()
+        self._reset_state()
 
         if self.run_options.instance_name is not None:
             self.launcher = instance.Launcher(self.run_options)
@@ -173,14 +188,17 @@ class MCioBaseEnv(gym.Env[ObsType, ActType], Generic[ObsType, ActType], ABC):
         """Env step function. Includes extra options arg to allow command to be sent during step."""
         options = options or ResetOptions()
 
+        if self.terminated:
+            raise gym.error.ResetNeeded(
+                "Cannot call step() on a terminated environment. Call reset() first."
+            )
+
         self._send_action(action, options.get("commands"))
-
         observation = self._get_obs()
-
-        reward, terminated, truncated = self._process_step(action, observation)
+        reward, self.terminated, truncated = self._process_step(action, observation)
         info = self._get_info()
 
-        return observation, reward, terminated, truncated, info
+        return observation, reward, self.terminated, truncated, info
 
     def skip_ticks(
         self, n_steps: int
@@ -193,11 +211,16 @@ class MCioBaseEnv(gym.Env[ObsType, ActType], Generic[ObsType, ActType], ABC):
             self.ctrl.send_action(pkt)
             observation = self._get_obs()
         # observation, reward, terminated, truncated, info
-        return observation, 0, False, False, {}
+        return observation, 0, self.terminated, False, {}
 
     # NDArray[np.uint8] shape = (height, width, channels)
     # Gym's render returns a generic TypeVar("RenderFrame"), which is not very useful.
     def render(self) -> NDArray[np.uint8] | None:  # type: ignore[override]
+        if self.terminated:
+            raise gym.error.ResetNeeded(
+                "Cannot call render() on a terminated environment. Call reset() first."
+            )
+
         if self.render_mode == "human":
             self._render_frame_human()
         elif self.render_mode == "rgb_array":

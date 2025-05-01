@@ -3,6 +3,9 @@
 ## 0.6.0 - 2025-04-XX
 - Better handling of env vars
 - Add headless gpu option
+- Set doImmediateRespawn in worlds so agents
+  don't have to click respawn.
+- Env termination handling
 - Speed test updates
 - MCIO_PROTOCOL_VERSION = 4
 
