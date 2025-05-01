@@ -1,7 +1,6 @@
 from unittest.mock import MagicMock
 
 import glfw  # type: ignore
-import gymnasium as gym
 import numpy as np
 import pytest
 
@@ -64,8 +63,8 @@ def test_step_no_reset(
     mock_controller: dict[str, MagicMock], action_space_sample1: mcio_env.MCioAction
 ) -> None:
     env = mcio_env.MCioEnv(types.RunOptions(mcio_mode=types.MCioMode.SYNC))
-    with pytest.raises(gym.error.ResetNeeded):
-        env.step(action_space_sample1)  # Can't step before reset
+    with pytest.raises(AssertionError):
+        env.step(action_space_sample1)  # No controller because reset hasn't been called
 
 
 def test_env_with_commands(

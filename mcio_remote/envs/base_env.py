@@ -63,11 +63,12 @@ class MCioBaseEnv(gym.Env[ObsType, ActType], Generic[ObsType, ActType], ABC):
         assert render_mode is None or render_mode in self.metadata["render_modes"]
         self.render_mode = render_mode
 
-        # Common state tracking. Remember to also reset in _reset_state()
-        self.last_frame: NDArray[np.uint8] | None = None
-        self.last_cursor_pos: tuple[int, int] = (0, 0)
-        self.health: float = 20.0
-        self.terminated: bool = True  # Signals that reset needs to be called
+        # Common state tracking. Initialized in _reset_state(). Updated in _get_obs().
+        self.last_frame: NDArray[np.uint8] | None
+        self.last_cursor_pos: tuple[int, int]
+        self.health: float
+        self.terminated: bool
+        self._reset_state()
 
         # These need closing when done. Handled in close().
         self.gui: gui.ImageStreamGui | None = None
@@ -116,11 +117,16 @@ class MCioBaseEnv(gym.Env[ObsType, ActType], Generic[ObsType, ActType], ABC):
         assert self.ctrl is not None
         packet = self.ctrl.recv_observation()
 
+        # Update common state
         self.last_frame = packet.get_frame_with_cursor()
         self.last_cursor_pos = packet.cursor_pos
         self.health = packet.health
+        # For now, terminated just tracks health but it's left to users to call
+        # reset when termination occurs
         if self.health == 0.0:
             self.terminated = True
+        else:
+            self.terminated = False
 
         # Call to subclass
         obs = self._packet_to_observation(packet)
@@ -188,11 +194,6 @@ class MCioBaseEnv(gym.Env[ObsType, ActType], Generic[ObsType, ActType], ABC):
         """Env step function. Includes extra options arg to allow command to be sent during step."""
         options = options or ResetOptions()
 
-        if self.terminated:
-            raise gym.error.ResetNeeded(
-                "Cannot call step() on a terminated environment. Call reset() first."
-            )
-
         self._send_action(action, options.get("commands"))
         observation = self._get_obs()
         reward, self.terminated, truncated = self._process_step(action, observation)
@@ -216,11 +217,6 @@ class MCioBaseEnv(gym.Env[ObsType, ActType], Generic[ObsType, ActType], ABC):
     # NDArray[np.uint8] shape = (height, width, channels)
     # Gym's render returns a generic TypeVar("RenderFrame"), which is not very useful.
     def render(self) -> NDArray[np.uint8] | None:  # type: ignore[override]
-        if self.terminated:
-            raise gym.error.ResetNeeded(
-                "Cannot call render() on a terminated environment. Call reset() first."
-            )
-
         if self.render_mode == "human":
             self._render_frame_human()
         elif self.render_mode == "rgb_array":
