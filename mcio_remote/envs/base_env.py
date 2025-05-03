@@ -34,13 +34,18 @@ class ResetOptions(TypedDict, total=False):
 
 class MCioBaseEnv(gym.Env[ObsType, ActType], Generic[ObsType, ActType], ABC):
     """Base class for MCio environments
+
     Notes for subclasses:
         - Make sure you call super().__init__().
         - Set self.action_space and self.observation_space in the constructor.
         - Define _packet_to_observation(), _action_to_packet() and _process_step()
         - Optionally define _get_info()
 
-    Along with the callbacks, self.last_frame and self.last_cursor_pos are available for subclasses.
+    Some common state is also tracked and available for subclasses:
+        - self.last_frame
+        - self.last_cursor_pos
+        - self.health
+        - self.terminated
     """
 
     metadata = {
