@@ -121,7 +121,7 @@ class MCioBaseEnv(gym.Env[ObsType, ActType], Generic[ObsType, ActType], ABC):
         self.last_frame = packet.get_frame_with_cursor()
         self.last_cursor_pos = packet.cursor_pos
         self.health = packet.health
-        # For now, terminated just tracks health but it's left to users to call
+        # For now, terminated just tracks health. It's left to users to call
         # reset when termination occurs
         if self.health == 0.0:
             self.terminated = True
