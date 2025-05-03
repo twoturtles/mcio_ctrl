@@ -1,5 +1,6 @@
 """Base class for MCio environments"""
 
+import logging
 from abc import ABC, abstractmethod
 from typing import Any, Generic, TypedDict, TypeVar
 
@@ -9,6 +10,8 @@ import numpy as np
 from numpy.typing import NDArray
 
 from mcio_remote import controller, gui, instance, network, types
+
+LOG = logging.getLogger(__name__)
 
 # Reusable types
 RenderFrame = TypeVar("RenderFrame")  # NDArray[np] shape = (height, width, channels)
@@ -186,6 +189,13 @@ class MCioBaseEnv(gym.Env[ObsType, ActType], Generic[ObsType, ActType], ABC):
         # The reset action will trigger an initial observation
         self._send_reset_action(options)
         observation = self._get_obs()
+
+        assert self.last_frame is not None
+        wh_mc = self.last_frame.shape[0:2]
+        wh_env = (self.run_options.height, self.run_options.width)
+        if wh_mc != wh_env:
+            LOG.warning(f"Frame-Size-Mismatch env={wh_env} mcio={wh_mc}")
+
         if self.terminated:
             observation = self._reset_terminated_hack()
 
