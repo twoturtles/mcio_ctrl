@@ -146,12 +146,12 @@ class RunOptions:
         - `world_name` (default: None): World to launch directly into.
             Recommended if launching an instance; otherwise, Minecraft will open to
             the main menu.
+        - `hide_window` (default: env or False): Whether to hide the Minecraft window.
 
         #### Common
         - `mcio_mode` (default: env or async): Mode of communication (sync/async).
         - `width` (default: 854): Frame width.
         - `height` (default: 480): Frame height.
-        - `hide_window` (default: env or False): Whether to hide the Minecraft window.
         - `gpu_lib` (default: None): Set __GLX_VENDOR_LIBRARY_NAME env var.
             Use to enable a gpu in headless mode on Linux. Possible values: nvida, amd, mesa
 
@@ -177,11 +177,11 @@ class RunOptions:
         mcio_dir: Path | str = config.DEFAULT_MCIO_DIR,
         instance_name: config.InstanceName | None = None,
         world_name: config.WorldName | None = None,
+        hide_window: bool | _UnsetType = UNSET,
         # Common
         mcio_mode: MCioMode | _UnsetType = UNSET,
         width: int = DEFAULT_WINDOW_WIDTH,
         height: int = DEFAULT_WINDOW_HEIGHT,
-        hide_window: bool | _UnsetType = UNSET,
         gpu_lib: str | None = None,
         # Communication
         action_port: int | _UnsetType = UNSET,
@@ -332,5 +332,4 @@ class RunOptions:
             width=width,
             height=height,
             mcio_mode=MCioMode.SYNC,
-            hide_window=True,
         )
