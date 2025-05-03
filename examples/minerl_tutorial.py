@@ -29,7 +29,7 @@ def tutorial(instance_name: str | None, world_name: str | None) -> None:
         # "summon minecraft:cow ~-2 ~2 ~-2",
     ]
     observation, info = env.reset(options={"commands": setup_commands})
-    env.skip_ticks(25)  # Give time for the commands to complete
+    env.skip_steps(25)  # Give time for the commands to complete
     env.render()
 
     terminated = False

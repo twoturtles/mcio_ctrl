@@ -24,7 +24,7 @@ class ResetOptions(TypedDict, total=False):
         E.g. teleport, time set, etc. Do not include the initial "/" in the commands.
 
         Note: Different command types seem to take different amounts of time to
-        execute in Minecraft. You may want to use skip_ticks() after commands to
+        execute in Minecraft. You may want to use skip_steps() after commands to
         make sure they have taken effect. I've seen ~20 ticks before a "time
         set" command takes effect.
     """
@@ -181,9 +181,29 @@ class MCioBaseEnv(gym.Env[ObsType, ActType], Generic[ObsType, ActType], ABC):
         # The reset action will trigger an initial observation
         self._send_reset_action(options)
         observation = self._get_obs()
+        if self.terminated:
+            observation = self._reset_terminated_hack()
+
         info = self._get_info()
 
         return observation, info
+
+    def _reset_terminated_hack(self, max_steps: int = 10) -> ObsType:
+        """With doImmediateRespawn set it still takes a few steps to respawn.
+        This works around that by skipping steps until we go back to
+        non-terminated.
+        """
+        assert max_steps > 0
+        for _ in range(max_steps):
+            if not self.terminated:
+                break
+            observation, *_ = self.skip_steps(1)
+        else:
+            raise RuntimeError(
+                f"Environment remained terminated after {max_steps} steps."
+            )
+
+        return observation
 
     def step(
         self,
@@ -201,7 +221,7 @@ class MCioBaseEnv(gym.Env[ObsType, ActType], Generic[ObsType, ActType], ABC):
 
         return observation, reward, self.terminated, truncated, info
 
-    def skip_ticks(
+    def skip_steps(
         self, n_steps: int
     ) -> tuple[ObsType, int, bool, bool, dict[Any, Any]]:
         """Send empty actions and return the final observation. Use to skip over

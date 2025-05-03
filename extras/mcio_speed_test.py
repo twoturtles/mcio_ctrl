@@ -35,7 +35,7 @@ def mcio_setup(render: bool, connect: bool) -> Any:
         "gamemode creative",  # Don't die. The death screen steps faster than the game.
     ]
     env.reset(options={"commands": setup_commands})
-    env.skip_ticks(25)  # Give the commands time to take effect
+    env.skip_steps(25)  # Give the commands time to take effect
     return env
 
 
