@@ -223,6 +223,10 @@ class _Connection:
         self.recv_counter = util.TrackPerSecond("RecvObservationPPS")
         self.send_counter = util.TrackPerSecond("SendActionPPS")
 
+        # For debugging / testing
+        self._last_action_pkt: ActionPacket | None = None
+        self._last_observation_pkt: ObservationPacket | None = None
+
     def send_action(self, action: ActionPacket) -> None:
         """
         Send action through zmq socket. Does not block.
@@ -233,6 +237,7 @@ class _Connection:
         https://github.com/zeromq/libzmq/issues/3248
         To avoid confusion, this never blocks.
         """
+        self._last_action_pkt = action
         self.send_counter.count()
         try:
             self.action_socket.send(action.pack(), zmq.DONTWAIT)
@@ -267,6 +272,7 @@ class _Connection:
                 # recv returned
                 # This may also return None if there was an unpack error.
                 observation = ObservationPacket.unpack(pbytes)
+                self._last_observation_pkt = observation
                 self.recv_counter.count()
                 LOG.debug(observation)
                 return observation
