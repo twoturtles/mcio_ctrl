@@ -27,7 +27,7 @@ class ObservationPacket:
     ## Control ##
     version: int = MCIO_PROTOCOL_VERSION
     sequence: int = 0
-    mode: str = ""  # "SYNC" or "ASYNC"
+    mode: types.MCioMode = types.MCioMode.OFF
     last_action_sequence: int = (
         0  # This is the last action sequence processed by Minecraft before this observation was generated
     )

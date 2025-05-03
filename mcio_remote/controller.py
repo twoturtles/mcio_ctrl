@@ -2,7 +2,7 @@ import logging
 import threading
 from typing import Protocol
 
-from . import network, util
+from . import network, types, util
 
 LOG = logging.getLogger(__name__)
 
@@ -48,6 +48,7 @@ class ControllerSync(ControllerCommon):
             wait_for_connection=wait_for_connection,
             connection_timeout=connection_timeout,
         )
+        self.check_mode = True
 
     def recv_observation(
         self, block: bool = True, timeout: float | None = None
@@ -57,6 +58,13 @@ class ControllerSync(ControllerCommon):
         if obs is None:
             # This will only ever happen when zmq is shutting down
             return network.ObservationPacket()
+
+        if self.check_mode:
+            self.check_mode = False
+            mode = types.MCioMode.SYNC
+            if mode != obs.mode:
+                LOG.warning(f"Mode-Mismatch controller={mode} mcio={obs.mode}")
+
         return obs
 
     def close(self) -> None:
@@ -81,6 +89,7 @@ class ControllerAsync(ControllerCommon):
 
         self.process_counter = util.TrackPerSecond("ProcessObservationPPS")
         self.queued_counter = util.TrackPerSecond("QueuedActionsPPS")
+        self.check_mode = True
 
         # Flag to signal observation thread to stop.
         self._running = threading.Event()
@@ -157,6 +166,14 @@ class ControllerAsync(ControllerCommon):
             observation = self._mcio_conn.recv_observation(block=True)
             if observation is None:
                 continue  # Exiting or packet decode error
+
+            if self.check_mode:
+                self.check_mode = False
+                mode = types.MCioMode.ASYNC
+                if mode != observation.mode:
+                    LOG.warning(
+                        f"Mode-Mismatch controller={mode} mcio={observation.mode}"
+                    )
 
             dropped = self._observation_queue.put(observation)
             if dropped:
