@@ -27,10 +27,15 @@ def logging_add_arg(
     )
 
 
+_FMT = "[%(asctime)s] [%(threadName)s/%(levelname)s] (%(name)s) %(message)s"
+_DATEFMT = "%H:%M:%S"
+
+
 def logging_init(
     *,
     args: argparse.Namespace | None = None,
     level: int | str | None = None,
+    use_colors: bool = True,
 ) -> None:
     """Default log init. If args are passed (see logging_add_arg), level is pulled
     from that. Otherwise uses a passed in level. Finally defaults to INFO"""
@@ -39,9 +44,12 @@ def logging_init(
     elif level is None:
         level = logging.INFO
 
-    handler = logging.StreamHandler()
-    handler.setFormatter(LogColorFormatter())
-    logging.basicConfig(level=level, handlers=[handler])
+    if use_colors:
+        handler = logging.StreamHandler()
+        handler.setFormatter(LogColorFormatter())
+        logging.basicConfig(level=level, handlers=[handler])
+    else:
+        logging.basicConfig(level=level, format=_FMT, datefmt=_DATEFMT)
 
 
 class LogColorFormatter(logging.Formatter):
@@ -57,8 +65,8 @@ class LogColorFormatter(logging.Formatter):
 
     def format(self, record: logging.LogRecord) -> str:
         color = self.LEVEL_COLORS.get(record.levelno, "")
-        fmt = f"{color}[%(asctime)s] [%(threadName)s/%(levelname)s] (%(name)s) %(message)s{self.RESET}"
-        formatter = logging.Formatter(fmt, datefmt="%H:%M:%S")
+        fmt = f"{color}{_FMT}{self.RESET}"
+        formatter = logging.Formatter(fmt, datefmt=_DATEFMT)
         return formatter.format(record)
 
 
