@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.6.0 - 2025-04-XX
+## 0.6.0 - 2025-05-03
 - Better handling of env vars
 - Add headless gpu option
 - Set doImmediateRespawn in worlds so agents
