@@ -4,8 +4,8 @@ import glfw  # type: ignore
 import numpy as np
 import pytest
 
-from mcio_remote import network, types
-from mcio_remote.envs import mcio_env
+from mcio_ctrl import network, types
+from mcio_ctrl.envs import mcio_env
 
 
 @pytest.fixture
@@ -32,8 +32,8 @@ def action_space_sample1(default_mcio_env: mcio_env.MCioEnv) -> mcio_env.MCioAct
 def mock_controller(monkeypatch: pytest.MonkeyPatch) -> dict[str, MagicMock]:
     mock_ctrl_sync = MagicMock()
     mock_ctrl_async = MagicMock()
-    monkeypatch.setattr("mcio_remote.controller.ControllerSync", mock_ctrl_sync)
-    monkeypatch.setattr("mcio_remote.controller.ControllerAsync", mock_ctrl_async)
+    monkeypatch.setattr("mcio_ctrl.controller.ControllerSync", mock_ctrl_sync)
+    monkeypatch.setattr("mcio_ctrl.controller.ControllerAsync", mock_ctrl_async)
 
     # Return objects that tests might need to access
     return {

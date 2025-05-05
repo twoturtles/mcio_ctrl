@@ -3,7 +3,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "mcio_remote"
+name = "mcio_ctrl"
 dynamic = ["version"]
 description = "Python interface to connect to the MCio Minecraft mod"
 readme = "README.md"
@@ -31,12 +31,12 @@ dependencies = [
 ]
 
 [project.urls]
-Source = "https://github.com/twoturtles/mcio_remote"
-Issues = "https://github.com/twoturtles/mcio_remote/issues"
-Changelog = "https://github.com/twoturtles/mcio_remote/blob/main/CHANGELOG.md"
+Source = "https://github.com/twoturtles/mcio_ctrl"
+Issues = "https://github.com/twoturtles/mcio_ctrl/issues"
+Changelog = "https://github.com/twoturtles/mcio_ctrl/blob/main/CHANGELOG.md"
 
 [project.scripts]
-mcio = "mcio_remote.scripts.mcio_cmd:main"
+mcio = "mcio_ctrl.scripts.mcio_cmd:main"
 
 [tool.hatch.envs.dev]
 dependencies = [
@@ -57,7 +57,7 @@ scripts.check = [
 scripts.test = "pytest"
 
 [tool.hatch.version]
-path = "mcio_remote/__about__.py"
+path = "mcio_ctrl/__about__.py"
 
 [tool.isort]
 profile = "black"

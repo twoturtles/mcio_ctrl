@@ -4,7 +4,7 @@ from typing import Generator
 
 import pytest
 
-from mcio_remote import util
+from mcio_ctrl import util
 
 ##
 # OptionsTxt

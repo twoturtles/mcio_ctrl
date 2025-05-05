@@ -9,7 +9,7 @@ import gymnasium as gym
 import numpy as np
 from numpy.typing import NDArray
 
-from mcio_remote import controller, gui, instance, network, types
+from mcio_ctrl import controller, gui, instance, network, types
 
 LOG = logging.getLogger(__name__)
 
@@ -63,7 +63,7 @@ class MCioBaseEnv(gym.Env[ObsType, ActType], Generic[ObsType, ActType], ABC):
         Args:
             run_options: Configuration options for MCio. If instance_name is set, a Minecraft
                 instance will be started, otherwise the environment will connect to a previously launched instance.
-                See mcio_remote.types.RunOptions
+                See mcio_ctrl.types.RunOptions
             render_mode: The rendering mode (human, rgb_array)
 
         """

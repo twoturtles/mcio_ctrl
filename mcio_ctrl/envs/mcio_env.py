@@ -8,8 +8,8 @@ import glfw  # type: ignore
 import numpy as np
 from gymnasium import spaces
 
-import mcio_remote as mcio
-from mcio_remote.types import InputID, InputType, RunOptions
+import mcio_ctrl as mcio
+from mcio_ctrl.types import InputID, InputType, RunOptions
 
 from . import env_util
 from .base_env import MCioBaseEnv

@@ -5,8 +5,8 @@ import argparse
 
 import numpy as np
 
-import mcio_remote as mcio
-from mcio_remote.envs import minerl_env
+import mcio_ctrl as mcio
+from mcio_ctrl.envs import minerl_env
 
 
 def tutorial(instance_name: str | None, world_name: str | None) -> None:

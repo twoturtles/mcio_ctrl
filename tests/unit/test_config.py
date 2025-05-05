@@ -3,7 +3,7 @@ from typing import Generator
 
 import pytest
 
-from mcio_remote import config
+from mcio_ctrl import config
 
 
 @pytest.fixture

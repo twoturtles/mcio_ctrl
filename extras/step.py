@@ -5,7 +5,7 @@ import argparse
 import sys
 import textwrap
 
-import mcio_remote as mcio
+import mcio_ctrl as mcio
 
 # XXX Doesn't work if agent is started first
 

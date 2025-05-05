@@ -4,8 +4,8 @@ from typing import Any
 
 import pytest
 
-from mcio_remote import types
-from mcio_remote.envs import minerl_env
+from mcio_ctrl import types
+from mcio_ctrl.envs import minerl_env
 
 
 @pytest.fixture

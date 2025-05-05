@@ -5,7 +5,7 @@ from typing import TypeVar
 
 import pytest
 
-from mcio_remote.util import LatestItemQueue
+from mcio_ctrl.util import LatestItemQueue
 
 T = TypeVar("T")
 

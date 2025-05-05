@@ -1,5 +1,5 @@
 """
-For testing. Prints received observation to console. Doesn't rely on mcio_remote at all.
+For testing. Prints received observation to console. Doesn't rely on mcio_ctrl at all.
 """
 
 import pprint

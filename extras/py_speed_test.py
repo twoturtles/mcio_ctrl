@@ -1,5 +1,5 @@
 """
-Speed test the python side (mcio_remote). This sends packets in a loop through python.
+Speed test the python side (mcio_ctrl). This sends packets in a loop through python.
 Python simulates the MCio/Minecraft portion.
 
 Results on my laptop:
@@ -16,7 +16,7 @@ from typing import Any
 import numpy as np
 from tqdm import tqdm
 
-import mcio_remote as mcio
+import mcio_ctrl as mcio
 
 LOG = logging.getLogger(__name__)
 
@@ -123,7 +123,7 @@ class ProcessAction(mcio.mc_mock.ProcessAction):
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Speed test mcio_remote")
+    parser = argparse.ArgumentParser(description="Speed test mcio_ctrl")
 
     mcio.util.logging_add_arg(parser)
 

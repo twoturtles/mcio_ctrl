@@ -3,8 +3,8 @@
 import argparse
 import time
 
-import mcio_remote as mcio
-from mcio_remote.envs import mcio_env
+import mcio_ctrl as mcio
+from mcio_ctrl.envs import mcio_env
 
 
 def setup() -> None:

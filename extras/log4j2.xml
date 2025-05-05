@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
-Debug logging config for Minecraft. Pass through mcio_remote using the MCIO_LOG_CFG env var.
+Debug logging config for Minecraft. Pass through mcio_ctrl using the MCIO_LOG_CFG env var.
 E.g., MCIO_LOG_CFG=log4j2.xml mcio inst launch DemoInstance -w DemoWorld
 -->
 <Configuration name="Dev">

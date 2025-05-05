@@ -3,7 +3,7 @@ from typing import Any, Sequence
 import numpy as np
 from numpy.typing import NDArray
 
-from mcio_remote.types import GlfwAction, InputEvent, InputID
+from mcio_ctrl.types import GlfwAction, InputEvent, InputID
 
 
 class DegreesToPixels:

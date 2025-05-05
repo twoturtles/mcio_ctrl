@@ -6,8 +6,8 @@ import argparse
 import sys
 import textwrap
 
-import mcio_remote as mcio
-from mcio_remote import controller, util
+import mcio_ctrl as mcio
+from mcio_ctrl import controller, util
 
 
 def step(n_steps: int, wait: bool = False) -> None:

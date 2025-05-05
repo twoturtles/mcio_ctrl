@@ -5,7 +5,7 @@ from unittest.mock import MagicMock
 import pytest
 import zmq
 
-from mcio_remote import network
+from mcio_ctrl import network
 
 
 @pytest.fixture

@@ -5,7 +5,7 @@ from typing import Any
 import pytest
 import requests
 
-from mcio_remote import util
+from mcio_ctrl import util
 
 
 def test_mojang_version_functions(

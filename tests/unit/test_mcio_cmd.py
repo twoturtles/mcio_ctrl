@@ -4,8 +4,8 @@ from pathlib import Path
 import minecraft_launcher_lib
 import pytest
 
-import mcio_remote as mcio
-from mcio_remote.scripts import mcio_cmd
+import mcio_ctrl as mcio
+from mcio_ctrl.scripts import mcio_cmd
 
 INST_NAME = "test-instance"
 

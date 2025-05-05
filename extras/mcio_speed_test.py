@@ -13,8 +13,8 @@ from typing import Any
 
 from tqdm import tqdm
 
-import mcio_remote as mcio
-from mcio_remote.envs import minerl_env
+import mcio_ctrl as mcio
+from mcio_ctrl.envs import minerl_env
 
 
 def mcio_setup(render: bool, connect: bool) -> Any:
@@ -46,7 +46,7 @@ def mcio_run(
     render_n: int | None,
     steps_completed: list[int],
 ) -> None:
-    from mcio_remote.envs import minerl_env
+    from mcio_ctrl.envs import minerl_env
 
     assert isinstance(env, minerl_env.MinerlEnv)
 

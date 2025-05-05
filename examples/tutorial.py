@@ -5,8 +5,8 @@ import argparse
 import pprint
 import sys
 
-import mcio_remote as mcio
-from mcio_remote.envs import mcio_env
+import mcio_ctrl as mcio
+from mcio_ctrl.envs import mcio_env
 
 # import gymnasium as gym
 

@@ -5,7 +5,7 @@ import textwrap
 from pathlib import Path
 from typing import Any, Final, Protocol
 
-from mcio_remote import config, instance, mcio_gui, types, util, world
+from mcio_ctrl import config, instance, mcio_gui, types, util, world
 
 LOG = logging.getLogger(__name__)
 
