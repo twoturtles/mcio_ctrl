@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.7.0 - 2025-05-05
+- Rename to mcio_ctrl
+- MCIO_PROTOCOL_VERSION = 4
+
 ## 0.6.0 - 2025-05-03
 - Better handling of env vars
 - Add headless gpu option
