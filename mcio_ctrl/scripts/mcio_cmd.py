@@ -341,6 +341,30 @@ class InstanceRmCmd(Cmd):
         _add_mcio_dir_arg(rm_parser)
 
 
+class InstanceModCmd(Cmd):
+    CMD = "mod"
+
+    def run(self, args: argparse.Namespace) -> None:
+        im = instance.InstanceManager(args.mcio_dir)
+        im.install_mod(args.instance_name, args.mod_id)
+
+    def add(self, parent_subparsers: "argparse._SubParsersAction[Any]") -> None:
+        mod_parser = parent_subparsers.add_parser("mod", help="Install a mod")
+        mod_parser.add_argument(
+            "instance_name",
+            metavar="instance-name",
+            type=str,
+            help="Instance name",
+        )
+        mod_parser.add_argument(
+            "mod_id",
+            metavar="mod-id",
+            type=str,
+            help="Mod ID - This is found in the url: https://modrinth.com/mod/mod-id",
+        )
+        _add_mcio_dir_arg(mod_parser)
+
+
 class InstanceCmd(Cmd):
     CMD = "inst"
 
@@ -360,6 +384,7 @@ class InstanceCmd(Cmd):
 
         self.cmd_objects: list[Any] = [
             InstanceInstallCmd(),
+            InstanceModCmd(),
             InstanceLaunchCmd(),
             InstanceCpCmd(),
             InstanceRmCmd(),

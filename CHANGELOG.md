@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.0 - 2025-05-09
+- Add command to install mods
+- MCIO_PROTOCOL_VERSION = 4
+
 ## 0.7.0 - 2025-05-05
 - Rename to mcio_ctrl
 - MCIO_PROTOCOL_VERSION = 4

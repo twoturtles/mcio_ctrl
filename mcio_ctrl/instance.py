@@ -90,7 +90,7 @@ class Installer:
         # Install mods
         print()
         for mod in REQUIRED_MODS:
-            self._install_mod(mod, self.instance_dir, self.mc_version)
+            install_mod(mod, self.instance_dir, self.mc_version)
 
         # Disable narrator
         with util.OptionsTxt(self.instance_dir / "options.txt", save=True) as opts:
@@ -103,40 +103,6 @@ class Installer:
                 minecraft_version=self.mc_version,
             )
         print("Success!")
-
-    def _install_mod(
-        self,
-        mod_id: str,
-        instance_dir: Path,
-        mc_ver: str,
-        version_type: str = "release",
-    ) -> None:
-        mod_info_url = f'https://api.modrinth.com/v2/project/{mod_id}/version?game_versions=["{mc_ver}"]'
-        response = requests.get(mod_info_url)
-        response.raise_for_status()
-        info_list: list[Any] = response.json()
-
-        found: dict[str, Any] | None = None
-        for vers_info in info_list:
-            if vers_info["version_type"] == version_type:
-                found = vers_info
-                break
-
-        if not found:
-            raise ValueError(
-                f"No {version_type} version found for {mod_id} supporting Minecraft {mc_ver}"
-            )
-        # Is the jar always the first in the "files" list?
-        jar_info = found["files"][0]
-        response = requests.get(jar_info["url"])
-        response.raise_for_status()
-        filename = jar_info["filename"]
-
-        mods_dir = instance_dir / "mods"
-        mods_dir.mkdir(parents=True, exist_ok=True)
-        print(f"Installing {filename}")
-        with open(mods_dir / filename, "wb") as f:
-            f.write(response.content)
 
 
 class Launcher:
@@ -337,6 +303,17 @@ class InstanceManager:
         world_names = [x.name for x in world_dir.iterdir() if x.is_dir()]
         return world_names
 
+    def install_mod(self, instance_name: config.InstanceName, mod_id: str) -> None:
+        inst_dir = self.get_instance_dir(instance_name)
+
+        with config.ConfigManager(self.mcio_dir) as cm:
+            instance_config = cm.config.instances.get(instance_name)
+        if instance_config is None:
+            raise ValueError(f"Instance {instance_name} not found in {cm.config_file}")
+        mc_ver = instance_config.minecraft_version
+
+        install_mod(mod_id, inst_dir, mc_ver)
+
     def copy(
         self,
         src: config.InstanceName,
@@ -354,3 +331,39 @@ class InstanceManager:
         util.rmrf(instance_dir)
         with config.ConfigManager(self.mcio_dir, save=True) as cm:
             cm.config.instances.pop(instance_name)
+
+
+def install_mod(
+    mod_id: str,
+    instance_dir: Path,
+    mc_ver: str,
+    version_type: str = "release",
+) -> None:
+    """Install a mod in the specified instance. Uses the modrinth api to find a
+    compatible match."""
+    mod_info_url = f'https://api.modrinth.com/v2/project/{mod_id}/version?game_versions=["{mc_ver}"]&loaders=["fabric"]'
+    response = requests.get(mod_info_url)
+    response.raise_for_status()
+    info_list: list[Any] = response.json()
+
+    found: dict[str, Any] | None = None
+    for vers_info in info_list:
+        if vers_info["version_type"] == version_type:
+            found = vers_info
+            break
+
+    if not found:
+        raise ValueError(
+            f"No {version_type} version found for {mod_id} supporting Minecraft {mc_ver}"
+        )
+    # Is the jar always the first in the "files" list?
+    jar_info = found["files"][0]
+    response = requests.get(jar_info["url"])
+    response.raise_for_status()
+    filename = jar_info["filename"]
+
+    mods_dir = instance_dir / "mods"
+    mods_dir.mkdir(parents=True, exist_ok=True)
+    print(f"Installing {filename}")
+    with open(mods_dir / filename, "wb") as f:
+        f.write(response.content)
