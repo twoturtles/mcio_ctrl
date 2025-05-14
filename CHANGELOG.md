@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.1 - 2025-05-14
+- Update readme on pypi
+- MCIO_PROTOCOL_VERSION = 4
+
 ## 1.0.0 - 2025-05-09
 - Add command to install mods
 - MCIO_PROTOCOL_VERSION = 4
