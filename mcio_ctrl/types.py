@@ -202,7 +202,7 @@ class RunOptions:
         self.env_vars: dict[str, str] = {}
 
         # Launching
-        self.mcio_dir = Path(mcio_dir).expanduser()
+        self.mcio_dir = Path(mcio_dir).expanduser().absolute()
         self.instance_name = instance_name
         self.world_name = world_name
 

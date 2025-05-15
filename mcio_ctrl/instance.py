@@ -281,7 +281,7 @@ class InstanceManager:
         mcio_dir: Path | str | None = None,
     ) -> None:
         mcio_dir = mcio_dir or config.DEFAULT_MCIO_DIR
-        self.mcio_dir = Path(mcio_dir).expanduser()
+        self.mcio_dir = Path(mcio_dir).expanduser().absolute()
 
     def get_instances_dir(self) -> Path:
         return self.mcio_dir / INSTANCES_SUBDIR
