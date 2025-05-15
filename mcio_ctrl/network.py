@@ -22,8 +22,9 @@ LOG = logging.getLogger(__name__)
 MCIO_PROTOCOL_VERSION: Final[int] = 4
 
 cursor_data = np.load(Path(__file__).parent / "cursor_16x16.npy")
-cursor_image = cursor_data[:16, :16, :3]
-cursor_alpha = cursor_data[:16, :16, 3:] / 255.0
+CURSOR_ALPHA = cursor_data[:16, :16, 3:] / 255.0
+CURSOR_IMAGE = cursor_data[:16, :16, :3] * CURSOR_ALPHA
+del cursor_data
 
 # Observation packets received from MCio
 @dataclass
@@ -101,18 +102,18 @@ class ObservationPacket:
         frame: NDArray[np.uint8],
         cursor_pos: tuple[int, int],
     ) -> None:
-        """Draw a crosshair cursor on a raw frame"""
+        """Draw a cursor on a raw frame"""
         x, y = cursor_pos
         h, w = frame.shape[:2]
 
         if x < 0 or x >= w or y < 0 or y >= h:
             return  # Cursor out of frame
 
-        ch = min(h - y, cursor_image.shape[0])
-        cw = min(w - x, cursor_image.shape[1])
+        ch = min(h - y, CURSOR_IMAGE.shape[0])
+        cw = min(w - x, CURSOR_IMAGE.shape[1])
         background = frame[y : y + ch, x : x + cw]
         frame[y : y + ch, x: x + cw] = (
-            background * (1 - cursor_alpha) + cursor_image * cursor_alpha
+            background * (1 - CURSOR_ALPHA) + CURSOR_IMAGE
         ).astype(frame.dtype)
 
     def get_frame_with_cursor(self) -> NDArray[np.uint8]:
