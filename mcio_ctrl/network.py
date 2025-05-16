@@ -5,6 +5,7 @@ import pprint
 import threading
 import time
 from dataclasses import asdict, dataclass, field
+from pathlib import Path
 from typing import Final, Union
 
 import cbor2
@@ -20,6 +21,10 @@ LOG = logging.getLogger(__name__)
 
 MCIO_PROTOCOL_VERSION: Final[int] = 4
 
+cursor_data = np.load(Path(__file__).parent / "cursor_16x16.npy")
+CURSOR_ALPHA = cursor_data[:16, :16, 3:] / 255.0
+CURSOR_IMAGE = cursor_data[:16, :16, :3] * CURSOR_ALPHA
+del cursor_data
 
 # Observation packets received from MCio
 @dataclass
@@ -92,28 +97,24 @@ class ObservationPacket:
     def get_frame_type(self) -> str | None:
         return self.frame_type  # "PNG" / "JPEG" / "RAW"
 
-    def draw_cross_cursor(
+    def draw_cursor(
         self,
         frame: NDArray[np.uint8],
         cursor_pos: tuple[int, int],
-        color: tuple[int, int, int] = (255, 0, 0),
-        arm_length: int = 5,
     ) -> None:
-        """Draw a crosshair cursor on a raw frame"""
+        """Draw a cursor on a raw frame"""
         x, y = cursor_pos
         h, w = frame.shape[:2]
 
         if x < 0 or x >= w or y < 0 or y >= h:
             return  # Cursor out of frame
 
-        # Bounds checks
-        x_min = max(0, x - arm_length)
-        x_max = min(w, x + arm_length + 1)
-        y_min = max(0, y - arm_length)
-        y_max = min(h, y + arm_length + 1)
-
-        frame[y, x_min:x_max] = color  # Horizontal line
-        frame[y_min:y_max, x] = color  # Vertical line
+        ch = min(h - y, CURSOR_IMAGE.shape[0])
+        cw = min(w - x, CURSOR_IMAGE.shape[1])
+        background = frame[y : y + ch, x : x + cw]
+        frame[y : y + ch, x: x + cw] = (
+            background * (1 - CURSOR_ALPHA) + CURSOR_IMAGE
+        ).astype(frame.dtype)
 
     def get_frame_with_cursor(self) -> NDArray[np.uint8]:
         frame: NDArray[np.uint8]
@@ -124,7 +125,7 @@ class ObservationPacket:
                 frame = np.flipud(frame)
                 if self.cursor_mode == glfw.CURSOR_NORMAL:
                     frame = frame.copy()  # The buffer from cbor is not writable
-                    self.draw_cross_cursor(frame, self.cursor_pos)
+                    self.draw_cursor(frame, self.cursor_pos)
             case _:
                 raise ValueError(f"Invalid frame_type: {self.frame_type}")
 
