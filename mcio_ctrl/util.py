@@ -5,13 +5,20 @@ import shutil
 import time
 import types
 from pathlib import Path
-from typing import Any, Literal, TypeVar
+from typing import Any, Literal, Protocol, TypeVar
 
 import minecraft_launcher_lib as mll
+import numpy as np
 import requests
+from numpy.typing import NDArray
 from tqdm import tqdm
 
+from . import types as mcio_types
+
 LOG = logging.getLogger(__name__)
+
+##
+# Logging
 
 
 def logging_add_arg(
@@ -70,7 +77,83 @@ class LogColorFormatter(logging.Formatter):
         return formatter.format(record)
 
 
-# For LatestItemQueue
+##
+# Cursor drawing. Normally the OS adds the cursor, so frames from Minecraft do
+# not show the cursor. These are to add the cursor.
+class CursorDrawer(Protocol):
+    def draw_cursor(
+        self, frame: NDArray[np.uint8], cursor_pos: tuple[int, int]
+    ) -> None:
+        """Draw the cursor onto the frame. Assumes the frame is writable."""
+        ...
+
+
+class MinerlCursor(CursorDrawer):
+    MINERL_CURSOR_FILE = "minerl_cursor_16x16.npy"
+
+    def __init__(self) -> None:
+        """The default cursor used by MineRL"""
+        cursor_file = mcio_types.RESOURCES_DIR / self.MINERL_CURSOR_FILE
+        with cursor_file.open("rb") as f:
+            cursor_data = np.load(f)
+        self.cursor_alpha = cursor_data[:16, :16, 3:] / 255.0
+        self.cursor_image = cursor_data[:16, :16, :3] * self.cursor_alpha
+
+    def draw_cursor(
+        self,
+        frame: NDArray[np.uint8],
+        cursor_pos: tuple[int, int],
+    ) -> None:
+        """Draw a cursor on a raw frame"""
+        x, y = cursor_pos
+        h, w = frame.shape[:2]
+
+        if x < 0 or x >= w or y < 0 or y >= h:
+            return  # Cursor out of frame
+
+        ch = min(h - y, self.cursor_image.shape[0])
+        cw = min(w - x, self.cursor_image.shape[1])
+        background = frame[y : y + ch, x : x + cw]
+        frame[y : y + ch, x : x + cw] = (
+            background * (1 - self.cursor_alpha) + self.cursor_image
+        ).astype(frame.dtype)
+
+
+class CrosshairCursor(CursorDrawer):
+    def __init__(
+        self, color: tuple[int, int, int] = (255, 0, 0), arm_length: int = 5
+    ) -> None:
+        self.color = color
+        self.arm_length = arm_length
+
+    def draw_cursor(
+        self,
+        frame: NDArray[np.uint8],
+        cursor_pos: tuple[int, int],
+    ) -> None:
+        """Draw a crosshair cursor on a raw frame"""
+        x, y = cursor_pos
+        h, w = frame.shape[:2]
+
+        if x < 0 or x >= w or y < 0 or y >= h:
+            return  # Cursor out of frame
+
+        # Bounds checks
+        x_min = max(0, x - self.arm_length)
+        x_max = min(w, x + self.arm_length + 1)
+        y_min = max(0, y - self.arm_length)
+        y_max = min(h, y + self.arm_length + 1)
+
+        frame[y, x_min:x_max] = self.color  # Horizontal line
+        frame[y_min:y_max, x] = self.color  # Vertical line
+
+
+# Pre-load the default
+DEFAULT_CURSOR_DRAWER = MinerlCursor()
+
+##
+# LatestItemQueue
+
 T = TypeVar("T")
 
 
@@ -132,6 +215,9 @@ class TrackPerSecond:
     def avg_rate(self) -> float:
         """Return the average rate"""
         return self.item_count / (self.end - self.start)
+
+
+##
 
 
 class OptionsTxt:

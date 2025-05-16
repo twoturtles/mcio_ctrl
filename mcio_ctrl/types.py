@@ -4,6 +4,7 @@ import enum
 import os
 import uuid
 from dataclasses import dataclass
+from importlib import resources
 from pathlib import Path
 from typing import Final, Self, Type, TypeVar, cast
 
@@ -19,6 +20,9 @@ DEFAULT_ACTION_PORT: Final[int] = 4001  # 4ction
 DEFAULT_OBSERVATION_PORT: Final[int] = 8001  # 8bservation
 DEFAULT_HOST = "localhost"  # For security, only localhost
 DEFAULT_HIDE_WINDOW = False
+
+# Directory for data/resource files
+RESOURCES_DIR = resources.files() / "resources"
 
 
 class StrEnumUpper(enum.StrEnum):
