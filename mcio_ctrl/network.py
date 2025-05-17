@@ -93,7 +93,7 @@ class ObservationPacket:
         return self.frame_type  # "PNG" / "JPEG" / "RAW"
 
     def get_frame_with_cursor(
-        self, cursor_drawer: util.CursorDrawer = util.DEFAULT_CURSOR_DRAWER
+        self, cursor_drawer: util.CursorDrawer | None = None
     ) -> NDArray[np.uint8]:
         frame: NDArray[np.uint8]
         match self.frame_type:
@@ -102,6 +102,8 @@ class ObservationPacket:
                 frame = frame.reshape((self.frame_height, self.frame_width, 3))
                 frame = np.flipud(frame)
                 if self.cursor_mode == glfw.CURSOR_NORMAL:
+                    if cursor_drawer is None:
+                        cursor_drawer = util.DEFAULT_CURSOR_DRAWER
                     frame = frame.copy()  # The buffer from cbor is not writable
                     cursor_drawer.draw_cursor(frame, self.cursor_pos)
             case _:

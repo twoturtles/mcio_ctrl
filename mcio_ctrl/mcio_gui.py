@@ -23,6 +23,7 @@ class MCioGUI:
         fps: int = 60,
         action_port: int | None = None,
         observation_port: int | None = None,
+        cursor_drawer: util.CursorDrawer | None = None,
     ):
         self.scale = scale
         self.fps = fps if fps > 0 else 60
@@ -32,6 +33,7 @@ class MCioGUI:
         self.controller = controller.ControllerAsync(
             action_port=action_port, observation_port=observation_port
         )
+        self.cursor_drawer = cursor_drawer
 
         # Set callbacks. Defaults are good enough for resize and focus.
         self.gui.set_callbacks(
@@ -82,7 +84,7 @@ class MCioGUI:
             # Link cursor mode to Minecraft.
             assert self.gui is not None
             self.gui.set_cursor_mode(observation.cursor_mode)
-            frame = observation.get_frame_with_cursor()
+            frame = observation.get_frame_with_cursor(cursor_drawer=self.cursor_drawer)
             self.gui.show(frame, poll=False)
 
     def run(self, launcher: instance.Launcher | None = None) -> None:

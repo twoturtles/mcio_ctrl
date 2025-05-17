@@ -113,9 +113,13 @@ class MinerlCursor(CursorDrawer):
 
         ch = min(h - y, self.cursor_image.shape[0])
         cw = min(w - x, self.cursor_image.shape[1])
+
         background = frame[y : y + ch, x : x + cw]
+        cropped_alpha = self.cursor_alpha[:ch, :cw]
+        cropped_image = self.cursor_image[:ch, :cw]
+
         frame[y : y + ch, x : x + cw] = (
-            background * (1 - self.cursor_alpha) + self.cursor_image
+            background * (1 - cropped_alpha) + cropped_image
         ).astype(frame.dtype)
 
 
