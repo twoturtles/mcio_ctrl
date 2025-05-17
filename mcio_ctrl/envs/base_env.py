@@ -73,7 +73,7 @@ class MCioBaseEnv(gym.Env[ObsType, ActType], Generic[ObsType, ActType], ABC):
 
         # Common state tracking. Initialized in _reset_state(). Updated in _get_obs().
         self.last_frame: NDArray[np.uint8] | None
-        self.last_cursor_pos: tuple[int, int]
+        self.last_cursor_pos: tuple[float, float]
         self.health: float
         self.terminated: bool
         self._reset_state()

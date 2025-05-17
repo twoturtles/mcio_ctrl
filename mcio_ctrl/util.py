@@ -82,7 +82,7 @@ class LogColorFormatter(logging.Formatter):
 # not show the cursor. These are to add the cursor.
 class CursorDrawer(Protocol):
     def draw_cursor(
-        self, frame: NDArray[np.uint8], cursor_pos: tuple[int, int]
+        self, frame: NDArray[np.uint8], cursor_pos: tuple[float, float]
     ) -> None:
         """Draw the cursor onto the frame. Assumes the frame is writable."""
         ...
@@ -102,10 +102,10 @@ class MinerlCursor(CursorDrawer):
     def draw_cursor(
         self,
         frame: NDArray[np.uint8],
-        cursor_pos: tuple[int, int],
+        cursor_pos: tuple[float, float],
     ) -> None:
         """Draw a cursor on a raw frame"""
-        x, y = cursor_pos
+        x, y = int(cursor_pos[0]), int(cursor_pos[1])
         h, w = frame.shape[:2]
 
         if x < 0 or x >= w or y < 0 or y >= h:
@@ -133,10 +133,10 @@ class CrosshairCursor(CursorDrawer):
     def draw_cursor(
         self,
         frame: NDArray[np.uint8],
-        cursor_pos: tuple[int, int],
+        cursor_pos: tuple[float, float],
     ) -> None:
         """Draw a crosshair cursor on a raw frame"""
-        x, y = cursor_pos
+        x, y = int(cursor_pos[0]), int(cursor_pos[1])
         h, w = frame.shape[:2]
 
         if x < 0 or x >= w or y < 0 or y >= h:

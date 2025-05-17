@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.1.0 - 2025-05-15
+- Default to the MineRL cursor
+- Fractional cursor positions. This allows for POV changes
+  of < 0.15 degrees, matching MineRL.
+- MCIO_PROTOCOL_VERSION = 5
+
 ## 1.0.2 - 2025-05-15
 - Fix using a relative path for mcio_dir
 - Fix minerl_env cursor centering

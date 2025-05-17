@@ -18,7 +18,7 @@ from . import types, util
 
 LOG = logging.getLogger(__name__)
 
-MCIO_PROTOCOL_VERSION: Final[int] = 4
+MCIO_PROTOCOL_VERSION: Final[int] = 5
 
 
 # Observation packets received from MCio
@@ -41,7 +41,7 @@ class ObservationPacket:
     cursor_mode: int = (
         glfw.CURSOR_NORMAL
     )  # Either glfw.CURSOR_NORMAL (212993) or glfw.CURSOR_DISABLED (212995)
-    cursor_pos: tuple[int, int] = field(default=(0, 0))  # x, y
+    cursor_pos: tuple[float, float] = field(default=(0, 0))  # x, y
     health: float = 0.0
     # Minecraft uses float player positions. This indicates the position within the block.
     player_pos: tuple[float, float, float] = field(default=(0.0, 0.0, 0.0))
@@ -133,7 +133,7 @@ class ActionPacket:
     inputs: list[types.InputEvent] = field(default_factory=list)
 
     # List of (x, y) pairs. Using a list for consistency
-    cursor_pos: list[tuple[int, int]] = field(default_factory=list)
+    cursor_pos: list[tuple[float, float]] = field(default_factory=list)
 
     def pack(self) -> bytes:
         pkt_dict = asdict(self)
