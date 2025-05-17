@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.0.2 - 2025-05-15
+- Fix using a relative path for mcio_dir
+- Fix minerl_env cursor centering
+- MCIO_PROTOCOL_VERSION = 4
+
 ## 1.0.1 - 2025-05-14
 - Update readme on pypi
 - MCIO_PROTOCOL_VERSION = 4

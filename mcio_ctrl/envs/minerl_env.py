@@ -93,6 +93,7 @@ class MinerlEnv(MCioBaseEnv[MinerlObservation, MinerlAction]):
         obs: MinerlObservation = {
             "pov": packet.get_frame_with_cursor(),
         }
+        self.cursor_map.set(*self.last_cursor_pos)
         # assert obs in self.observation_space
         return obs
 
