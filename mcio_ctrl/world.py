@@ -130,11 +130,11 @@ class WorldManager:
             else:
                 cm.config.instances[location].worlds.pop(world_name, None)
 
-    def copy_cmd(self, src: str, dst: str) -> None:
+    def copy_cmd(self, src: str, dst: str, force: bool = False) -> None:
         """Copy world for command line interface"""
         src_loc, src_world = src.split(":", 1)
         dst_loc, dst_world = dst.split(":", 1)
-        self.copy(src_loc, src_world, dst_loc, dst_world)
+        self.copy(src_loc, src_world, dst_loc, dst_world, force=force)
 
     def copy(
         self,
@@ -142,6 +142,7 @@ class WorldManager:
         src_world: config.WorldName,
         dst_location: LocationType,  # STORAGE_LOCATION or instance name
         dst_world: config.WorldName | None = None,  # If None, uses src_world name
+        force: bool = False,
     ) -> None:
         """Copy a world between storage and instances.
 
@@ -150,6 +151,7 @@ class WorldManager:
             src_world: Name of the world to copy
             dst_location: Either STORAGE_LOCATION or an instance name for the destination
             dst_world: Name for the copied world. If None, uses the source world name
+            force: Overwrite dst if it exists
         """
         im = instance.InstanceManager(self.mcio_dir)
 
@@ -180,7 +182,10 @@ class WorldManager:
 
         # Validate destination world doesn't exist
         if (dst_dir / dst_world).exists():
-            raise ValueError(f"Dst world already exists: {dst_world}")
+            if force:
+                util.rmrf(dst_dir / dst_world)
+            else:
+                raise ValueError(f"Dst world already exists: {dst_world}")
 
         util.copy_dir(src_dir / src_world, dst_dir / dst_world)
         self._copy_update_config(src_location, src_world, dst_location, dst_world)

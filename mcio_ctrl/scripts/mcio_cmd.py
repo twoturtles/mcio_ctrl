@@ -56,7 +56,7 @@ class WorldCmd(Cmd):
     def run(self, args: argparse.Namespace) -> None:
         wm = world.WorldManager(mcio_dir=args.mcio_dir)
         if args.world_command == "cp":
-            wm.copy_cmd(args.src, args.dst)
+            wm.copy_cmd(args.src, args.dst, force=args.force)
         elif args.world_command == "create":
             wm.create(
                 args.world_name, args.version, seed=args.seed, gamemode=args.gamemode
@@ -119,6 +119,13 @@ class WorldCmd(Cmd):
                 "Dest location (storage:<world-name> or <instance-name>:<world-name>)\n"
                 "If world-name is omitted, uses the source world-name"
             ),
+        )
+        cp_parser.add_argument(
+            "--force",
+            "-f",
+            action="store_true",
+            default=False,
+            help="Overwrite dst if it exists",
         )
 
         rm_parser = world_subparsers.add_parser("rm", help="Delete a world")
