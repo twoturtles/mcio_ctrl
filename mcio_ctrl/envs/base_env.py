@@ -181,7 +181,7 @@ class MCioBaseEnv(gym.Env[ObsType, ActType], Generic[ObsType, ActType], ABC):
             self.launcher = instance.Launcher(self.run_options)
             self.launcher.launch(wait=False)
 
-        if self.run_options.mcio_mode == "async":
+        if self.run_options.mcio_mode == types.MCioMode.ASYNC:
             self.ctrl = controller.ControllerAsync()
         else:
             self.ctrl = controller.ControllerSync()
