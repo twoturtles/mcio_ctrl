@@ -415,11 +415,43 @@ class VideoWriter:
     def add(self, frame: NDArray[np.uint8]) -> None:
         self.frames.append(frame)
 
-    def write(self, filename: str, fps: float = 20.0, codec: str = "avc1") -> None:
+    def write(
+        self,
+        filename: str,
+        *,
+        fps: float = 20.0,
+        codec: str = "avc1",
+        annotate: bool = False,
+    ) -> None:
         height, width, _ = self.frames[0].shape
         fourcc = cv2.VideoWriter_fourcc(*codec)  # type: ignore[attr-defined]
         out = cv2.VideoWriter(filename, fourcc, fps, (width, height))
-        for frame in self.frames:
+        for i, frame in enumerate(self.frames):
+            if annotate:
+                frame = self._annotate(frame, i)
             bgr = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
+
             out.write(bgr)
+
         out.release()
+
+    def _annotate(self, frame: NDArray[np.uint8], num: int) -> NDArray[np.uint8]:
+        frame = frame.copy()
+        height = frame.shape[0]
+        text = f"Frame: {num}"
+        font = cv2.FONT_HERSHEY_SIMPLEX
+        font_scale = 0.8
+        color = (255, 0, 0)
+        thickness = 2
+        cv2.putText(
+            frame,
+            text,
+            (10, height - 50),
+            font,
+            font_scale,
+            color,
+            thickness,
+            cv2.LINE_AA,
+        )
+
+        return frame
