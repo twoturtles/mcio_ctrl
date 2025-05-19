@@ -5,7 +5,7 @@ import shutil
 import time
 import types
 from pathlib import Path
-from typing import Any, Literal, Protocol, TypeVar
+from typing import Any, Callable, Literal, Protocol, TypeVar
 
 import cv2
 import minecraft_launcher_lib as mll
@@ -409,8 +409,11 @@ def copy_dir(src: Path, dst: Path, overwrite: bool = False) -> None:
 
 
 class VideoWriter:
-    def __init__(self) -> None:
-        self.frames: list[NDArray[np.uint8]] = []
+    """Write a list of frames to a video file. You can pass a list of frames to
+    __init__, or use add() to append them as they're generated"""
+
+    def __init__(self, frames: list[NDArray[np.uint8]] | None = None) -> None:
+        self.frames: list[NDArray[np.uint8]] = frames or []
 
     def add(self, frame: NDArray[np.uint8]) -> None:
         self.frames.append(frame)
@@ -422,23 +425,33 @@ class VideoWriter:
         fps: float = 20.0,
         codec: str = "avc1",
         annotate: bool = False,
+        annotate_str_fn: Callable[[int], str] | None = None,
     ) -> None:
+        """Write the frames to a file. Use annotate and annotate_str_fn to
+        annotate each frame. The default annotation is the frame number."""
+        if annotate_str_fn is None:
+            annotate_str_fn = self._frame_number
         height, width, _ = self.frames[0].shape
         fourcc = cv2.VideoWriter_fourcc(*codec)  # type: ignore[attr-defined]
         out = cv2.VideoWriter(filename, fourcc, fps, (width, height))
         for i, frame in enumerate(self.frames):
             if annotate:
-                frame = self._annotate(frame, i)
+                frame = self._annotate(frame, i, annotate_str_fn)
             bgr = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
 
             out.write(bgr)
 
         out.release()
 
-    def _annotate(self, frame: NDArray[np.uint8], num: int) -> NDArray[np.uint8]:
+    def _annotate(
+        self,
+        frame: NDArray[np.uint8],
+        frame_ix: int,
+        annotate_str_fn: Callable[[int], str],
+    ) -> NDArray[np.uint8]:
         frame = frame.copy()
         height = frame.shape[0]
-        text = f"Frame: {num}"
+        text = annotate_str_fn(frame_ix)
         font = cv2.FONT_HERSHEY_SIMPLEX
         font_scale = 0.8
         color = (255, 0, 0)
@@ -453,5 +466,7 @@ class VideoWriter:
             thickness,
             cv2.LINE_AA,
         )
-
         return frame
+
+    def _frame_number(self, frame_ix: int) -> str:
+        return f"Frame: {frame_ix+1}"
