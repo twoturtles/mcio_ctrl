@@ -7,6 +7,7 @@ import types
 from pathlib import Path
 from typing import Any, Literal, Protocol, TypeVar
 
+import cv2
 import minecraft_launcher_lib as mll
 import numpy as np
 import requests
@@ -405,3 +406,20 @@ def copy_dir(src: Path, dst: Path, overwrite: bool = False) -> None:
         else:
             raise ValueError(f"Destination exists: {dst}")
     shutil.copytree(src, dst)
+
+
+class VideoWriter:
+    def __init__(self) -> None:
+        self.frames: list[NDArray[np.uint8]] = []
+
+    def add(self, frame: NDArray[np.uint8]) -> None:
+        self.frames.append(frame)
+
+    def write(self, filename: str, fps: float = 20.0, codec: str = "avc1") -> None:
+        height, width, _ = self.frames[0].shape
+        fourcc = cv2.VideoWriter_fourcc(*codec)  # type: ignore[attr-defined]
+        out = cv2.VideoWriter(filename, fourcc, fps, (width, height))
+        for frame in self.frames:
+            bgr = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
+            out.write(bgr)
+        out.release()

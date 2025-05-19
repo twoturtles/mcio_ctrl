@@ -23,6 +23,7 @@ dependencies = [
     "gymnasium>=1.0.0",
     "pillow>=11.0.0",
     "minecraft-launcher-lib>=7.1",
+    "opencv-python",
     "tqdm>=4.67.1",
     "requests>=2.32.3",
     "ruamel.yaml>=0.18.6",
