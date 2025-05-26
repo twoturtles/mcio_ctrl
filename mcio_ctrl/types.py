@@ -18,8 +18,10 @@ DEFAULT_WINDOW_WIDTH: Final[int] = 854
 DEFAULT_WINDOW_HEIGHT: Final[int] = 480
 DEFAULT_ACTION_PORT: Final[int] = 4001  # 4ction
 DEFAULT_OBSERVATION_PORT: Final[int] = 8001  # 8bservation
-DEFAULT_HOST = "localhost"  # For security, only localhost
-DEFAULT_HIDE_WINDOW = False
+DEFAULT_HOST: Final[str] = "localhost"  # For security, only localhost
+DEFAULT_HIDE_WINDOW: Final[bool] = False
+DEFAULT_OPEN_TO_LAN: Final[bool] = False
+DEFAULT_OPEN_TO_LAN_PORT: Final[int] = 12001
 
 # Directory for data/resource files
 RESOURCES_DIR = resources.files() / "resources"
@@ -47,6 +49,15 @@ class MCioMode(StrEnumUpper):
 
 DEFAULT_MCIO_MODE: Final[MCioMode] = MCioMode.ASYNC
 
+
+class GameMode(enum.StrEnum):
+    SURVIVAL = "survival"
+    CREATIVE = "creative"
+    ADVENTURE = "adventure"
+    SPECTATOR = "spectator"
+
+
+DEFAULT_OPEN_TO_LAN_MODE: Final[GameMode] = GameMode.SPECTATOR
 
 ##
 # Protocol types
@@ -150,6 +161,7 @@ class RunOptions:
         - `world_name` (default: None): World to launch directly into.
             Recommended if launching an instance; otherwise, Minecraft will open to
             the main menu.
+        - `mc_username` (default: MCio): Local Minecraft username.
         - `hide_window` (default: env or False): Whether to hide the Minecraft window.
 
         #### Common
@@ -162,10 +174,12 @@ class RunOptions:
         #### Communication
         - `action_port` (default: env or 4001): Port used for the action connection.
         - `observation_port` (default: env or 8001): Port used for the observation connection.
+        - `open_to_lan` (default: env or False): Open the instance to other LAN players
+        - `open_to_lan_port` (default: env or 12001): Listen port for the LAN server
+        - `open_to_lan_mode` (default: env or spectator): Inital GameMode for LAN connections
 
         #### Advanced / Misc
         - `env_extra` (default: {}): Extra env vars to pass to Minecraft. Intended for dev / testing.
-        - `mc_username` (default: MCio): Local Minecraft username.
         - `cleanup_on_signal` (default: True): Kill the launched Minecraft on SIGINT or SIGTERM (and exit).
         - `java_path` (default: None): Path to alternative java executable (for debugging / dev)
 
@@ -181,18 +195,21 @@ class RunOptions:
         mcio_dir: Path | str = config.DEFAULT_MCIO_DIR,
         instance_name: config.InstanceName | None = None,
         world_name: config.WorldName | None = None,
-        hide_window: bool | _UnsetType = UNSET,
+        mc_username: str = DEFAULT_MINECRAFT_USER,
         # Common
         mcio_mode: MCioMode | _UnsetType = UNSET,
         width: int = DEFAULT_WINDOW_WIDTH,
         height: int = DEFAULT_WINDOW_HEIGHT,
+        hide_window: bool | _UnsetType = UNSET,
         gpu_lib: str | None = None,
         # Communication
         action_port: int | _UnsetType = UNSET,
         observation_port: int | _UnsetType = UNSET,
+        open_to_lan: bool | _UnsetType = UNSET,
+        open_to_lan_port: int | _UnsetType = UNSET,
+        open_to_lan_mode: GameMode | _UnsetType = UNSET,
         # Advanced / Misc
         env_extra: dict[str, str] | None = None,
-        mc_username: str = DEFAULT_MINECRAFT_USER,
         cleanup_on_signal: bool = True,
         mcio_log_cfg: Path | str | None = None,
         java_path: str | None = None,
@@ -209,6 +226,7 @@ class RunOptions:
         self.mcio_dir = Path(mcio_dir).expanduser().absolute()
         self.instance_name = instance_name
         self.world_name = world_name
+        self.mc_username = mc_username
 
         # Common
         self.mcio_mode: MCioMode = self._resolve(
@@ -230,25 +248,34 @@ class RunOptions:
         self.observation_port: int = self._resolve(
             int, observation_port, "MCIO_OBSERVATION_PORT", DEFAULT_OBSERVATION_PORT
         )
+        self.open_to_lan: bool = self._resolve(
+            bool, open_to_lan, "MCIO_OPEN_TO_LAN", DEFAULT_OPEN_TO_LAN
+        )
+        self.open_to_lan_port: int = self._resolve(
+            int, open_to_lan_port, "MCIO_OPEN_TO_LAN_PORT", DEFAULT_OPEN_TO_LAN_PORT
+        )
+        self.open_to_lan_mode: GameMode = self._resolve(
+            GameMode,
+            open_to_lan_mode,
+            "MCIO_OPEN_TO_LAN_MODE",
+            DEFAULT_OPEN_TO_LAN_MODE,
+        )
 
         # Advanced / Misc
-        self.mc_username = mc_username
+        # Copy env_extra. These will override any set by arguments or env vars.
+        self.env_vars.update(env_extra or {})
         self.cleanup_on_signal = cleanup_on_signal
-        self.java_path = java_path
-
         # MCIO_LOG_CFG gives a way to adjust the Minecraft logging. It's passed
         # to Minecraft via a java arg.
         _mlc = mcio_log_cfg or os.getenv("MCIO_LOG_CFG")
         if _mlc is not None:
             _mlc = str(Path(_mlc).resolve())
         self.mcio_log_cfg: str | None = _mlc
+        self.java_path = java_path
 
         # Auto-generated
         self.instance_dir: Path | None = self._instance_dir()
         self.mc_uuid = uuid.uuid5(uuid.NAMESPACE_URL, self.mc_username)
-
-        # Copy env_extra. These will override any set by arguments or env vars.
-        self.env_vars.update(env_extra or {})
 
     def _instance_dir(self) -> Path | None:
         if self.instance_name is None:

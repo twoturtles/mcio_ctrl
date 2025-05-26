@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.2.0 - 2025-05-XX
+- Add convenience VideoWriter
+- Support for Open To LAN
+- MCIO_PROTOCOL_VERSION = 5
+
 ## 1.1.0 - 2025-05-16
 - Default to the MineRL cursor
 - Fractional cursor positions. This allows for POV changes
