@@ -7,11 +7,12 @@ import types
 from pathlib import Path
 from typing import Any, Callable, Literal, Protocol, TypeVar
 
-import cv2
+import imageio.v3 as iio
 import minecraft_launcher_lib as mll
 import numpy as np
 import requests
 from numpy.typing import NDArray
+from PIL import Image, ImageDraw
 from tqdm import tqdm
 
 from . import types as mcio_types
@@ -423,7 +424,7 @@ class VideoWriter:
         filename: str,
         *,
         fps: float = 20.0,
-        codec: str = "avc1",
+        codec: str = "libx264",
         annotate: bool = False,
         annotate_str_fn: Callable[[int], str] | None = None,
     ) -> None:
@@ -431,17 +432,20 @@ class VideoWriter:
         annotate each frame. The default annotation is the frame number."""
         if annotate_str_fn is None:
             annotate_str_fn = self._frame_number
-        height, width, _ = self.frames[0].shape
-        fourcc = cv2.VideoWriter_fourcc(*codec)  # type: ignore[attr-defined]
-        out = cv2.VideoWriter(filename, fourcc, fps, (width, height))
+
+        output_frames = []
         for i, frame in enumerate(self.frames):
             if annotate:
                 frame = self._annotate(frame, i, annotate_str_fn)
-            bgr = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
+            output_frames.append(frame)
 
-            out.write(bgr)
-
-        out.release()
+        iio.imwrite(
+            filename,
+            output_frames,
+            fps=fps,
+            codec=codec,
+            macro_block_size=1,
+        )
 
     def _annotate(
         self,
@@ -449,24 +453,13 @@ class VideoWriter:
         frame_ix: int,
         annotate_str_fn: Callable[[int], str],
     ) -> NDArray[np.uint8]:
-        frame = frame.copy()
-        height = frame.shape[0]
         text = annotate_str_fn(frame_ix)
-        font = cv2.FONT_HERSHEY_SIMPLEX
-        font_scale = 0.8
-        color = (255, 0, 0)
-        thickness = 2
-        cv2.putText(
-            frame,
-            text,
-            (10, height - 50),
-            font,
-            font_scale,
-            color,
-            thickness,
-            cv2.LINE_AA,
-        )
-        return frame
+
+        img = Image.fromarray(frame)
+        draw = ImageDraw.Draw(img)
+        draw.text((10, img.size[1] - 50), text, fill=(255, 0, 0), font_size=30)
+
+        return np.array(img)
 
     def _frame_number(self, frame_ix: int) -> str:
         return f"Frame: {frame_ix+1}"
