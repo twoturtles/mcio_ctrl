@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.2.1 - 2025-05-28
+- Release to fix link on pypi
+- Change VideoWriter to use imageio
+- MCIO_PROTOCOL_VERSION = 5
+
 ## 1.2.0 - 2025-05-26
 - Add convenience VideoWriter
 - Support for Open To LAN
