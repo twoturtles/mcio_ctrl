@@ -1,6 +1,6 @@
 # mcio_ctrl
 
-### [MCio mod](https://github.com/twoturtles/MCio) | [mcio_ctrl](https://github.com/twoturtles/mcio_ctrl) | [Documentation](https://github.com/twoturtles/mcio_ctrl/wiki) | [Discord](https://discord.gg/vaFEBynG)
+### [MCio mod](https://github.com/twoturtles/MCio) | [mcio_ctrl](https://github.com/twoturtles/mcio_ctrl) | [Documentation](https://github.com/twoturtles/mcio_ctrl/wiki) | [Discord](https://discord.gg/PBfdc27h4q)
 
 `mcio_ctrl` is a comprehensive Python library designed to interface seamlessly with [MCio](https://github.com/twoturtles/MCio), a Minecraft Fabric mod tailored for AI agent development. It includes a versatile [Gymnasium](https://gymnasium.farama.org/) environment, making it ideal for reinforcement learning research and development.
 
