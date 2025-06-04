@@ -63,8 +63,8 @@ DEFAULT_OPEN_TO_LAN_MODE: Final[GameMode] = GameMode.SPECTATOR
 ##
 # Protocol types
 #
-# Note: Each @MCioType class must have the same name as its corresponding class in the MCio Java
-# code for proper type matching
+# Note: Each @MCioType class must have the same name as its corresponding MCIO_TYPE class in
+# MCio for proper type matching
 #
 
 

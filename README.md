@@ -11,6 +11,8 @@
 * **Customizable Base Environment:** A convenient base class for quickly creating tailored Gymnasium environments suited to specific research needs.
 * **Interactive GUI Support:** Enables human control of Minecraft through the standard Minecraft controls using the MCio backend. (Seamless Human-in-the-loop is planned for future updates.)
 * **Type-Hinting and Development Convenience:** Fully type-hinted for easier integration, improved code clarity, and streamlined development workflows.
+* **BONUS:** Easily [set up VPT and STEVE-1](https://github.com/jxiong21029/mcio-vpt-example) on modern Minecraft with support for [Sodium](https://modrinth.com/mod/sodium)!
+
 
 ## Quick Links
 

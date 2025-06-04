@@ -31,8 +31,6 @@ def decode(data: bytes) -> Any | None:
 
 def object_hook(decoder: cbor2.CBORDecoder, obj_dict: dict[Any, Any]) -> Any:
     mcio_type = obj_dict.pop(MCIO_PROTOCOL_TYPE, None)
-    # if mcio_type != ".ObservationPacket":
-    #     print(f"======== obj {mcio_type}\n{obj_dict}\n========")
     if isinstance(mcio_type, str):
         # The jackson MINIMAL_CLASS includes a leading dot
         mcio_type = mcio_type[1:] if len(mcio_type) > 0 else ""

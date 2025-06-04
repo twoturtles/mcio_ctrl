@@ -1,3 +1,4 @@
+from collections import defaultdict
 from typing import Any, Sequence
 
 import numpy as np
@@ -86,6 +87,19 @@ class InputStateManager:
                 released_set.add(input_id)
 
         return self.update(pressed_set, released_set)
+
+
+class StatsCache(defaultdict[str, defaultdict[str, int]]):
+    """Cache stats to return full stats on request.
+    Note: this is currently using a defaultdict, so reading a non-existent value
+    will add that value to the cache.
+    Example: dirt_obtained = stats_cache["minecraft:picked_up"]"minecraft:dirt"]
+    Use `MCIO_HELP_STATS=true mcio demo` to get a full list of stats.
+    """
+
+    def __init__(self) -> None:
+        # category -> id -> value
+        super().__init__(lambda: defaultdict(int))
 
 
 def nf32(seq: Sequence[int | float] | int | float) -> NDArray[np.float32]:
