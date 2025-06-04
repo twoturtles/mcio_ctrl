@@ -56,7 +56,7 @@ class ControllerSync(ControllerCommon):
         """Receive observation. Always blocks - ignores block and timeout args"""
         obs = self._mcio_conn.recv_observation(block=True)
         if obs is None:
-            # This will only ever happen when zmq is shutting down
+            # Exiting or packet decode error
             return network.ObservationPacket()
 
         if self.check_mode:

@@ -6,11 +6,12 @@ import uuid
 from dataclasses import dataclass
 from importlib import resources
 from pathlib import Path
-from typing import Final, Self, Type, TypeVar, cast
+from typing import Final, Protocol, Self, Type, TypeVar, cast
 
 import glfw  # type: ignore
 
 from . import config
+from .cbor import MCioType
 
 # Project defines
 DEFAULT_MINECRAFT_USER: Final[str] = "MCio"
@@ -61,6 +62,10 @@ DEFAULT_OPEN_TO_LAN_MODE: Final[GameMode] = GameMode.SPECTATOR
 
 ##
 # Protocol types
+#
+# Note: Each @MCioType class must have the same name as its corresponding class in the MCio Java
+# code for proper type matching
+#
 
 
 class FrameType(StrEnumUpper):
@@ -69,6 +74,7 @@ class FrameType(StrEnumUpper):
     RAW = enum.auto()
 
 
+@MCioType
 @dataclass
 class InventorySlot:
     """Minecraft inventory slot - slot number, item id, and count"""
@@ -76,6 +82,45 @@ class InventorySlot:
     slot: int
     id: str
     count: int
+
+
+class Option(Protocol):
+    pass
+
+
+@MCioType
+@dataclass
+class Stat:
+    """A single stat"""
+
+    id: str
+    value: int
+
+
+@MCioType
+@dataclass
+class StatCategory:
+    """Groups stats by category"""
+
+    category: str
+    stats: list[Stat]
+
+
+#
+@MCioType
+@dataclass
+class StatsUpdateOption(Option):
+    """Option containing only changed stats"""
+
+    categories: list[StatCategory]
+
+
+@MCioType
+@dataclass
+class StatsFullOption(Option):
+    """Option containing all the stats"""
+
+    categories: list[StatCategory]
 
 
 ##

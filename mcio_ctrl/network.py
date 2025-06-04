@@ -14,14 +14,16 @@ import zmq
 import zmq.utils.monitor as zmon
 from numpy.typing import NDArray
 
-from . import types, util
+from . import cbor, types, util
+from .cbor import MCioType
 
 LOG = logging.getLogger(__name__)
 
-MCIO_PROTOCOL_VERSION: Final[int] = 5
+MCIO_PROTOCOL_VERSION: Final[int] = 6
 
 
 # Observation packets received from MCio
+@MCioType
 @dataclass
 class ObservationPacket:
     ## Control ##
@@ -51,29 +53,20 @@ class ObservationPacket:
     inventory_armor: list[types.InventorySlot] = field(default_factory=list)
     inventory_offhand: list[types.InventorySlot] = field(default_factory=list)
 
+    options: list[types.Option] = field(default_factory=list)
+
     @classmethod
     def unpack(cls, data: bytes) -> Union["ObservationPacket", None]:
-        try:
-            decoded_dict = cbor2.loads(data)
-        except Exception as e:
-            LOG.error(f"CBOR load error: {type(e).__name__}: {e}")
-            return None
-
-        try:
-            obs = cls(**decoded_dict)
-        except Exception as e:
-            # This means the received packet doesn't match ObservationPacket.
-            # It may not even be a dict.
-            LOG.error(f"ObservationPacket decode error: {type(e).__name__}: {e}")
-            if isinstance(decoded_dict, dict) and "frame" in decoded_dict:
-                decoded_dict["frame"] = f"Frame len: {len(decoded_dict['frame'])}"
-            LOG.error("Raw packet follows:")
-            LOG.error(pprint.pformat(decoded_dict))
+        obs = cbor.decode(data)
+        if not isinstance(obs, ObservationPacket):
+            obj_str = "" if obs is None else f"\n{pprint.pformat(obs)}"
+            LOG.error(f"Invalid ObservationPacket{obj_str}")
+            LOG.error(f"Start of raw packet follows:\n{pprint.pformat(data[:200])}")
             return None
 
         if obs.version != MCIO_PROTOCOL_VERSION:
             LOG.error(
-                f"MCio Protocol version mismatch: Observation packet = {obs.version}, expected = {MCIO_PROTOCOL_VERSION}"
+                f"MCIO_PROTOCOL_VERSION mismatch: got {obs.version}, expected {MCIO_PROTOCOL_VERSION}"
             )
             return None
 
@@ -113,6 +106,7 @@ class ObservationPacket:
 
 
 # Action packets sent by the agent to MCio
+@MCioType
 @dataclass
 class ActionPacket:
     ## Control ##
