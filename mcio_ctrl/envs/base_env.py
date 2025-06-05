@@ -11,6 +11,8 @@ from numpy.typing import NDArray
 
 from mcio_ctrl import controller, gui, instance, network, types
 
+from . import env_util
+
 LOG = logging.getLogger(__name__)
 
 # Reusable types
@@ -49,6 +51,7 @@ class MCioBaseEnv(gym.Env[ObsType, ActType], Generic[ObsType, ActType], ABC):
         - self.last_cursor_pos
         - self.health
         - self.terminated
+        - self.stats_cache
     """
 
     metadata = {
@@ -71,11 +74,12 @@ class MCioBaseEnv(gym.Env[ObsType, ActType], Generic[ObsType, ActType], ABC):
         assert render_mode is None or render_mode in self.metadata["render_modes"]
         self.render_mode = render_mode
 
-        # Common state tracking. Initialized in _reset_state(). Updated in _get_obs().
+        # Common state tracking. Initialized in _reset_state(). Updated in _update_state().
         self.last_frame: NDArray[np.uint8] | None
         self.last_cursor_pos: tuple[float, float]
         self.health: float
         self.terminated: bool
+        self.stats_cache: env_util.StatsCache
         self._reset_state()
 
         # These need closing when done. Handled in close().
@@ -124,17 +128,7 @@ class MCioBaseEnv(gym.Env[ObsType, ActType], Generic[ObsType, ActType], ABC):
         Updates self.last_frame self.last_cursor_pos"""
         assert self.ctrl is not None
         packet = self.ctrl.recv_observation()
-
-        # Update common state
-        self.last_frame = packet.get_frame_with_cursor()
-        self.last_cursor_pos = packet.cursor_pos
-        self.health = packet.health
-        # For now, terminated just tracks health. It's left to users to call
-        # reset when termination occurs
-        if self.health == 0.0:
-            self.terminated = True
-        else:
-            self.terminated = False
+        self._update_state(packet)
 
         # Call to subclass
         obs = self._packet_to_observation(packet)
@@ -162,6 +156,17 @@ class MCioBaseEnv(gym.Env[ObsType, ActType], Generic[ObsType, ActType], ABC):
         self.last_cursor_pos = (0, 0)
         self.health = 20.0
         self.terminated = False
+        self.stats_cache = env_util.StatsCache()
+
+    def _update_state(self, packet: network.ObservationPacket) -> None:
+        """Update common state"""
+        self.last_frame = packet.get_frame_with_cursor()
+        self.last_cursor_pos = packet.cursor_pos
+        self.health = packet.health
+        # For now, terminated just tracks health. It's left to users to call
+        # reset when termination occurs
+        self.terminated = True if self.health == 0.0 else False
+        self.stats_cache.update_cache(packet)
 
     def reset(
         self,

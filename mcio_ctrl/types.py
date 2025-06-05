@@ -106,7 +106,6 @@ class StatCategory:
     stats: list[Stat]
 
 
-#
 @MCioType
 @dataclass
 class StatsUpdateOption(Option):

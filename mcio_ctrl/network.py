@@ -85,6 +85,14 @@ class ObservationPacket:
     def get_frame_type(self) -> str | None:
         return self.frame_type  # "PNG" / "JPEG" / "RAW"
 
+    def get_options(self) -> dict[type[types.Option], types.Option]:
+        """Unpacks the options list and returns a dict of the options keyed by type."""
+        return {type(opt): opt for opt in self.options}
+
+    def get_option(self, option_type: type[types.Option]) -> types.Option | None:
+        opts = self.get_options()
+        return opts.get(option_type)
+
     def get_frame_with_cursor(
         self, cursor_drawer: util.CursorDrawer | None = None
     ) -> NDArray[np.uint8]:
