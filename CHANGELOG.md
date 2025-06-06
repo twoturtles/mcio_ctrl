@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.3.0 - 2025-06-05
+- Track built-in Minecraft stats
+- Moving protocol to use options
+- MCIO_PROTOCOL_VERSION = 6
+
 ## 1.2.1 - 2025-05-28
 - Release to fix link on pypi
 - Change VideoWriter to use imageio

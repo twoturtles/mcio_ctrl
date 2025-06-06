@@ -96,7 +96,10 @@ class InputStateManager:
 
 
 class StatsCache(defaultdict[str, defaultdict[str, int]]):
-    """Cache stats to return full stats on request.
+    """Cache stats to return full stats on request. For performance, only changed stats
+    are sent from MCio each step. This uses those updates to build a local cache of the
+    complete set of stats.
+
     Note: this is currently using a defaultdict, so reading a non-existent value
     will add that value to the cache.
 

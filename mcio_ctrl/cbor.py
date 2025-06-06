@@ -7,15 +7,17 @@ import cbor2
 
 LOG = logging.getLogger(__name__)
 
+# Used by MCio and mcio_ctrl to annotate protocol classes
 MCIO_PROTOCOL_TYPE: Final[str] = "__mcio_type__"
 
+# Maps protcol class names to the type
+_CBOR_TYPE_REGISTRY: dict[str, type] = {}
 
 T = TypeVar("T")
 
-_CBOR_TYPE_REGISTRY: dict[str, type] = {}
-
 
 def MCioType(cls: type[T]) -> type[T]:
+    """Decorator to register a class as used in the MCio protocol"""
     _CBOR_TYPE_REGISTRY[cls.__name__] = cls
     return cls
 
@@ -30,6 +32,7 @@ def decode(data: bytes) -> Any | None:
 
 
 def object_hook(decoder: cbor2.CBORDecoder, obj_dict: dict[Any, Any]) -> Any:
+    """Used by the CBOR parser. Decodes packet entries into MCioType classes where possible."""
     mcio_type = obj_dict.pop(MCIO_PROTOCOL_TYPE, None)
     if isinstance(mcio_type, str):
         # The jackson MINIMAL_CLASS includes a leading dot

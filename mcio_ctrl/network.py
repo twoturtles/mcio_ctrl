@@ -57,6 +57,8 @@ class ObservationPacket:
 
     options: list[types.Option] = field(default_factory=list)
 
+    # XXX Move methods to a separate ObservationHandler class
+
     @classmethod
     def unpack(cls, data: bytes) -> Union["ObservationPacket", None]:
         obs = cbor.decode(data)
@@ -92,6 +94,7 @@ class ObservationPacket:
         return {type(opt): opt for opt in self.options}
 
     def get_option(self, option_type: type[T]) -> T | None:
+        """Given an Option class type, returns that option if it exists."""
         opts = self.get_options()
         rv = opts.get(option_type)
         if rv is None:
