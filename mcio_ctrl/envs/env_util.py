@@ -117,8 +117,8 @@ class StatsCache(defaultdict[str, defaultdict[str, int]]):
         opt = obs.get_option(types.StatsFullOption) or obs.get_option(
             types.StatsUpdateOption
         )
-        if not isinstance(opt, (types.StatsFullOption, types.StatsUpdateOption)):
-            return  # opt is None
+        if opt is None:
+            return
         if isinstance(opt, types.StatsFullOption):
             self.clear()
         for cat_entry in opt.categories:

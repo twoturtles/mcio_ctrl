@@ -5,7 +5,7 @@ import pprint
 import threading
 import time
 from dataclasses import asdict, dataclass, field
-from typing import Final, Union
+from typing import Final, TypeVar, Union, cast
 
 import cbor2
 import glfw  # type: ignore
@@ -20,6 +20,8 @@ from .cbor import MCioType
 LOG = logging.getLogger(__name__)
 
 MCIO_PROTOCOL_VERSION: Final[int] = 6
+
+T = TypeVar("T", bound=types.Option)
 
 
 # Observation packets received from MCio
@@ -89,9 +91,12 @@ class ObservationPacket:
         """Unpacks the options list and returns a dict of the options keyed by type."""
         return {type(opt): opt for opt in self.options}
 
-    def get_option(self, option_type: type[types.Option]) -> types.Option | None:
+    def get_option(self, option_type: type[T]) -> T | None:
         opts = self.get_options()
-        return opts.get(option_type)
+        rv = opts.get(option_type)
+        if rv is None:
+            return None
+        return cast(T, rv)
 
     def get_frame_with_cursor(
         self, cursor_drawer: util.CursorDrawer | None = None
