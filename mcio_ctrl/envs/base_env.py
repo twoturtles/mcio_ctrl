@@ -82,6 +82,10 @@ class MCioBaseEnv(gym.Env[ObsType, ActType], Generic[ObsType, ActType], ABC):
         self.stats_cache: env_util.StatsCache
         self._reset_state()
 
+        # For debugging
+        self._last_action_pkt: network.ActionPacket | None = None
+        self._last_observation_pkt: network.ObservationPacket | None = None
+
         # These need closing when done. Handled in close().
         self.gui: gui.ImageStreamGui | None = None
         self.ctrl: controller.ControllerCommon | None = None
@@ -129,6 +133,7 @@ class MCioBaseEnv(gym.Env[ObsType, ActType], Generic[ObsType, ActType], ABC):
         assert self.ctrl is not None
         packet = self.ctrl.recv_observation()
         self._update_state(packet)
+        self._last_observation_pkt = packet
 
         # Call to subclass
         obs = self._packet_to_observation(packet)
@@ -141,6 +146,7 @@ class MCioBaseEnv(gym.Env[ObsType, ActType], Generic[ObsType, ActType], ABC):
         # assert action in self.action_space
         assert self.ctrl is not None
         self.ctrl.send_action(packet)
+        self._last_action_pkt = packet
 
     def _send_reset_action(self, options: ResetOptions) -> None:
         """Clear inputs and send initialization commands"""
