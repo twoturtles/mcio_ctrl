@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.4.0 - 2025-06-XX
+- Switch project from hatch to uv
+
 ## 1.3.0 - 2025-06-05
 - Track built-in Minecraft stats
 - Moving protocol to use options
