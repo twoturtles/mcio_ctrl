@@ -204,10 +204,15 @@ class WorldManager:
             else:
                 src_config = cm.config.instances[src_location].worlds[src_world]
 
+            dst_config = config.WorldConfig(
+                name=dst_world,
+                minecraft_version=src_config.minecraft_version,
+                seed=src_config.seed,
+            )
             if dst_location == STORAGE_LOCATION:
-                cm.config.world_storage[dst_world] = src_config
+                cm.config.world_storage[dst_world] = dst_config
             else:
-                cm.config.instances[dst_location].worlds[dst_world] = src_config
+                cm.config.instances[dst_location].worlds[dst_world] = dst_config
 
     def world_exists(
         self, location: LocationType, world_name: config.WorldName
