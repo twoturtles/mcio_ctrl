@@ -64,7 +64,7 @@ class Config:
         try:
             rv = dacite.from_dict(data_class=cls, data=config_dict)
         except Exception as e:
-            # This means the dict doesn't match ConfigFile
+            # This means the dict doesn't match Config
             LOG.error(f"Failed to parse config file: {e}")
             return None
         return rv

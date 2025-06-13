@@ -120,7 +120,7 @@ class ControllerAsync(ControllerCommon):
         Block and timeout are like queue.Queue.get().
         Can raise Empty exception if non-blocking or timeout is used.
         """
-        # RECV 3
+        # RECV 2
         observation = self._observation_queue.get(block=block, timeout=timeout)
         return observation
 
@@ -160,7 +160,7 @@ class ControllerAsync(ControllerCommon):
         """Loops. Receives observation packets from minecraft and places on observation_queue"""
         LOG.info("ObservationThread start")
         while self._running.is_set():
-            # RECV 2
+            # RECV 1
             # I don't think we'll ever drop here. this is a short loop to recv the packet
             # and put it on the queue to be processed.
             observation = self._mcio_conn.recv_observation(block=True)
