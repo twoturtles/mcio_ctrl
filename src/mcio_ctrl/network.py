@@ -78,9 +78,7 @@ class ObservationPacket:
 
     def pack(self) -> bytes:
         """For testing"""
-        pkt_dict = asdict(self)
-        LOG.debug(pkt_dict)
-        return cbor2.dumps(pkt_dict)
+        return cbor.encode(self)
 
     def __str__(self) -> str:
         # frame is excluded from repr. Add its shape to str.
