@@ -5,7 +5,7 @@ import pprint
 import threading
 import time
 from dataclasses import asdict, dataclass, field
-from typing import Final, TypeVar, Union, cast
+from typing import Final, TypeAlias, TypeVar, Union, cast
 
 import cbor2
 import glfw  # type: ignore
@@ -22,6 +22,9 @@ LOG = logging.getLogger(__name__)
 MCIO_PROTOCOL_VERSION: Final[int] = 6
 
 T = TypeVar("T", bound=types.Option)
+
+# Maps an Option type to the corresponding Option.
+OptionLookup: TypeAlias = dict[type[types.Option], types.Option]
 
 
 # Observation packets received from MCio
@@ -57,6 +60,11 @@ class ObservationPacket:
 
     options: list[types.Option] = field(default_factory=list)
 
+    def __post_init__(self) -> None:
+        # Not part of the dataclass fields
+        # Maps option types to the options in the pkt
+        self._options: OptionLookup | None = None
+
     # XXX Move methods to a separate ObservationHandler class
 
     @classmethod
@@ -87,9 +95,11 @@ class ObservationPacket:
     def get_frame_type(self) -> str | None:
         return self.frame_type  # "PNG" / "JPEG" / "RAW"
 
-    def get_options(self) -> dict[type[types.Option], types.Option]:
+    def get_options(self) -> OptionLookup:
         """Unpacks the options list and returns a dict of the options keyed by type."""
-        return {type(opt): opt for opt in self.options}
+        if self._options is None:
+            self._options = {type(opt): opt for opt in self.options}
+        return self._options
 
     def get_option(self, option_type: type[T]) -> T | None:
         """Given an Option class type, returns that option if it exists."""
