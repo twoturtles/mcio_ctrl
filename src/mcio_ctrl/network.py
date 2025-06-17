@@ -1,14 +1,15 @@
 """Packet definitions and low-level connection code."""
 
 import logging
+import pickle
 import pprint
 import threading
 import time
 from collections import deque
-from dataclasses import asdict, dataclass, field
+from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Final, TypeAlias, TypeVar, Union, cast
 
-import cbor2
 import glfw  # type: ignore
 import numpy as np
 import zmq
@@ -68,20 +69,7 @@ class ObservationPacket:
 
     @classmethod
     def unpack(cls, data: bytes) -> Union["ObservationPacket", None]:
-        obs = cbor.decode(data)
-        if not isinstance(obs, ObservationPacket):
-            obj_str = "" if obs is None else f"\n{pprint.pformat(obs)}"
-            LOG.error(f"Invalid ObservationPacket{obj_str}")
-            LOG.error(f"Start of raw packet follows:\n{pprint.pformat(data[:200])}")
-            return None
-
-        if obs.version != MCIO_PROTOCOL_VERSION:
-            LOG.error(
-                f"MCIO_PROTOCOL_VERSION mismatch: got {obs.version}, expected {MCIO_PROTOCOL_VERSION}"
-            )
-            return None
-
-        return obs
+        return mcio_unpack(ObservationPacket, data)
 
     def pack(self) -> bytes:
         """For testing"""
@@ -153,15 +141,31 @@ class ActionPacket:
     cursor_pos: list[tuple[float, float]] = field(default_factory=list)
 
     def pack(self) -> bytes:
-        pkt_dict = asdict(self)
-        LOG.debug(pkt_dict)
-        return cbor2.dumps(pkt_dict)
+        return cbor.encode(self)
 
     @classmethod
-    def unpack(cls, data: bytes) -> "ActionPacket":
+    def unpack(cls, data: bytes) -> Union["ActionPacket", None]:
         """For testing"""
-        decoded_dict = cbor2.loads(data)
-        return cls(**decoded_dict)
+        return mcio_unpack(ActionPacket, data)
+
+
+U = TypeVar("U")
+
+
+def mcio_unpack(expected_type: type[U], pbytes: bytes) -> U | None:
+    """Generic unpack for MCioType cbor packets"""
+    obj = cbor.decode(pbytes)
+    if not isinstance(obj, expected_type):
+        obj_str = "" if obj is None else f"\n{pprint.pformat(obj)}"
+        LOG.error(f"Invalid {expected_type.__name__}{obj_str}")
+        LOG.error(f"Start of raw packet follows:\n{pprint.pformat(pbytes[:200])}")
+        return None
+    if getattr(obj, "version", None) != MCIO_PROTOCOL_VERSION:
+        LOG.error(
+            f"MCIO_PROTOCOL_VERSION mismatch: got {getattr(obj, 'version', None)}, expected {MCIO_PROTOCOL_VERSION}"
+        )
+        return None
+    return obj
 
 
 class _Connection:
@@ -224,8 +228,8 @@ class _Connection:
         # For debugging / testing
         self._last_action_pkt: ActionPacket | None = None
         self._last_observation_pkt: ObservationPacket | None = None
-        self._last_action_pbytes: deque[bytes] = deque(maxlen=20)
-        self._last_observation_pbytes: deque[bytes] = deque(maxlen=20)
+        self._debug_action_pkts: DebugPkts = DebugPkts()
+        self._debug_observation_pkts: DebugPkts = DebugPkts()
 
     def send_action(self, action: ActionPacket) -> None:
         """
@@ -239,7 +243,7 @@ class _Connection:
         """
         pbytes = action.pack()
         self._last_action_pkt = action
-        self._last_action_pbytes.append(pbytes)
+        self._debug_action_pkts.append(pbytes)
         self.send_counter.count()
         try:
             self.action_socket.send(pbytes, zmq.DONTWAIT)
@@ -275,7 +279,7 @@ class _Connection:
                 # This may also return None if there was an unpack error.
                 observation = ObservationPacket.unpack(pbytes)
                 self._last_observation_pkt = observation
-                self._last_observation_pbytes.append(pbytes)
+                self._debug_observation_pkts.append(pbytes)
                 self.recv_counter.count()
                 LOG.debug(observation)
                 return observation
@@ -375,6 +379,26 @@ class _Connection:
         action_monitor.close()
         observation_monitor.close()
         LOG.info("MonitorThread done")
+
+
+class DebugPkts:
+    """Save raw packet bytes to inspect cbor"""
+
+    def __init__(self, maxlen: int = 20) -> None:
+        self.pkts: deque[bytes] = deque(maxlen=maxlen)
+
+    def append(self, pkt: bytes) -> None:
+        self.pkts.append(pkt)
+
+    def save(self, path: Path | str = "debug_pkts.pkl") -> None:
+        path = Path(path)
+        with path.open("wb") as f:
+            pickle.dump(self.pkts, f)
+
+    def load(self, path: Path | str = "debug_pkts.pkl") -> None:
+        path = Path(path)
+        with path.open("rb") as f:
+            self.pkts = pickle.load(f)
 
 
 def get_zmq_event_names() -> dict[int, str]:
