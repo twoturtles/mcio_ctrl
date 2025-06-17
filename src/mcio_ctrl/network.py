@@ -4,6 +4,7 @@ import logging
 import pprint
 import threading
 import time
+from collections import deque
 from dataclasses import asdict, dataclass, field
 from typing import Final, TypeAlias, TypeVar, Union, cast
 
@@ -223,8 +224,8 @@ class _Connection:
         # For debugging / testing
         self._last_action_pkt: ActionPacket | None = None
         self._last_observation_pkt: ObservationPacket | None = None
-        self._last_action_pbyes: bytes | None = None
-        self._last_observation_pbytes: bytes | None = None
+        self._last_action_pbytes: deque[bytes] = deque(maxlen=20)
+        self._last_observation_pbytes: deque[bytes] = deque(maxlen=20)
 
     def send_action(self, action: ActionPacket) -> None:
         """
@@ -238,7 +239,7 @@ class _Connection:
         """
         pbytes = action.pack()
         self._last_action_pkt = action
-        self._last_action_pbyes = pbytes
+        self._last_action_pbytes.append(pbytes)
         self.send_counter.count()
         try:
             self.action_socket.send(pbytes, zmq.DONTWAIT)
@@ -274,7 +275,7 @@ class _Connection:
                 # This may also return None if there was an unpack error.
                 observation = ObservationPacket.unpack(pbytes)
                 self._last_observation_pkt = observation
-                self._last_observation_pbytes = pbytes
+                self._last_observation_pbytes.append(pbytes)
                 self.recv_counter.count()
                 LOG.debug(observation)
                 return observation
