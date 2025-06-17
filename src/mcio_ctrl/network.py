@@ -65,8 +65,6 @@ class ObservationPacket:
         # Maps option types to the options in the pkt
         self._options: OptionLookup | None = None
 
-    # XXX Move methods to a separate ObservationHandler class
-
     @classmethod
     def unpack(cls, data: bytes) -> Union["ObservationPacket", None]:
         obs = cbor.decode(data)
@@ -225,6 +223,8 @@ class _Connection:
         # For debugging / testing
         self._last_action_pkt: ActionPacket | None = None
         self._last_observation_pkt: ObservationPacket | None = None
+        self._last_action_pbyes: bytes | None = None
+        self._last_observation_pbytes: bytes | None = None
 
     def send_action(self, action: ActionPacket) -> None:
         """
@@ -236,10 +236,12 @@ class _Connection:
         https://github.com/zeromq/libzmq/issues/3248
         To avoid confusion, this never blocks.
         """
+        pbytes = action.pack()
         self._last_action_pkt = action
+        self._last_action_pbyes = pbytes
         self.send_counter.count()
         try:
-            self.action_socket.send(action.pack(), zmq.DONTWAIT)
+            self.action_socket.send(pbytes, zmq.DONTWAIT)
         except zmq.Again as e:
             # Will only happen if ZMQ's queue is full
             LOG.error(f"ZMQ error in send_action: {e.errno}: {e}")
@@ -272,6 +274,7 @@ class _Connection:
                 # This may also return None if there was an unpack error.
                 observation = ObservationPacket.unpack(pbytes)
                 self._last_observation_pkt = observation
+                self._last_observation_pbytes = pbytes
                 self.recv_counter.count()
                 LOG.debug(observation)
                 return observation
