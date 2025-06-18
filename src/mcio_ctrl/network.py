@@ -21,7 +21,7 @@ from .cbor import MCioType
 
 LOG = logging.getLogger(__name__)
 
-MCIO_PROTOCOL_VERSION: Final[int] = 6
+MCIO_PROTOCOL_VERSION: Final[int] = 7
 
 T = TypeVar("T", bound=types.Option)
 

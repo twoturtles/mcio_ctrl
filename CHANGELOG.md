@@ -1,7 +1,9 @@
 # Changelog
 
 ## 1.4.0 - 2025-06-XX
+- Clean up protocol parsing
 - Switch project from hatch to uv
+- MCIO_PROTOCOL_VERSION = 7
 
 ## 1.3.0 - 2025-06-05
 - Track built-in Minecraft stats
