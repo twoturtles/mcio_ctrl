@@ -117,6 +117,10 @@ class ObservationPacket:
 
 
 # Action packets sent by the agent to MCio
+# Note: Jackson doesn't seem to actually need the type annotation to decode. I think it only needs it for
+# Options because those are abstract. Python does need the type annotations.
+
+
 @MCioType
 @dataclass
 class ActionPacket:
@@ -139,6 +143,8 @@ class ActionPacket:
 
     # List of (x, y) pairs. Using a list for consistency
     cursor_pos: list[tuple[float, float]] = field(default_factory=list)
+
+    options: list[types.Option] = field(default_factory=list)
 
     def pack(self) -> bytes:
         return cbor.encode(self)

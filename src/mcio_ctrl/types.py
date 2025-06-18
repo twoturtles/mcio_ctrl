@@ -152,6 +152,7 @@ class InputID:
         return cls(type=InputType(type_int), code=code)
 
 
+@MCioType
 @dataclass(order=True)
 class InputEvent:
     """Full input event sent to Minecraft"""

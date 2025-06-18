@@ -155,7 +155,6 @@ def main() -> None:
     except KeyboardInterrupt:
         print("Exiting...")
     finally:
-        # speed_test.ctrl._mcio_conn._debug_action_pkts.save("act.pkl")
         speed_test.close()
 
 
