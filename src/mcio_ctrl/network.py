@@ -59,7 +59,6 @@ class ObservationPacket:
     inventory_main: list[types.InventorySlot] = field(default_factory=list)
     inventory_armor: list[types.InventorySlot] = field(default_factory=list)
     inventory_offhand: list[types.InventorySlot] = field(default_factory=list)
-
     options: list[types.Option] = field(default_factory=list)
 
     def __post_init__(self) -> None:
@@ -140,11 +139,9 @@ class ActionPacket:
     # Key / mouse button input
     # Each input entry contains the type (key/mouse button), glfw code and action (press/release)
     inputs: list[types.InputEvent] = field(default_factory=list)
-
     # List of (x, y) pairs. Using a list for consistency
     cursor_pos: list[tuple[float, float]] = field(default_factory=list)
-
-    options: list[types.Option] = field(default_factory=list)
+    options: list[types.Option] = field(default_factory=list)  # Future use
 
     def pack(self) -> bytes:
         return cbor.encode(self)
