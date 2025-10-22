@@ -1,6 +1,6 @@
 # Changelog
 
-## 1.4.0 - 2025-06-XX
+## 1.4.0 - 2025-10-22
 - Clean up protocol parsing
 - Switch project from hatch to uv
 - MCIO_PROTOCOL_VERSION = 7
