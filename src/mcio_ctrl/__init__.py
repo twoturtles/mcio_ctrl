@@ -12,7 +12,8 @@ from . import (
     util,
     world,
 )
-from .__about__ import __version__
+
+__version__ = "1.4.0"
 
 __all__ = [
     "__version__",

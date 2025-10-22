@@ -1,7 +1,6 @@
 [project]
 name = "mcio_ctrl"
-# dynamic = ["version"] # Not yet supported by uv
-version = "1.3.1.dev0"
+version = "1.4.0"
 description = "Python interface to connect to the MCio Minecraft mod"
 readme = "README.md"
 authors = [
