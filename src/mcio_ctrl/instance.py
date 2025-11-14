@@ -92,9 +92,10 @@ class Installer:
         for mod in REQUIRED_MODS:
             install_mod(mod, self.instance_dir, self.mc_version)
 
-        # Disable narrator
+        # Disable narrator, tutorial
         with util.OptionsTxt(self.instance_dir / "options.txt", save=True) as opts:
             opts["narrator"] = "0"
+            opts["tutorialStep"] = "none"
 
         with config.ConfigManager(self.mcio_dir, save=True) as cfg_mgr:
             cfg_mgr.config.instances[self.instance_name] = config.InstanceConfig(
