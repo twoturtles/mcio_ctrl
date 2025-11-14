@@ -97,7 +97,8 @@ class WorldManager:
 
     def _nbt_config(self, world_dir: Path) -> None:
         """Set values in level.dat nbt file
-        Enables allowCommands and doImmediateRespawn
+        Enables allowCommands, doImmediateRespawn
+        Disables sendCommandFeedback
         """
         level_dat = world_dir / "level.dat"
         nbt_root = nbt.NBTFile(level_dat)
@@ -105,6 +106,9 @@ class WorldManager:
         nbt_root["Data"]["allowCommands"].value = 1
         # doImmediateRespawn is a String used as a bool
         nbt_root["Data"]["GameRules"]["doImmediateRespawn"].value = "true"
+        # sendCommandFeedback is a String used as a bool. Disable by default so
+        # commands don't pollute the screen with messages.
+        nbt_root["Data"]["GameRules"]["sendCommandFeedback"].value = "false"
         nbt_root.write_file()
 
     def delete_cmd(self, loc_world: str) -> None:

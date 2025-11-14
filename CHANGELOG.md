@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.4.1 - 2025-XX-XX
+- Move disable command feedback to mcio_ctrl
+
 ## 1.4.0 - 2025-10-22
 - Clean up protocol parsing
 - Switch project from hatch to uv
