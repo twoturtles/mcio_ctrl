@@ -1,6 +1,6 @@
 [project]
 name = "mcio_ctrl"
-version = "1.4.0"
+version = "1.4.1.dev1"
 description = "Python interface to connect to the MCio Minecraft mod"
 readme = "README.md"
 authors = [
