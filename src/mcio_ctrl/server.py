@@ -1,3 +1,4 @@
+import logging
 import subprocess
 from pathlib import Path
 from typing import Final
@@ -48,6 +49,9 @@ class Server:
 
         print("Install server java runtime")
         progress = util.InstallProgress()
+        # mll install uses more threads than connections, so urllib3 gives a warning.
+        # It's harmless, so silence the warning.
+        logging.getLogger("urllib3.connectionpool").setLevel(logging.ERROR)
         mll.runtime.install_jvm_runtime(
             server_jvm_version,
             self.server_version_dir,
