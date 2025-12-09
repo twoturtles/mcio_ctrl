@@ -78,6 +78,7 @@ class _SocketProcessor(mp.Process):
             case self.ProcessType.ACTION:
                 pbytes = socket.recv()
                 act = network.ActionPacket.unpack(pbytes)
+                assert act is not None
                 self.process_action(act)
 
     def initialize(self, options: dict[Any, Any] | None) -> None:
