@@ -7,6 +7,7 @@ import types
 from pathlib import Path
 from typing import Any, Callable, Literal, Protocol, TypeVar
 
+import glfw  # type: ignore
 import imageio.v3 as iio
 import minecraft_launcher_lib as mll
 import numpy as np
@@ -86,8 +87,18 @@ class CursorDrawer(Protocol):
     def draw_cursor(
         self, frame: NDArray[np.uint8], cursor_pos: tuple[float, float]
     ) -> None:
-        """Draw the cursor onto the frame. Assumes the frame is writable."""
+        """Draw the cursor onto the frame. Assumes the frame is writable and in (h,w,c) format."""
         ...
+
+    def draw_cursor_check(
+        self,
+        frame: NDArray[np.uint8],
+        cursor_pos: tuple[float, float],
+        cursor_mode: int,
+    ) -> None:
+        """Add the cursor to the image if it's in CURSOR_NORMAL mode"""
+        if cursor_mode == glfw.CURSOR_NORMAL:
+            self.draw_cursor(frame, cursor_pos)
 
 
 class MinerlCursor(CursorDrawer):

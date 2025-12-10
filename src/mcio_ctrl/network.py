@@ -79,7 +79,7 @@ class ObservationPacket:
         return f"{repr(self)} frame.shape=({self.frame_height}, {self.frame_width})"
 
     def get_frame_type(self) -> str | None:
-        return self.frame_type  # "PNG" / "JPEG" / "RAW"
+        return self.frame_type  # Only "RAW"
 
     def get_options(self) -> OptionLookup:
         """Unpacks the options list and returns a dict of the options keyed by type."""
@@ -95,24 +95,24 @@ class ObservationPacket:
             return None
         return cast(T, rv)
 
+    def get_frame(self) -> NDArray[np.uint8]:
+        """Get the frame from the observation. Returns as a mutable numpy array"""
+        assert self.frame_type == types.FrameType.RAW
+        frame: NDArray[np.uint8] = np.frombuffer(self.frame, dtype=np.uint8)
+        frame = frame.reshape((self.frame_height, self.frame_width, 3))
+        frame = np.flipud(frame)  # OpenGL frames are flipped
+        # cbor2 returns a non-mutable bytes object. Copy to make it mutable.
+        frame = frame.copy()
+        return frame
+
     def get_frame_with_cursor(
         self, cursor_drawer: util.CursorDrawer | None = None
     ) -> NDArray[np.uint8]:
-        frame: NDArray[np.uint8]
-        match self.frame_type:
-            case types.FrameType.RAW:
-                frame = np.frombuffer(self.frame, dtype=np.uint8)
-                frame = frame.reshape((self.frame_height, self.frame_width, 3))
-                frame = np.flipud(frame)
-                if self.cursor_mode == glfw.CURSOR_NORMAL:
-                    if cursor_drawer is None:
-                        cursor_drawer = util.DEFAULT_CURSOR_DRAWER
-                    frame = frame.copy()  # The buffer from cbor is not writable
-                    cursor_drawer.draw_cursor(frame, self.cursor_pos)
-            case _:
-                raise ValueError(f"Invalid frame_type: {self.frame_type}")
-
-        return np.ascontiguousarray(frame)
+        frame = self.get_frame()
+        if cursor_drawer is None:
+            cursor_drawer = util.DEFAULT_CURSOR_DRAWER
+        cursor_drawer.draw_cursor_check(frame, self.cursor_pos, self.cursor_mode)
+        return frame
 
 
 # Action packets sent by the agent to MCio
