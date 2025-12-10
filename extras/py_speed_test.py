@@ -5,6 +5,7 @@ Python simulates the MCio/Minecraft portion.
 Results on my laptop:
 frame=0x0x3 (0 bytes), process_frames=True, display_frames=False, rate=60137.2 fps
 frame=480x854x3 (1229760 bytes), process_frames=True, display_frames=False, rate=2217.4 fps
+frame=480x854x3 (1229760 bytes), process_frames=True, display_frames=False, rate=2640.2 fps
 frame=2000x1000x3 (6000000 bytes), process_frames=True, display_frames=False, rate=112.5 fps
 """
 
@@ -95,6 +96,7 @@ class GenerateObservation(mcio.mc_mock.GenerateObservation):
         # # Prepare the fake observation as much as possible outside the loop
         self.obs_sequence = 0
         self.base_obs = mcio.network.ObservationPacket()
+        self.base_obs.mode = mcio.types.MCioMode.SYNC
         self.base_obs.frame_height = height
         self.base_obs.frame_width = width
         frame_size = height * width * 3
