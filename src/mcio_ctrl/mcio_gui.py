@@ -19,10 +19,15 @@ LOG = logging.getLogger(__name__)
 
 # Support a pipeline of frame modifiers. Default just adds the cursor, but
 # additional operations are possible
-FramePipelineCallback = Callable[[NDArray[np.uint8], network.ObservationPacket], None]
+# Callbacks should return None if the operation was inline.
+# Return a new array to replace the input array.
+FramePipelineCallback = Callable[
+    [NDArray[np.uint8], network.ObservationPacket], NDArray[np.uint8] | None
+]
 FramePipeline = Sequence[FramePipelineCallback]
 
 
+# Add to a FramePipeline to draw the cursor
 def cursor_frame_cb(frame: NDArray[np.uint8], obs: network.ObservationPacket) -> None:
     util.DEFAULT_CURSOR_DRAWER.draw_cursor_check(frame, obs.cursor_pos, obs.cursor_mode)
 
@@ -108,7 +113,10 @@ class MCioGUI:
             self.gui.set_cursor_mode(observation.cursor_mode)
             frame = observation.get_frame()
             for pipeline_cb in self.frame_pipeline:
-                pipeline_cb(frame, observation)
+                rv = pipeline_cb(frame, observation)
+                if isinstance(rv, np.ndarray):
+                    frame = rv
+
             self.gui.show(frame, poll=False)
 
     def run(self, launcher: instance.Launcher | None = None) -> None:
