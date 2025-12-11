@@ -5,7 +5,7 @@ import shutil
 import time
 import types
 from pathlib import Path
-from typing import Any, Callable, Literal, Protocol, TypeVar
+from typing import Any, Callable, Final, Literal, Protocol, TypeVar
 
 import glfw  # type: ignore
 import imageio.v3 as iio
@@ -166,7 +166,7 @@ class CrosshairCursor(CursorDrawer):
 
 
 # Pre-load the default
-DEFAULT_CURSOR_DRAWER = MinerlCursor()
+DEFAULT_CURSOR_DRAWER: Final = MinerlCursor()
 
 ##
 # LatestItemQueue

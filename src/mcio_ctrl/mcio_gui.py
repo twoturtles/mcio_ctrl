@@ -1,20 +1,42 @@
-#
-# Example allowing human control through MCio
-#
+"""
+Wrapper around gui.ImageStreamGui that provides for human control. Keyboard and
+mouse actions are sent to Minecraft, and the observation screenshots are
+displayed.
+"""
 
 import logging
 import queue
 import time
-from typing import Any
+from typing import Any, Callable, Sequence
 
 import glfw  # type: ignore
+import numpy as np
+from numpy.typing import NDArray
 
 from . import controller, gui, instance, network, types, util
 
 LOG = logging.getLogger(__name__)
 
+# Support a pipeline of frame modifiers. Default just adds the cursor, but
+# additional operations are possible
+FramePipelineCallback = Callable[[NDArray[np.uint8], network.ObservationPacket], None]
+FramePipeline = Sequence[FramePipelineCallback]
+
+
+def cursor_frame_cb(frame: NDArray[np.uint8], obs: network.ObservationPacket) -> None:
+    util.DEFAULT_CURSOR_DRAWER.draw_cursor_check(frame, obs.cursor_pos, obs.cursor_mode)
+
+
+DEFAULT_FRAME_PIPELINE: FramePipeline = (cursor_frame_cb,)
+
 
 class MCioGUI:
+    """
+    Usage: Start a Minecraft instance using instance.py.
+    Connect to it using
+        gui = mcio_gui.MCioGUI()
+        gui.run()
+    """
 
     def __init__(
         self,
@@ -23,7 +45,7 @@ class MCioGUI:
         fps: int = 60,
         action_port: int | None = None,
         observation_port: int | None = None,
-        cursor_drawer: util.CursorDrawer | None = None,
+        frame_pipeline: FramePipeline = DEFAULT_FRAME_PIPELINE,
     ):
         self.scale = scale
         self.fps = fps if fps > 0 else 60
@@ -33,7 +55,7 @@ class MCioGUI:
         self.controller = controller.ControllerAsync(
             action_port=action_port, observation_port=observation_port
         )
-        self.cursor_drawer = cursor_drawer
+        self.frame_pipeline = frame_pipeline
 
         # Set callbacks. Defaults are good enough for resize and focus.
         self.gui.set_callbacks(
@@ -84,7 +106,9 @@ class MCioGUI:
             # Link cursor mode to Minecraft.
             assert self.gui is not None
             self.gui.set_cursor_mode(observation.cursor_mode)
-            frame = observation.get_frame_with_cursor(cursor_drawer=self.cursor_drawer)
+            frame = observation.get_frame()
+            for pipeline_cb in self.frame_pipeline:
+                pipeline_cb(frame, observation)
             self.gui.show(frame, poll=False)
 
     def run(self, launcher: instance.Launcher | None = None) -> None:
