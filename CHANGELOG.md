@@ -1,9 +1,10 @@
 # Changelog
 
-## 1.4.1 - 2026-02-07
+## 1.5.0 - 2026-02-07
 - Move disable command feedback to mcio_ctrl
 - Add support to the gui for multiple frame modifications
   This allows drawing bounding boxes, etc.
+- MCIO_PROTOCOL_VERSION = 7
 
 ## 1.4.0 - 2025-10-22
 - Clean up protocol parsing
