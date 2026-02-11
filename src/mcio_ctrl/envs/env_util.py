@@ -24,17 +24,17 @@ class DegreesToPixels:
     PIXELS_PER_DEGREE = 1 / DEGREES_PER_PIXEL
 
     def __init__(self, *, x: float = 0.0, y: float = 0.0) -> None:
-        self.x, self.y = x, y
+        self.x, self.y = float(x), float(y)
 
     def update(self, *, yaw_delta: float, pitch_delta: float) -> tuple[float, float]:
         """Delta arguments are in degrees. Returns the new cursor position in pixels."""
-        self.x += yaw_delta * self.PIXELS_PER_DEGREE
-        self.y += pitch_delta * self.PIXELS_PER_DEGREE
+        self.x += float(yaw_delta) * self.PIXELS_PER_DEGREE
+        self.y += float(pitch_delta) * self.PIXELS_PER_DEGREE
         return self.x, self.y
 
     def set(self, x: float, y: float) -> None:
         """Directly set the absolute current pixel location"""
-        self.x, self.y = x, y
+        self.x, self.y = float(x), float(y)
 
 
 class InputStateManager:
