@@ -55,5 +55,11 @@ dev = [
     "isort>=5.13.2",
 ]
 
+[tool.pytest.ini_options]
+markers = [
+    "integration: Integration tests requiring Minecraft (slow, auto-installs on first run)",
+]
+addopts = "-m 'not integration'"
+
 [tool.isort]
 profile = "black"
