@@ -1,6 +1,6 @@
 # Changelog
 
-## 1.5.1 - 2026-02-XX
+## 1.5.1 - 2026-02-11
 - Fix crash in minerl env packet encoding
 
 ## 1.5.0 - 2026-02-07
