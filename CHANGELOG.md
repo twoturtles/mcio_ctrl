@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.5.1 - 2026-02-XX
+- Fix crash in minerl env packet encoding
+
 ## 1.5.0 - 2026-02-07
 - Move disable command feedback to mcio_ctrl
 - Add support to the gui for multiple frame modifications

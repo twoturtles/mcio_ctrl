@@ -2,26 +2,19 @@
 
 ### [MCio mod](https://github.com/twoturtles/MCio) | [mcio_ctrl](https://github.com/twoturtles/mcio_ctrl) | [Documentation](https://github.com/twoturtles/mcio_ctrl/wiki) | [Discord](https://discord.gg/PBfdc27h4q)
 
-`mcio_ctrl` is a comprehensive Python library designed to interface seamlessly with [MCio](https://github.com/twoturtles/MCio), a Minecraft Fabric mod tailored for AI agent development. It includes a versatile [Gymnasium](https://gymnasium.farama.org/) environment, making it ideal for reinforcement learning research and development.
+Python library for [MCio](https://github.com/twoturtles/MCio), a Minecraft Fabric mod for AI agent development. Includes [Gymnasium](https://gymnasium.farama.org/) environments for reinforcement learning.
 
-## Key Features
+## Features
 
-* **Simplified Installation and Launching:** API and commands to easily install Minecraft with the MCio mod, create custom worlds, and launch the game directly from Python.
-* **Pre-built Gymnasium Environments:** Offers example environments, including compatibility with MineRL 1.0 actions and observations, all leveraging the robust low-level API.
-* **Customizable Base Environment:** A convenient base class for quickly creating tailored Gymnasium environments suited to specific research needs.
-* **Interactive GUI Support:** Enables human control of Minecraft through the standard Minecraft controls using the MCio backend. (Seamless Human-in-the-loop is planned for future updates.)
-* **Type-Hinting and Development Convenience:** Fully type-hinted for easier integration, improved code clarity, and streamlined development workflows.
-* **BONUS:** Easily [set up VPT and STEVE-1](https://github.com/jxiong21029/mcio-vpt-example) on modern Minecraft with support for [Sodium](https://modrinth.com/mod/sodium)!
+* Install and launch Minecraft with the MCio mod, create worlds, and run the game from Python
+* Faster than real-time performance (>13x on an M3 laptop)
+* Gymnasium environments with MineRL 1.0 compatible actions/observations
+* Interactive GUI for human control via standard Minecraft controls (human-in-the-loop planned)
+* Fully type-hinted
+* [VPT and STEVE-1 support](https://github.com/jxiong21029/mcio-vpt-example) on modern Minecraft with [Sodium](https://modrinth.com/mod/sodium)
 
+## Links
 
-## Quick Links
-
-* **Documentation:** Find comprehensive documentation and tutorials on our [Wiki](https://github.com/twoturtles/mcio_ctrl/wiki).
-
-* **MCio Mod:**
-  * [GitHub Repository](https://github.com/twoturtles/MCio)
-  * [Modrinth Project Page](https://modrinth.com/mod/mcio)
-
-* **Python Interface (`mcio_ctrl`):**
-  * [GitHub Repository](https://github.com/twoturtles/mcio_ctrl)
-  * [PyPI Package](https://pypi.org/project/mcio_ctrl/)
+* [Documentation / Wiki](https://github.com/twoturtles/mcio_ctrl/wiki)
+* [MCio mod](https://github.com/twoturtles/MCio) ([Modrinth](https://modrinth.com/mod/mcio))
+* [PyPI](https://pypi.org/project/mcio_ctrl/)
