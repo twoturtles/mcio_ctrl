@@ -2,7 +2,7 @@
 
 import math
 
-import glfw
+import glfw  # type: ignore
 import pytest
 
 from mcio_ctrl import network, types
@@ -18,7 +18,9 @@ def test_forward_movement(ctrl: ControllerHolder) -> None:
 
     # Press W
     press = network.ActionPacket(
-        inputs=[types.InputEvent(types.InputType.KEY, glfw.KEY_W, types.GlfwAction.PRESS)]
+        inputs=[
+            types.InputEvent(types.InputType.KEY, glfw.KEY_W, types.GlfwAction.PRESS)
+        ]
     )
     ctrl.send_action(press)
     ctrl.recv_observation()
@@ -29,7 +31,9 @@ def test_forward_movement(ctrl: ControllerHolder) -> None:
 
     # Release W
     release = network.ActionPacket(
-        inputs=[types.InputEvent(types.InputType.KEY, glfw.KEY_W, types.GlfwAction.RELEASE)]
+        inputs=[
+            types.InputEvent(types.InputType.KEY, glfw.KEY_W, types.GlfwAction.RELEASE)
+        ]
     )
     ctrl.send_action(release)
     obs_after = ctrl.recv_observation()

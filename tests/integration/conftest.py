@@ -12,6 +12,7 @@ import logging
 import os
 import shutil
 import time
+from collections.abc import Generator
 from pathlib import Path
 
 import pytest
@@ -43,6 +44,7 @@ SETTLE_TICKS = 30  # empty exchanges to let the world stabilize
 # ControllerHolder — mutable wrapper so reconnect tests can swap the inner ctrl
 # ---------------------------------------------------------------------------
 
+
 class ControllerHolder:
     """Mutable wrapper around ControllerSync.
 
@@ -69,6 +71,7 @@ class ControllerHolder:
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def send_and_recv(
     holder: ControllerHolder,
@@ -127,7 +130,9 @@ def _ensure_world_exists() -> None:
 
     # Copy to instance if missing
     if not wm.world_exists(INSTANCE_NAME, WORLD_NAME):
-        logger.info("Copying world '%s' to instance '%s' ...", WORLD_NAME, INSTANCE_NAME)
+        logger.info(
+            "Copying world '%s' to instance '%s' ...", WORLD_NAME, INSTANCE_NAME
+        )
         wm.copy(
             src_location="storage",
             src_world=WORLD_NAME,
@@ -141,8 +146,9 @@ def _ensure_world_exists() -> None:
 # Session-scoped fixture: one Minecraft launch for the entire test run
 # ---------------------------------------------------------------------------
 
+
 @pytest.fixture(scope="session")
-def minecraft_session():
+def minecraft_session() -> Generator[ControllerHolder, None, None]:
     """Launch Minecraft, connect, and yield a ControllerHolder.
 
     The instance is installed automatically on first run.

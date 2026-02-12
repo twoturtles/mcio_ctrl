@@ -9,8 +9,8 @@ from mcio_ctrl import controller, network, types
 from .conftest import (
     ACTION_PORT,
     CONNECTION_TIMEOUT,
-    ControllerHolder,
     OBSERVATION_PORT,
+    ControllerHolder,
     send_and_recv,
 )
 
