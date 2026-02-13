@@ -3,14 +3,14 @@
 import numpy as np
 import pytest
 
-from .conftest import ControllerHolder
+from .conftest import FRAME_SHAPE, ControllerHolder
 
 
 @pytest.mark.integration
 def test_frame_dimensions(ctrl: ControllerHolder) -> None:
     obs = ctrl.send_and_recv()
-    assert obs.frame_width == 854
-    assert obs.frame_height == 480
+    assert obs.frame_height == FRAME_SHAPE[0]
+    assert obs.frame_width == FRAME_SHAPE[1]
 
 
 @pytest.mark.integration
@@ -23,7 +23,7 @@ def test_frame_data_present(ctrl: ControllerHolder) -> None:
 def test_get_frame_shape(ctrl: ControllerHolder) -> None:
     obs = ctrl.send_and_recv()
     frame = obs.get_frame()
-    assert frame.shape == (480, 854, 3)
+    assert frame.shape == FRAME_SHAPE
     assert frame.dtype == np.uint8
 
 

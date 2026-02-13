@@ -3,6 +3,21 @@
 Launches a real Minecraft instance with the MCio mod and connects over ZMQ.
 On first run, auto-installs Minecraft + Fabric + mods (~minutes).
 Subsequent runs reuse the existing installation.
+
+Use env var MCIO_MOD_DIR or MCIO_MOD_JAR to copy in a development mod.
+
+Basic:
+uv run pytest -m integration
+
+More Debug:
+uv run pytest -m integration --log-cli-level=INFO
+Include stdout/stderr:
+uv run pytest -m integration --log-cli-level=INFO -s
+
+Use dev mod:
+MCIO_MOD_DIR=~/src/MCio/build/libs/ uv run pytest -m integration --log-cli-level=INFO
+
+Use env var MCIO_HIDE_WINDOW=false to show the Minecraft window.
 """
 
 import glob
@@ -38,6 +53,7 @@ CONNECTION_TIMEOUT = 120.0  # seconds — first launch can be slow
 SETTLE_TICKS = 30  # empty exchanges to let the world stabilize
 
 FLAT_Y = -60  # flat worlds defaults to y = -60
+FRAME_SHAPE = (240, 320, 3)  # (H, W, C)
 
 # ---------------------------------------------------------------------------
 # ControllerHolder — mutable wrapper so reconnect tests can swap the inner ctrl
@@ -106,12 +122,8 @@ def _ensure_installed() -> None:
         logger.info("Install complete")
 
     # Optionally replace the MCio mod jar with a local build
-    mod_jar = os.environ.get("MCIO_MOD_JAR")
-    if mod_jar:
-        mod_jar_path = Path(mod_jar).expanduser().resolve()
-        if not mod_jar_path.exists():
-            raise FileNotFoundError(f"MCIO_MOD_JAR not found: {mod_jar_path}")
-
+    mod_jar_path = _resolve_mod_jar()
+    if mod_jar_path:
         mods_dir = im.get_instance_dir(INSTANCE_NAME) / "mods"
         # Remove any existing mcio jar(s)
         for old in glob.glob(str(mods_dir / "mcio-*.jar")):
@@ -121,6 +133,38 @@ def _ensure_installed() -> None:
         dst = mods_dir / mod_jar_path.name
         logger.info("Copying mod jar %s -> %s", mod_jar_path, dst)
         shutil.copy2(mod_jar_path, dst)
+
+
+def _resolve_mod_jar() -> Path | None:
+    """Resolve MCIO_MOD_JAR or MCIO_MOD_DIR to a jar path, or None."""
+    mod_jar = os.environ.get("MCIO_MOD_JAR")
+    mod_dir = os.environ.get("MCIO_MOD_DIR")
+
+    if mod_jar and mod_dir:
+        raise ValueError("Set MCIO_MOD_JAR or MCIO_MOD_DIR, not both")
+
+    if mod_jar:
+        path = Path(mod_jar).expanduser().resolve()
+        if not path.exists():
+            raise FileNotFoundError(f"MCIO_MOD_JAR not found: {path}")
+        return path
+
+    if mod_dir:
+        dir_path = Path(mod_dir).expanduser().resolve()
+        if not dir_path.is_dir():
+            raise NotADirectoryError(f"MCIO_MOD_DIR not found: {dir_path}")
+        # Find mcio jars, excluding -sources
+        candidates = [
+            p for p in dir_path.glob("mcio-*.jar") if "-sources" not in p.name
+        ]
+        if not candidates:
+            raise FileNotFoundError(f"No mcio-*.jar found in MCIO_MOD_DIR: {dir_path}")
+        # Pick the most recently modified
+        best = max(candidates, key=lambda p: p.stat().st_mtime)
+        logger.info("Resolved MCIO_MOD_DIR to %s", best)
+        return best
+
+    return None
 
 
 def _ensure_world_exists() -> None:
@@ -165,15 +209,19 @@ def minecraft_session() -> Generator[ControllerHolder, None, None]:
     """
     _ensure_installed()
     _ensure_world_exists()
+    hide_window = os.environ.get("MCIO_HIDE_WINDOW", "true").lower() in (
+        "true",
+        "1",
+    )
 
     run_options = types.RunOptions(
         instance_name=INSTANCE_NAME,
         world_name=WORLD_NAME,
         mcio_dir=INTTEST_DIR,
-        width=854,
-        height=480,
+        height=FRAME_SHAPE[0],
+        width=FRAME_SHAPE[1],
         mcio_mode=types.MCioMode.SYNC,
-        hide_window=True,
+        hide_window=hide_window,
         action_port=ACTION_PORT,
         observation_port=OBSERVATION_PORT,
     )
