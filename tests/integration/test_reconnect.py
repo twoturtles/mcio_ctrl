@@ -11,7 +11,6 @@ from .conftest import (
     CONNECTION_TIMEOUT,
     OBSERVATION_PORT,
     ControllerHolder,
-    send_and_recv,
 )
 
 
@@ -19,7 +18,7 @@ from .conftest import (
 def test_reconnect_without_restart(ctrl: ControllerHolder) -> None:
     """Close the controller (without stopping MC), reconnect, and verify."""
     # Verify current connection works
-    obs = send_and_recv(ctrl)
+    obs = ctrl.send_and_recv()
     assert obs.mode == types.MCioMode.SYNC
 
     # Close controller — but don't send stop, so MC keeps running

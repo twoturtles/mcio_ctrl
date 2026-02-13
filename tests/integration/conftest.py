@@ -5,8 +5,6 @@ On first run, auto-installs Minecraft + Fabric + mods (~minutes).
 Subsequent runs reuse the existing installation.
 """
 
-from __future__ import annotations
-
 import glob
 import logging
 import os
@@ -39,6 +37,7 @@ OBSERVATION_PORT = 8011
 CONNECTION_TIMEOUT = 120.0  # seconds — first launch can be slow
 SETTLE_TICKS = 30  # empty exchanges to let the world stabilize
 
+FLAT_Y = -60  # flat worlds defaults to y = -60
 
 # ---------------------------------------------------------------------------
 # ControllerHolder — mutable wrapper so reconnect tests can swap the inner ctrl
@@ -67,21 +66,32 @@ class ControllerHolder:
     def close(self) -> None:
         self.ctrl.close()
 
+    def send_and_recv(
+        self, action: network.ActionPacket | None = None, skip_steps: int = 0
+    ) -> network.ObservationPacket:
+        """Send an action (default: empty) and return the observation. Optionally skip some steps."""
+        if action is None:
+            action = network.ActionPacket()
+        self.send_action(action)
+        obs = self.recv_observation()
+        obs = self.skip_steps(skip_steps) if skip_steps > 0 else obs
+        return obs
+
+    def skip_steps(self, skip_steps: int) -> network.ObservationPacket:
+        """Send empty actions and return the final observation. Use to skip over a
+        number of steps/game ticks. This is necessary after commands which often take
+        many ticks to complete."""
+        skip_steps = max(int(skip_steps), 1)
+        action = network.ActionPacket()
+        for i in range(skip_steps):
+            self.send_action(action)
+            obs = self.recv_observation()
+        return obs
+
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
-
-
-def send_and_recv(
-    holder: ControllerHolder,
-    action: network.ActionPacket | None = None,
-) -> network.ObservationPacket:
-    """Send an action (default: empty) and return the observation."""
-    if action is None:
-        action = network.ActionPacket()
-    holder.send_action(action)
-    return holder.recv_observation()
 
 
 def _ensure_installed() -> None:

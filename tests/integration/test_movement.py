@@ -7,13 +7,13 @@ import pytest
 
 from mcio_ctrl import network, types
 
-from .conftest import ControllerHolder, send_and_recv
+from .conftest import FLAT_Y, ControllerHolder
 
 
 @pytest.mark.integration
 def test_forward_movement(ctrl: ControllerHolder) -> None:
     """Press W for 20 ticks and verify the player moved."""
-    obs_before = send_and_recv(ctrl)
+    obs_before = ctrl.send_and_recv()
     x0, y0, z0 = obs_before.player_pos
 
     # Press W
@@ -22,12 +22,10 @@ def test_forward_movement(ctrl: ControllerHolder) -> None:
             types.InputEvent(types.InputType.KEY, glfw.KEY_W, types.GlfwAction.PRESS)
         ]
     )
-    ctrl.send_action(press)
-    ctrl.recv_observation()
+    ctrl.send_and_recv(press)
 
     # Hold for 20 ticks
-    for _ in range(20):
-        send_and_recv(ctrl)
+    ctrl.skip_steps(20)
 
     # Release W
     release = network.ActionPacket(
@@ -35,8 +33,7 @@ def test_forward_movement(ctrl: ControllerHolder) -> None:
             types.InputEvent(types.InputType.KEY, glfw.KEY_W, types.GlfwAction.RELEASE)
         ]
     )
-    ctrl.send_action(release)
-    obs_after = ctrl.recv_observation()
+    obs_after = ctrl.send_and_recv(release)
     x1, y1, z1 = obs_after.player_pos
 
     dist = math.sqrt((x1 - x0) ** 2 + (z1 - z0) ** 2)
@@ -46,25 +43,22 @@ def test_forward_movement(ctrl: ControllerHolder) -> None:
 @pytest.mark.integration
 def test_command_execution(ctrl: ControllerHolder) -> None:
     """Teleport via /teleport, verify position, then teleport back."""
-    obs_before = send_and_recv(ctrl)
+    obs_before = ctrl.send_and_recv()
     orig_pos = obs_before.player_pos
 
     # Teleport to a known position
-    tp_action = network.ActionPacket(commands=["teleport @s 100 70 100"])
-    ctrl.send_action(tp_action)
-    obs = ctrl.recv_observation()
-
-    # Give a tick for the position to update
-    obs = send_and_recv(ctrl)
+    tp_action = network.ActionPacket(commands=[f"teleport @s 100 {FLAT_Y} 100"])
+    ctrl.send_and_recv(tp_action)
+    obs = ctrl.skip_steps(20)
 
     x, y, z = obs.player_pos
     assert abs(x - 100) < 1.0, f"X={x}, expected ~100"
-    assert abs(y - 70) < 2.0, f"Y={y}, expected ~70"
+    assert abs(y - FLAT_Y) < 2.0, f"Y={y}, expected ~70"
     assert abs(z - 100) < 1.0, f"Z={z}, expected ~100"
 
     # Teleport back
     tp_back = network.ActionPacket(
         commands=[f"teleport @s {orig_pos[0]:.1f} {orig_pos[1]:.1f} {orig_pos[2]:.1f}"]
     )
-    ctrl.send_action(tp_back)
-    ctrl.recv_observation()
+    ctrl.send_and_recv(tp_back)
+    ctrl.skip_steps(20)

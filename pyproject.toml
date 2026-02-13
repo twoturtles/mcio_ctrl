@@ -60,6 +60,7 @@ markers = [
     "integration: Integration tests requiring Minecraft (slow, auto-installs on first run)",
 ]
 addopts = "-m 'not integration'"
+testpaths = ["tests"]
 
 [tool.isort]
 profile = "black"
