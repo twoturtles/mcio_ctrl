@@ -48,8 +48,7 @@ def test_command_execution(ctrl: ControllerHolder) -> None:
 
     # Teleport to a known position
     tp_action = network.ActionPacket(commands=[f"teleport @s 100 {FLAT_Y} 100"])
-    ctrl.send_and_recv(tp_action)
-    obs = ctrl.skip_steps(20)
+    obs = ctrl.send_and_recv(tp_action, 20)
 
     x, y, z = obs.player_pos
     assert abs(x - 100) < 1.0, f"X={x}, expected ~100"
@@ -60,5 +59,4 @@ def test_command_execution(ctrl: ControllerHolder) -> None:
     tp_back = network.ActionPacket(
         commands=[f"teleport @s {orig_pos[0]:.1f} {orig_pos[1]:.1f} {orig_pos[2]:.1f}"]
     )
-    ctrl.send_and_recv(tp_back)
-    ctrl.skip_steps(20)
+    ctrl.send_and_recv(tp_back, 20)

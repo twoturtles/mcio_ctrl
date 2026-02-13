@@ -246,13 +246,11 @@ def minecraft_session() -> Generator[ControllerHolder, None, None]:
         assert obs.mode == types.MCioMode.SYNC, f"Expected SYNC mode, got {obs.mode}"
         logger.info("Initial observation received — mode=%s", obs.mode)
 
-        # Let the world settle
-        for _ in range(SETTLE_TICKS):
-            ctrl.send_action(network.ActionPacket())
-            ctrl.recv_observation()
-        logger.info("World settled after %d ticks", SETTLE_TICKS)
-
         holder = ControllerHolder(ctrl)
+
+        # Let the world settle
+        holder.skip_steps(SETTLE_TICKS)
+
         yield holder
 
     finally:
