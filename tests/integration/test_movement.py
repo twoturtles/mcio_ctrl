@@ -7,11 +7,11 @@ import pytest
 
 from mcio_ctrl import network, types
 
-from .conftest import FLAT_Y, ControllerHolder
+from .conftest import FLAT_Y, IntegrationController
 
 
 @pytest.mark.integration
-def test_forward_movement(ctrl: ControllerHolder) -> None:
+def test_forward_movement(ctrl: IntegrationController) -> None:
     """Press W for 20 ticks and verify the player moved."""
     obs_before = ctrl.send_and_recv()
     x0, y0, z0 = obs_before.player_pos
@@ -41,7 +41,7 @@ def test_forward_movement(ctrl: ControllerHolder) -> None:
 
 
 @pytest.mark.integration
-def test_command_execution(ctrl: ControllerHolder) -> None:
+def test_command_execution(ctrl: IntegrationController) -> None:
     """Teleport via /teleport, verify position, then teleport back."""
     obs_before = ctrl.send_and_recv()
     orig_pos = obs_before.player_pos

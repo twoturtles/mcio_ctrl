@@ -4,11 +4,11 @@ import pytest
 
 from mcio_ctrl import network
 
-from .conftest import ControllerHolder
+from .conftest import IntegrationController
 
 
 @pytest.mark.integration
-def test_give_item(ctrl: ControllerHolder) -> None:
+def test_give_item(ctrl: IntegrationController) -> None:
     """Give the player a diamond and verify it appears in inventory."""
     # Clear first to start clean
     clear = network.ActionPacket(commands=["clear @s"])
@@ -22,7 +22,7 @@ def test_give_item(ctrl: ControllerHolder) -> None:
 
 
 @pytest.mark.integration
-def test_clear_inventory(ctrl: ControllerHolder) -> None:
+def test_clear_inventory(ctrl: IntegrationController) -> None:
     """Clear the player's inventory and verify it's empty."""
     # Give something first so we know clearing works
     give = network.ActionPacket(commands=["give @s minecraft:diamond 1"])

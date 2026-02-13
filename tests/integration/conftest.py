@@ -6,6 +6,9 @@ Subsequent runs reuse the existing installation.
 
 Use env var MCIO_MOD_DIR or MCIO_MOD_JAR to copy in a development mod.
 
+Set MCIO_EXTERNAL=1 to skip launching Minecraft (use an already-running instance
+on ports 4011/8011).
+
 Basic:
 uv run pytest -m integration
 
@@ -16,6 +19,9 @@ uv run pytest -m integration --log-cli-level=INFO -s
 
 Use dev mod:
 MCIO_MOD_DIR=~/src/MCio/build/libs/ uv run pytest -m integration --log-cli-level=INFO
+
+Use external instance:
+MCIO_EXTERNAL=1 uv run pytest -m integration --log-cli-level=INFO
 
 Use env var MCIO_HIDE_WINDOW=false to show the Minecraft window.
 """
@@ -55,32 +61,14 @@ SETTLE_TICKS = 30  # empty exchanges to let the world stabilize
 FLAT_Y = -60  # flat worlds defaults to y = -60
 FRAME_SHAPE = (240, 320, 3)  # (H, W, C)
 
+
 # ---------------------------------------------------------------------------
-# ControllerHolder — mutable wrapper so reconnect tests can swap the inner ctrl
+# IntegrationController — ControllerSync with convenience methods for tests
 # ---------------------------------------------------------------------------
 
 
-class ControllerHolder:
-    """Mutable wrapper around ControllerSync.
-
-    The reconnect test can replace ``self.ctrl`` without breaking fixtures
-    that hold a reference to the holder.
-    """
-
-    def __init__(self, ctrl: controller.ControllerSync) -> None:
-        self.ctrl = ctrl
-
-    def send_action(self, action: network.ActionPacket) -> None:
-        self.ctrl.send_action(action)
-
-    def recv_observation(self) -> network.ObservationPacket:
-        return self.ctrl.recv_observation()
-
-    def send_stop(self) -> None:
-        self.ctrl.send_stop()
-
-    def close(self) -> None:
-        self.ctrl.close()
+class IntegrationController(controller.ControllerSync):
+    """ControllerSync with extra convenience methods for integration tests."""
 
     def send_and_recv(
         self, action: network.ActionPacket | None = None, skip_steps: int = 0
@@ -90,16 +78,17 @@ class ControllerHolder:
             action = network.ActionPacket()
         self.send_action(action)
         obs = self.recv_observation()
-        obs = self.skip_steps(skip_steps) if skip_steps > 0 else obs
+        if skip_steps > 0:
+            obs = self.skip_steps(skip_steps)
         return obs
 
-    def skip_steps(self, skip_steps: int) -> network.ObservationPacket:
+    def skip_steps(self, n_steps: int) -> network.ObservationPacket:
         """Send empty actions and return the final observation. Use to skip over a
         number of steps/game ticks. This is necessary after commands which often take
         many ticks to complete."""
-        skip_steps = max(int(skip_steps), 1)
+        n_steps = max(int(n_steps), 1)
         action = network.ActionPacket()
-        for i in range(skip_steps):
+        for _ in range(n_steps):
             self.send_action(action)
             obs = self.recv_observation()
         return obs
@@ -108,6 +97,11 @@ class ControllerHolder:
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
+
+def _is_external() -> bool:
+    """Check if we should use an externally-launched Minecraft instance."""
+    return os.environ.get("MCIO_EXTERNAL", "").lower() in ("1", "true")
 
 
 def _ensure_installed() -> None:
@@ -201,12 +195,19 @@ def _ensure_world_exists() -> None:
 # ---------------------------------------------------------------------------
 
 
+# pytest yield fixture
 @pytest.fixture(scope="session")
-def minecraft_session() -> Generator[ControllerHolder, None, None]:
-    """Launch Minecraft, connect, and yield a ControllerHolder.
+def minecraft_session() -> Generator[None, None, None]:
+    """Launch Minecraft for the test session.
 
-    The instance is installed automatically on first run.
+    If MCIO_EXTERNAL=1, skips launch/shutdown (assumes an instance is already
+    running on ports 4011/8011).
     """
+    if _is_external():
+        logger.info("MCIO_EXTERNAL set — using externally-launched instance")
+        yield
+        return
+
     _ensure_installed()
     _ensure_world_exists()
     hide_window = os.environ.get("MCIO_HIDE_WINDOW", "true").lower() in (
@@ -228,48 +229,50 @@ def minecraft_session() -> Generator[ControllerHolder, None, None]:
 
     launcher = instance.Launcher(run_options)
     launcher.launch(wait=False)
-    logger.info("Minecraft launched — waiting for connection ...")
+    logger.info("Minecraft launched")
 
+    yield
+
+    # Teardown: connect briefly to send stop, then close launcher
     try:
-        ctrl = controller.ControllerSync(
+        stop_ctrl = controller.ControllerSync(
             action_port=ACTION_PORT,
             observation_port=OBSERVATION_PORT,
             wait_for_connection=True,
-            connection_timeout=CONNECTION_TIMEOUT,
+            connection_timeout=10.0,
         )
-        logger.info("Connected to Minecraft")
-
-        # Clear any residual input and grab the initial observation
-        action = network.ActionPacket(clear_input=True)
-        ctrl.send_action(action)
-        obs = ctrl.recv_observation()
-        assert obs.mode == types.MCioMode.SYNC, f"Expected SYNC mode, got {obs.mode}"
-        logger.info("Initial observation received — mode=%s", obs.mode)
-
-        holder = ControllerHolder(ctrl)
-
-        # Let the world settle
-        holder.skip_steps(SETTLE_TICKS)
-
-        yield holder
-
-    finally:
-        # Teardown: stop Minecraft cleanly
-        try:
-            ctrl.send_stop()
-        except Exception:
-            pass
-        try:
-            ctrl.close()
-        except Exception:
-            pass
-        # Give MC a moment to exit, then force-kill
-        time.sleep(2)
-        launcher.close()
-        logger.info("Minecraft shut down")
+        stop_ctrl.send_stop()
+        stop_ctrl.close()
+    except Exception:
+        pass
+    time.sleep(2)
+    launcher.close()
+    logger.info("Minecraft shut down")
 
 
+# ---------------------------------------------------------------------------
+# Function-scoped fixture: fresh controller per test
+# ---------------------------------------------------------------------------
+
+
+# pytest yield fixture
 @pytest.fixture(scope="function")
-def ctrl(minecraft_session: ControllerHolder) -> ControllerHolder:
-    """Convenience alias — yields the session-scoped ControllerHolder."""
-    return minecraft_session
+def ctrl(minecraft_session: None) -> Generator[IntegrationController, None, None]:
+    """Connect a fresh IntegrationController for each test, with clear_input."""
+    c = IntegrationController(
+        action_port=ACTION_PORT,
+        observation_port=OBSERVATION_PORT,
+        wait_for_connection=True,
+        connection_timeout=CONNECTION_TIMEOUT,
+    )
+    logger.info("Controller connected")
+
+    # Clear residual input and verify mode
+    c.send_action(network.ActionPacket(clear_input=True))
+    obs = c.recv_observation()
+    assert obs.mode == types.MCioMode.SYNC, f"Expected SYNC mode, got {obs.mode}"
+
+    yield c
+
+    c.close()
+    logger.info("Controller closed")

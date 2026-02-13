@@ -4,30 +4,30 @@ import time
 
 import pytest
 
-from mcio_ctrl import controller, network, types
+from mcio_ctrl import network, types
 
 from .conftest import (
     ACTION_PORT,
     CONNECTION_TIMEOUT,
     OBSERVATION_PORT,
-    ControllerHolder,
+    IntegrationController,
 )
 
 
 @pytest.mark.integration
-def test_reconnect_without_restart(ctrl: ControllerHolder) -> None:
+def test_reconnect_without_restart(ctrl: IntegrationController) -> None:
     """Close the controller (without stopping MC), reconnect, and verify."""
     # Verify current connection works
     obs = ctrl.send_and_recv()
     assert obs.mode == types.MCioMode.SYNC
 
     # Close controller — but don't send stop, so MC keeps running
-    ctrl.ctrl.close()
+    ctrl.close()
 
     time.sleep(1)
 
     # Reconnect
-    new_ctrl = controller.ControllerSync(
+    new_ctrl = IntegrationController(
         action_port=ACTION_PORT,
         observation_port=OBSERVATION_PORT,
         wait_for_connection=True,
@@ -40,5 +40,4 @@ def test_reconnect_without_restart(ctrl: ControllerHolder) -> None:
     assert obs.mode == types.MCioMode.SYNC
     assert obs.version == network.MCIO_PROTOCOL_VERSION
 
-    # Replace the holder's inner controller so subsequent tests use the new one
-    ctrl.ctrl = new_ctrl
+    new_ctrl.close()
