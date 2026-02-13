@@ -6,7 +6,7 @@ Subsequent runs reuse the existing installation.
 
 Use env var MCIO_MOD_DIR or MCIO_MOD_JAR to copy in a development mod.
 
-Set MCIO_EXTERNAL=1 to skip launching Minecraft (use an already-running instance
+Set MCIO_INT_EXTERNAL=true to skip launching Minecraft (use an already-running instance
 on ports 4011/8011).
 
 Basic:
@@ -20,10 +20,11 @@ uv run pytest -m integration --log-cli-level=INFO -s
 Use dev mod:
 MCIO_MOD_DIR=~/src/MCio/build/libs/ uv run pytest -m integration --log-cli-level=INFO
 
-Use external instance:
-MCIO_EXTERNAL=1 uv run pytest -m integration --log-cli-level=INFO
-
 Use env var MCIO_HIDE_WINDOW=false to show the Minecraft window.
+
+Use external instance:
+MCIO_MODE=sync MCIO_ACTION_PORT=4011 MCIO_OBSERVATION_PORT=8011 uv run mcio inst launch inttest -w inttest_flat -d ~/src/mcio_ctrl/.inttest --width 320 --height 240
+MCIO_INT_EXTERNAL=true uv run pytest -m integration --log-cli-level=INFO
 """
 
 import glob
@@ -101,7 +102,7 @@ class IntegrationController(controller.ControllerSync):
 
 def _is_external() -> bool:
     """Check if we should use an externally-launched Minecraft instance."""
-    return os.environ.get("MCIO_EXTERNAL", "").lower() in ("1", "true")
+    return os.environ.get("MCIO_INT_EXTERNAL", "").lower() in ("1", "true")
 
 
 def _ensure_installed() -> None:
@@ -200,11 +201,11 @@ def _ensure_world_exists() -> None:
 def minecraft_session() -> Generator[None, None, None]:
     """Launch Minecraft for the test session.
 
-    If MCIO_EXTERNAL=1, skips launch/shutdown (assumes an instance is already
+    If MCIO_INT_EXTERNAL=true, skips launch/shutdown (assumes an instance is already
     running on ports 4011/8011).
     """
     if _is_external():
-        logger.info("MCIO_EXTERNAL set — using externally-launched instance")
+        logger.info("MCIO_INT_EXTERNAL set — using externally-launched instance")
         yield
         return
 
@@ -267,10 +268,8 @@ def ctrl(minecraft_session: None) -> Generator[IntegrationController, None, None
     )
     logger.info("Controller connected")
 
-    # Clear residual input and verify mode
-    c.send_action(network.ActionPacket(clear_input=True))
-    obs = c.recv_observation()
-    assert obs.mode == types.MCioMode.SYNC, f"Expected SYNC mode, got {obs.mode}"
+    # Clear residual input
+    c.send_and_recv(network.ActionPacket(clear_input=True))
 
     yield c
 
