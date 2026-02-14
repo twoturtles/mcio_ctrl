@@ -193,9 +193,15 @@ class MCioBaseEnv(gym.Env[ObsType, ActType], Generic[ObsType, ActType], ABC):
             self.launcher.launch(wait=False)
 
         if self.run_options.mcio_mode == types.MCioMode.ASYNC:
-            self.ctrl = controller.ControllerAsync()
+            self.ctrl = controller.ControllerAsync(
+                action_port=self.run_options.action_port,
+                observation_port=self.run_options.observation_port,
+            )
         else:
-            self.ctrl = controller.ControllerSync()
+            self.ctrl = controller.ControllerSync(
+                action_port=self.run_options.action_port,
+                observation_port=self.run_options.observation_port,
+            )
 
         # The reset action will trigger an initial observation
         self._send_reset_action(options)
