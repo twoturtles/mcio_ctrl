@@ -6,6 +6,7 @@ import glfw  # type: ignore
 import pytest
 
 from mcio_ctrl import network, types
+from mcio_ctrl.envs import env_util
 
 from .conftest import FLAT_Y, IntegrationController
 
@@ -24,8 +25,8 @@ def test_forward_movement(ctrl: IntegrationController) -> None:
     )
     ctrl.send_and_recv(press)
 
-    # Hold for 20 ticks
-    ctrl.skip_steps(20)
+    # Hold for 40 ticks
+    ctrl.skip_steps(40)
 
     # Release W
     release = network.ActionPacket(
@@ -41,19 +42,37 @@ def test_forward_movement(ctrl: IntegrationController) -> None:
 
 
 @pytest.mark.integration
+def test_turning(ctrl: IntegrationController) -> None:
+    # Setup - face straight South
+    tp_action = network.ActionPacket(commands=["teleport @s ~ ~ ~ 0 0"])
+    obs = ctrl.send_and_recv(tp_action, 20)
+    # Check facing straight South
+    assert obs.player_yaw == pytest.approx(0, abs=1.0)
+    assert obs.player_pitch == pytest.approx(0, abs=1.0)
+
+    # Turn and check that cursor movement causes expected change in pitch/yaw
+    dpp = env_util.DegreesToPixels.DEGREES_PER_PIXEL
+    obs = ctrl.send_and_recv(network.ActionPacket(cursor_pos=[(200, 400)]))
+    # Check x movement matches expected yaw
+    assert obs.player_yaw == pytest.approx(200 * dpp, abs=1.0)
+    # Check y movement matches expected pitch
+    assert obs.player_pitch == pytest.approx(400 * dpp, abs=1.0)
+
+
+@pytest.mark.integration
 def test_command_execution(ctrl: IntegrationController) -> None:
     """Teleport via /teleport, verify position, then teleport back."""
     obs_before = ctrl.send_and_recv()
     orig_pos = obs_before.player_pos
 
     # Teleport to a known position
-    tp_action = network.ActionPacket(commands=[f"teleport @s 100 {FLAT_Y} 100"])
+    tp_action = network.ActionPacket(commands=["teleport @s 100 {FLAT_Y} 200"])
     obs = ctrl.send_and_recv(tp_action, 20)
 
     x, y, z = obs.player_pos
-    assert abs(x - 100) < 1.0, f"X={x}, expected ~100"
-    assert abs(y - FLAT_Y) < 2.0, f"Y={y}, expected ~70"
-    assert abs(z - 100) < 1.0, f"Z={z}, expected ~100"
+    assert x == pytest.approx(100, abs=1.0)
+    assert y == pytest.approx(FLAT_Y, abs=1.0)
+    assert z == pytest.approx(200, abs=1.0)
 
     # Teleport back
     tp_back = network.ActionPacket(
