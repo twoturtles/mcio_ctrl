@@ -38,7 +38,7 @@ def tutorial(instance_name: str | None, world_name: str | None) -> None:
         action["ESC"] = 0
         action["inventory"] = 0
         # Limit camera delta so it doesn't look so crazy
-        action["camera"] = np.clip(action["camera"], -5.0, 5.0)
+        action["camera"] = np.random.uniform(-1, 1, size=2).astype(np.float32)
         observation, reward, terminated, truncated, info = env.step(action)
         env.render()
 
