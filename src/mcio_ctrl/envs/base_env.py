@@ -116,6 +116,7 @@ class MCioBaseEnv(gym.Env[ObsType, ActType], Generic[ObsType, ActType], ABC):
     ) -> tuple[int, bool, bool]:
         """Called during step() after the observation has been received.
         Returns (reward, terminated, truncated)
+        Note: the base env will automatically set self.terminated if health reaches 0
         """
         pass
 
@@ -168,6 +169,9 @@ class MCioBaseEnv(gym.Env[ObsType, ActType], Generic[ObsType, ActType], ABC):
         self.last_frame = packet.get_frame_with_cursor()
         self.last_cursor_pos = packet.cursor_pos
         self.health = packet.health
+        # Automatically terminate if health goes to 0. Is this correct behavior?
+        if self.health == 0.0:
+            self.terminated = True
         self.stats_cache.update_cache(packet)
 
     def reset(
@@ -216,16 +220,19 @@ class MCioBaseEnv(gym.Env[ObsType, ActType], Generic[ObsType, ActType], ABC):
 
         return observation, info
 
-    def _reset_terminated_hack(self, max_steps: int = 10) -> ObsType:
+    def _reset_terminated_hack(self, max_steps: int = 100) -> ObsType:
         """With doImmediateRespawn set it still takes a few steps to respawn.
         This works around that by skipping steps until we go back to
-        non-terminated.
+        positive health
         """
         assert max_steps > 0
+        assert self.terminated
         for _ in range(max_steps):
-            if not self.terminated:
-                break
+            # This will update self.health after each step
             observation, *_ = self.skip_steps(1)
+            if self.health > 0.0:
+                self.terminated = False
+                break
         else:
             raise RuntimeError(
                 f"Environment remained terminated after {max_steps} steps."
@@ -241,6 +248,9 @@ class MCioBaseEnv(gym.Env[ObsType, ActType], Generic[ObsType, ActType], ABC):
     ) -> tuple[ObsType, int, bool, bool, dict[Any, Any]]:
         """Env step function. Includes extra options arg to allow command to be sent during step."""
         options = options or ResetOptions()
+
+        # Should we enforce this?
+        assert not self.terminated, "Must call reset() after termination"
 
         self._send_action(action, options.get("commands"))
         observation = self._get_obs()

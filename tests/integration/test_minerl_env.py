@@ -102,16 +102,56 @@ def test_forward_movement(minecraft_session: None) -> None:
 
 
 @pytest.mark.integration
-def test_esc_terminates(minecraft_session: None) -> None:
-    """Verify ESC action signals termination."""
+def test_terminated(minecraft_session: None) -> None:
+    """Test various termination behaviors"""
     env = _make_env()
     try:
         env.reset()
+        assert not env.terminated
         env.skip_steps(5)
 
+        # Test ESC terminates
         action = env.get_noop_action()
         action["ESC"] = np.int64(1)
         obs, reward, terminated, truncated, info = env.step(action)
         assert terminated
+
+        # Test can't step when terminated
+        action = env.get_noop_action()
+        with pytest.raises(AssertionError):
+            obs, reward, terminated, truncated, info = env.step(action)
+
+        # Test reset after terminated
+        env.reset()
+        action = env.get_noop_action()
+        obs, reward, terminated, truncated, info = env.step(action)
+        assert not terminated
+    finally:
+        env.close()
+
+
+@pytest.mark.integration
+def test_dying(minecraft_session: None) -> None:
+    """Test dying behavior"""
+    env = _make_env()
+    try:
+        env.reset()
+
+        # Send kill command
+        noop = env.get_noop_action()
+        obs, reward, terminated, truncated, info = env.step(
+            noop, options={"commands": ["kill @s"]}
+        )
+        # Step to let command take effect
+        for _ in range(20):
+            obs, reward, terminated, truncated, info = env.step(noop)
+            if terminated:
+                break
+        assert terminated
+
+        # Test that _reset_terminated_hack gets us back to living
+        env.reset()
+        assert not env.terminated
+
     finally:
         env.close()
