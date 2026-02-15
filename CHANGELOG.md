@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.5.2 - 2026-02-XX
+- New integration testing for mcio_ctrl/MCio/Minecraft
+- Clean up termination handling
+
 ## 1.5.1 - 2026-02-11
 - Fix crash in minerl env packet encoding
 

@@ -74,7 +74,7 @@ def test_noop_action_in_space(minecraft_session: None) -> None:
 
 @pytest.mark.integration
 def test_forward_movement(minecraft_session: None) -> None:
-    """Verify pressing forward moves the player."""
+    """Verify sending forward moves the player."""
     env = _make_env()
     try:
         # Face South (Positive Z)
