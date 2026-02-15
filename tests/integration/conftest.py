@@ -4,26 +4,30 @@ Launches a real Minecraft instance with the MCio mod and connects over ZMQ.
 On first run, auto-installs Minecraft + Fabric + mods (~minutes).
 Subsequent runs reuse the existing installation.
 
+## Config
+
 Use env var MCIO_MOD_DIR or MCIO_MOD_JAR to copy in a development mod.
+
+Use env var MCIO_HIDE_WINDOW=false to show the Minecraft window.
 
 Set MCIO_INT_EXTERNAL=true to skip launching Minecraft (use an already-running instance
 on ports 4011/8011).
 
-Basic:
+## Basic:
 uv run pytest -m integration
 
-More Debug:
+## More Debug:
 uv run pytest -m integration --log-cli-level=INFO
 Include stdout/stderr:
 uv run pytest -m integration --log-cli-level=INFO -s
 
-Use dev mod:
+## Use dev mod:
 MCIO_MOD_DIR=~/src/MCio/build/libs/ uv run pytest -m integration --log-cli-level=INFO
 
-Use env var MCIO_HIDE_WINDOW=false to show the Minecraft window.
-
-Use external instance:
+## Use external instance:
+Launch Minecraft:
 MCIO_MODE=sync MCIO_ACTION_PORT=4011 MCIO_OBSERVATION_PORT=8011 uv run mcio inst launch inttest -w inttest_flat -d ~/src/mcio_ctrl/.inttest --width 320 --height 240
+Connect pytest:
 MCIO_INT_EXTERNAL=true uv run pytest -m integration --log-cli-level=INFO
 """
 
@@ -191,6 +195,26 @@ def _ensure_world_exists() -> None:
         logger.info("World copied")
 
 
+def get_test_run_options(launch: bool = True) -> types.RunOptions:
+    """Get RunOptions configured for testing"""
+    hide_window = os.environ.get("MCIO_HIDE_WINDOW", "true").lower() in (
+        "true",
+        "1",
+    )
+    run_options = types.RunOptions(
+        instance_name=INSTANCE_NAME if launch else None,
+        world_name=WORLD_NAME,
+        mcio_dir=INTTEST_DIR,
+        height=FRAME_SHAPE[0],
+        width=FRAME_SHAPE[1],
+        mcio_mode=types.MCioMode.SYNC,
+        hide_window=hide_window,
+        action_port=ACTION_PORT,
+        observation_port=OBSERVATION_PORT,
+    )
+    return run_options
+
+
 # ---------------------------------------------------------------------------
 # Session-scoped fixture: one Minecraft launch for the entire test run
 # ---------------------------------------------------------------------------
@@ -211,23 +235,8 @@ def minecraft_session() -> Generator[None, None, None]:
 
     _ensure_installed()
     _ensure_world_exists()
-    hide_window = os.environ.get("MCIO_HIDE_WINDOW", "true").lower() in (
-        "true",
-        "1",
-    )
 
-    run_options = types.RunOptions(
-        instance_name=INSTANCE_NAME,
-        world_name=WORLD_NAME,
-        mcio_dir=INTTEST_DIR,
-        height=FRAME_SHAPE[0],
-        width=FRAME_SHAPE[1],
-        mcio_mode=types.MCioMode.SYNC,
-        hide_window=hide_window,
-        action_port=ACTION_PORT,
-        observation_port=OBSERVATION_PORT,
-    )
-
+    run_options = get_test_run_options()
     launcher = instance.Launcher(run_options)
     launcher.launch(wait=False)
     logger.info("Minecraft launched")
@@ -269,7 +278,7 @@ def ctrl(minecraft_session: None) -> Generator[IntegrationController, None, None
     logger.info("Controller connected")
 
     # Clear residual input
-    c.send_and_recv(network.ActionPacket(clear_input=True))
+    # c.send_and_recv(network.ActionPacket(clear_input=True))
 
     yield c
 
