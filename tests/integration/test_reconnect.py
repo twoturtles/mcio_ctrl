@@ -1,6 +1,5 @@
 """Test reconnecting to a running Minecraft instance."""
 
-import time
 
 import pytest
 
@@ -23,8 +22,6 @@ def test_reconnect_without_restart(ctrl: IntegrationController) -> None:
 
     # Close controller — but don't send stop, so MC keeps running
     ctrl.close()
-
-    time.sleep(1)
 
     # Reconnect
     new_ctrl = IntegrationController(
