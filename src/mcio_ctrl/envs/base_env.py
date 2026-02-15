@@ -116,7 +116,6 @@ class MCioBaseEnv(gym.Env[ObsType, ActType], Generic[ObsType, ActType], ABC):
     ) -> tuple[int, bool, bool]:
         """Called during step() after the observation has been received.
         Returns (reward, terminated, truncated)
-        Note: the base env will automatically set self.terminated if health reaches 0
         """
         pass
 
@@ -169,9 +168,6 @@ class MCioBaseEnv(gym.Env[ObsType, ActType], Generic[ObsType, ActType], ABC):
         self.last_frame = packet.get_frame_with_cursor()
         self.last_cursor_pos = packet.cursor_pos
         self.health = packet.health
-        # For now, terminated just tracks health. It's left to users to call
-        # reset when termination occurs
-        self.terminated = True if self.health == 0.0 else False
         self.stats_cache.update_cache(packet)
 
     def reset(
