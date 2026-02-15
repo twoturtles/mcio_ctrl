@@ -19,6 +19,10 @@ type MinerlAction = dict[str, Any]
 type MinerlObservation = dict[str, Any]
 
 
+# key / button states in action spaces
+NO_PRESS = np.int64(0)
+PRESS = np.int64(1)
+
 # Map from Minerl action name to Minecraft input
 # The action space also includes ESC and camera
 INPUT_MAP: dict[str, InputID] = {
@@ -45,6 +49,10 @@ INPUT_MAP: dict[str, InputID] = {
     "hotbar.8": InputID(InputType.KEY, glfw.KEY_8),
     "hotbar.9": InputID(InputType.KEY, glfw.KEY_9),
 }
+
+# delta (pitch, yaw)
+CAMERA_ZERO = np.array((0.0, 0.0), dtype=np.float32)
+CAMERA_ZERO.flags.writeable = False
 
 
 class MinerlEnv(MCioBaseEnv[MinerlObservation, MinerlAction]):
@@ -80,6 +88,10 @@ class MinerlEnv(MCioBaseEnv[MinerlObservation, MinerlAction]):
         self.input_mgr = env_util.InputStateManager()
         self.cursor_map = env_util.DegreesToPixels()
 
+        # Extra state updated from observations
+        self.last_pitch: float = 0.0
+        self.last_yaw: float = 0.0
+
     def _process_step(
         self, action: MinerlAction, observation: MinerlObservation
     ) -> tuple[int, bool, bool]:
@@ -94,6 +106,8 @@ class MinerlEnv(MCioBaseEnv[MinerlObservation, MinerlAction]):
             "pov": packet.get_frame_with_cursor(),
         }
         self.cursor_map.set(*self.last_cursor_pos)
+        self.last_pitch = packet.player_pitch
+        self.last_yaw = packet.player_yaw
         # assert obs in self.observation_space
         return obs
 
@@ -116,3 +130,13 @@ class MinerlEnv(MCioBaseEnv[MinerlObservation, MinerlAction]):
             self.terminated = True
 
         return packet
+
+    def get_noop_action(self) -> MinerlAction:
+        noop: MinerlAction = {}
+        for name in INPUT_MAP.keys():
+            noop[name] = NO_PRESS
+        noop["ESC"] = NO_PRESS
+        # Keep camera at the same position for noop
+        noop["camera"] = CAMERA_ZERO
+        assert noop in self.action_space
+        return noop

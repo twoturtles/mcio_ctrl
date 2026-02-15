@@ -1,6 +1,5 @@
 """Test reconnecting to a running Minecraft instance."""
 
-
 import pytest
 
 from mcio_ctrl import network, types

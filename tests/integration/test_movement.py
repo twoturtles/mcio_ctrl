@@ -66,7 +66,7 @@ def test_command_execution(ctrl: IntegrationController) -> None:
     orig_pos = obs_before.player_pos
 
     # Teleport to a known position
-    tp_action = network.ActionPacket(commands=["teleport @s 100 {FLAT_Y} 200"])
+    tp_action = network.ActionPacket(commands=[f"teleport @s 100 {FLAT_Y} 200"])
     obs = ctrl.send_and_recv(tp_action, 20)
 
     x, y, z = obs.player_pos
