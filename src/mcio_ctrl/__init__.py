@@ -13,7 +13,7 @@ from . import (
     world,
 )
 
-__version__ = "1.5.2.dev0"
+__version__ = "1.5.2"
 
 __all__ = [
     "__version__",

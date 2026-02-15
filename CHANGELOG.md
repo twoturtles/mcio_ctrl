@@ -1,6 +1,6 @@
 # Changelog
 
-## 1.5.2 - 2026-02-XX
+## 1.5.2 - 2026-02-15
 - New integration testing for mcio_ctrl/MCio/Minecraft
 - Clean up termination handling
 
